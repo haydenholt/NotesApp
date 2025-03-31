@@ -141,7 +141,7 @@ export class NoteApp {
     createNewNote(number, failingIssues = '', nonFailingIssues = '', discussion = '', startTimestamp = null, endTimestamp = null, completed = false, attemptID = '', projectID = '') {
         // Create the note container with Tailwind classes
         const noteContainer = document.createElement('div');
-        noteContainer.className = 'flex mb-4 bg-white p-4 rounded-lg shadow relative group ' + (completed ? 'bg-gray-50' : '');
+        noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' + (completed ? 'bg-gray-50' : 'bg-white');
         noteContainer.dataset.noteId = number;
 
         // Create action buttons
@@ -277,13 +277,26 @@ export class NoteApp {
             sectionElements[section.key] = textarea;
 
             // Auto-resize textarea
-            const adjustHeight = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            };
+            setTimeout(() => {
+                Object.values(sectionElements).forEach(textarea => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                });
+            }, 0);
+            
 
             textarea.addEventListener('input', () => {
+                // Add this function to adjust the height of the textarea
+                const adjustHeight = () => {
+                    // Reset height to auto first to get accurate scrollHeight
+                    textarea.style.height = 'auto';
+                    // Set height to scrollHeight to accommodate all content
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                };
+                
+                // Call the adjustment function
                 adjustHeight();
+                
                 if (!hasStarted && !completed) {
                     hasStarted = true;
                     this.stopAllTimers();
@@ -325,14 +338,12 @@ export class NoteApp {
 
         // Add copy functionality for Ctrl+C
         noteContainer.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'c') {
+            if (e.ctrlKey && e.key === 'x') {
                 // Don't prevent default to allow normal copy behavior in addition to our custom one
                 const text = this.getFormattedNoteText(
                     sectionElements.failingIssues.value,
                     sectionElements.nonFailingIssues.value,
                     sectionElements.discussion.value,
-                    attemptIDInput.value,
-                    projectIDInput.value
                 );
                 
                 navigator.clipboard.writeText(text)
@@ -415,22 +426,9 @@ export class NoteApp {
         this.updateProjectFailRates();
     }
 
-    getFormattedNoteText(failingIssues, nonFailingIssues, discussion, attemptID, projectID) {
+    getFormattedNoteText(failingIssues, nonFailingIssues, discussion) {
         // Create an array to hold non-empty sections
         const sections = [];
-        
-        // Add IDs if they exist
-        if (attemptID.trim() || projectID.trim()) {
-            let idText = '';
-            if (attemptID.trim()) {
-                idText += `Attempt ID: ${attemptID}`;
-            }
-            if (projectID.trim()) {
-                if (idText) idText += '\n';
-                idText += `Project ID: ${projectID}`;
-            }
-            sections.push(idText);
-        }
         
         // Only add sections that have content
         if (failingIssues.trim()) {
@@ -622,7 +620,7 @@ export class NoteApp {
                 </div>
                 <div class="bg-gray-100 p-3 rounded shadow-sm">
                     <div class="font-semibold text-gray-800">No Issues</div>
-                    <div class="text-2xl text-gray-700">${noIssueCount - 1}</div>
+                    <div class="text-2xl text-gray-700">${noIssueCount}</div>
                 </div>
             </div>
         `;
