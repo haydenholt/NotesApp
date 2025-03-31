@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Notes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JS Module imports -->
+    <script type="module" src="js/main.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-4xl mx-auto p-5">
+        <!-- Notes View -->
+        <div id="notesView">
+            <div class="flex justify-between items-center mb-5 bg-white p-4 rounded-lg shadow">
+                <div class="flex items-center gap-3">
+                    <input type="date" id="dateSelector" class="p-2 border border-gray-300 rounded text-base">
+                </div>
+                <div id="totalTime" class="text-2xl">Total Time: 00:00:00</div>
+            </div>
+            
+            <!-- New Statistics Sections -->
+            <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Statistics display -->
+                <div id="statsDisplay" class="bg-white p-4 rounded-lg shadow"></div>
+                
+                <!-- Project fail rate display -->
+                <div id="projectFailRateDisplay" class="bg-white p-4 rounded-lg shadow"></div>
+            </div>
+            
+            <div class="flex justify-between items-center mb-3">
+                <div class="text-lg font-bold text-gray-800">Notes View</div>
+                <div class="text-sm text-gray-600">Press Ctrl+A to switch to Diff View</div>
+            </div>
+            <div id="notesContainer"></div>
+        </div>
+
+        <!-- Diff View -->
+        <div id="diffView" class="hidden">
+            <div class="flex justify-between items-center mb-3">
+                <div class="text-lg font-bold text-gray-800">Diff View</div>
+                <div class="text-sm text-gray-600">Press Ctrl+A to switch to Notes View</div>
+            </div>
+            <div class="bg-white p-5 rounded-lg shadow mb-5">
+                <h3 class="font-semibold mb-2">Original Text</h3>
+                <textarea id="originalText" class="w-full min-h-32 p-3 border border-gray-300 rounded resize-y mb-4 font-mono text-sm" placeholder="Paste original text here..."></textarea>
+                
+                <h3 class="font-semibold mb-2">Modified Text</h3>
+                <textarea id="modifiedText" class="w-full min-h-32 p-3 border border-gray-300 rounded resize-y mb-4 font-mono text-sm" placeholder="Paste modified text here..."></textarea>
+                
+                <div class="flex justify-end gap-3">
+                    <button id="clearDiffButton" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">Clear Both</button>
+                </div>
+                
+                <div id="diffResult" class="mt-5 border border-gray-300 rounded overflow-auto p-3 bg-gray-50 font-mono whitespace-pre-wrap"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
