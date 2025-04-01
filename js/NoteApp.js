@@ -16,18 +16,72 @@ export class NoteApp {
         const today = new Date().toISOString().split('T')[0];
         this.dateSelector.value = today;
         this.currentDate = today;
-
+    
         // Set up event listeners
         this.dateSelector.addEventListener('change', () => {
             this.currentDate = this.dateSelector.value;
             this.loadNotes();
         });
-
+        
+        // Add date navigation buttons
+        this.addDateNavigationButtons();
+    
         this.loadNotes();
         this.updateTotalTime();
         
         // Make the app instance globally available for the Timer class
         window.app = this;
+    }
+    
+    // New method to add date navigation buttons
+    addDateNavigationButtons() {
+        // Create wrapper for the date picker and buttons
+        const dateNavContainer = document.createElement('div');
+        dateNavContainer.className = 'flex items-center';
+        
+        // Previous day button
+        const prevDayButton = document.createElement('button');
+        prevDayButton.innerHTML = '&larr;'; // Left arrow
+        prevDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-l';
+        prevDayButton.title = 'Previous day';
+        prevDayButton.addEventListener('click', () => {
+            const currentDate = new Date(this.dateSelector.value);
+            currentDate.setDate(currentDate.getDate() - 1);
+            this.dateSelector.value = currentDate.toISOString().split('T')[0];
+            this.currentDate = this.dateSelector.value;
+            this.loadNotes();
+        });
+        
+        // Next day button
+        const nextDayButton = document.createElement('button');
+        nextDayButton.innerHTML = '&rarr;'; // Right arrow
+        nextDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-r';
+        nextDayButton.title = 'Next day';
+        nextDayButton.addEventListener('click', () => {
+            const currentDate = new Date(this.dateSelector.value);
+            currentDate.setDate(currentDate.getDate() + 1);
+            this.dateSelector.value = currentDate.toISOString().split('T')[0];
+            this.currentDate = this.dateSelector.value;
+            this.loadNotes();
+        });
+        
+        // Replace the date selector with our new container
+        const parent = this.dateSelector.parentNode;
+        const originalDateSelector = this.dateSelector;
+        
+        // Remove the original date selector from DOM
+        parent.removeChild(originalDateSelector);
+        
+        // Style the date selector to remove default browser border
+        originalDateSelector.className = 'px-2 py-1 border-y border-gray-200 focus:outline-none';
+        
+        // Add elements to the container
+        dateNavContainer.appendChild(prevDayButton);
+        dateNavContainer.appendChild(originalDateSelector);
+        dateNavContainer.appendChild(nextDayButton);
+        
+        // Add the container to the parent
+        parent.appendChild(dateNavContainer);
     }
 
     getNextNoteNumber() {
@@ -109,6 +163,8 @@ export class NoteApp {
         // Update statistics after loading notes
         this.updateStatistics();
         this.updateProjectFailRates();
+
+        window.scrollTo(0, 0);
     }
 
     deleteNote(number) {
