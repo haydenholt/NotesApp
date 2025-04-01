@@ -71,6 +71,7 @@ export class NoteApp {
                 let discussion = '';
                 let attemptID = '';
                 let projectID = '';
+                let additionalTime = note.additionalTime || 0; // Add additionalTime with default
                 
                 if (note.hasOwnProperty('text')) {
                     // Old format - migrate the text to failing issues
@@ -93,7 +94,8 @@ export class NoteApp {
                     note.endTimestamp, 
                     note.completed,
                     attemptID,
-                    projectID
+                    projectID,
+                    additionalTime // Pass additionalTime to createNewNote
                 );
             });
 
@@ -138,7 +140,7 @@ export class NoteApp {
         localStorage.setItem(this.currentDate, JSON.stringify(renumberedNotes));
     }
 
-    createNewNote(number, failingIssues = '', nonFailingIssues = '', discussion = '', startTimestamp = null, endTimestamp = null, completed = false, attemptID = '', projectID = '') {
+    createNewNote(number, failingIssues = '', nonFailingIssues = '', discussion = '', startTimestamp = null, endTimestamp = null, completed = false, attemptID = '', projectID = '', additionalTime = 0) {
         // Create the note container with Tailwind classes
         const noteContainer = document.createElement('div');
         noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' + (completed ? 'bg-gray-50' : 'bg-white');
@@ -202,7 +204,7 @@ export class NoteApp {
         numberDisplay.textContent = number;
         leftSidebar.appendChild(numberDisplay);
 
-        // Timer display
+        // Timer display - FIX: Use the same class for all completed notes
         const timerDisplay = document.createElement('div');
         timerDisplay.className = 'font-mono text-base mb-3 ' + (completed ? 'text-green-600' : 'text-gray-600');
         timerDisplay.textContent = '00:00:00';
@@ -220,6 +222,7 @@ export class NoteApp {
         const attemptIDInput = document.createElement('input');
         attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
                                    (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        attemptIDInput.style.direction = 'rtl';
         attemptIDInput.placeholder = 'Enter ID';
         attemptIDInput.value = attemptID;
         attemptIDInput.disabled = completed;
@@ -232,6 +235,7 @@ export class NoteApp {
         const projectIDInput = document.createElement('input');
         projectIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
                                   (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        projectIDInput.style.direction = 'rtl';
         projectIDInput.placeholder = 'Enter ID';
         projectIDInput.value = projectID;
         projectIDInput.disabled = completed;
@@ -352,7 +356,6 @@ export class NoteApp {
             }
         });
 
-        // Handle Ctrl+Enter key for completion
         contentContainer.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
                 if (hasStarted && !completed) {
@@ -360,14 +363,28 @@ export class NoteApp {
                     timer.stop();
                     noteContainer.classList.add('bg-gray-50');
                     
+                    // Update timer display to green when completed - FIX
+                    timerDisplay.classList.remove('text-gray-600');
+                    timerDisplay.classList.add('text-green-600');
+                    
                     // Disable all textareas
                     Object.values(sectionElements).forEach(textarea => {
                         textarea.disabled = true;
+                        // Add these lines to update text color
+                        textarea.classList.remove('text-black');
+                        textarea.classList.add('text-gray-500');
                     });
                     
                     // Disable ID fields
                     attemptIDInput.disabled = true;
+                    // Add these lines to update ID field styling
+                    attemptIDInput.classList.remove('text-black');
+                    attemptIDInput.classList.add('text-gray-500', 'bg-gray-100');
+                    
                     projectIDInput.disabled = true;
+                    // Add these lines to update ID field styling
+                    projectIDInput.classList.remove('text-black');
+                    projectIDInput.classList.add('text-gray-500', 'bg-gray-100');
                     
                     completed = true;
                     // Show edit button after completion
@@ -383,6 +400,7 @@ export class NoteApp {
         const timer = new Timer(startTimestamp, endTimestamp);
         timer.displayElement = timerDisplay;
         timer.noteId = number;
+        timer.additionalTime = additionalTime || 0; // Initialize with saved additional time
         timer.updateDisplay();
 
         noteContainer.appendChild(leftSidebar);
@@ -452,6 +470,9 @@ export class NoteApp {
             note.container.dataset.noteId == number)?.elements;
         
         if (!noteElements) return;
+        
+        const noteTimer = this.notes.find(note => 
+            note.container.dataset.noteId == number)?.timer;
 
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
         savedNotes[number] = { 
@@ -462,7 +483,8 @@ export class NoteApp {
             projectID: noteElements.projectID.value,
             startTimestamp, 
             endTimestamp, 
-            completed 
+            completed,
+            additionalTime: noteTimer ? noteTimer.additionalTime : 0 // Save additionalTime
         };
         localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
         
@@ -495,6 +517,11 @@ export class NoteApp {
         
         // Add completed class
         note.container.classList.add('bg-gray-50');
+        
+        // FIX: Update timer to green when completed
+        const timerDisplay = note.timer.displayElement;
+        timerDisplay.classList.remove('text-gray-600');
+        timerDisplay.classList.add('text-green-600');
         
         // Update the saved state
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
@@ -546,6 +573,11 @@ export class NoteApp {
             // Remove completed class
             note.container.classList.remove('bg-gray-50');
             
+            // FIX: Update timer color back to gray when editing
+            const timerDisplay = note.timer.displayElement;
+            timerDisplay.classList.remove('text-green-600');
+            timerDisplay.classList.add('text-gray-600');
+            
             // Focus the first textarea
             note.elements.failingIssues.focus();
             
@@ -556,11 +588,9 @@ export class NoteApp {
                 localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             }
             
-            // Restart timer if needed
-            if (!note.timer.endTimestamp) {
-                this.stopAllTimers();
-                note.timer.startDisplay();
-            }
+            // Restart timer regardless of endTimestamp
+            this.stopAllTimers();
+            note.timer.restart(); // Use the new restart method instead of startDisplay
             
             // Update button visibility
             note.editButton.style.display = 'none';
@@ -595,18 +625,24 @@ export class NoteApp {
         let noIssueCount = 0;
         
         this.notes.forEach(note => {
-            const hasFailing = note.elements.failingIssues.value.trim() !== '';
-            const hasNonFailing = note.elements.nonFailingIssues.value.trim() !== '';
+            // Check if the note is completed by looking at the container class
+            const isCompleted = note.container.classList.contains('bg-gray-50');
             
-            if (hasFailing) {
-                failedCount++;
-            } else if (hasNonFailing) {
-                nonFailedCount++;
-            } else {
-                noIssueCount++;
+            // Only count if the note is completed
+            if (isCompleted) {
+                const hasFailing = note.elements.failingIssues.value.trim() !== '';
+                const hasNonFailing = note.elements.nonFailingIssues.value.trim() !== '';
+                
+                if (hasFailing) {
+                    failedCount++;
+                } else if (hasNonFailing) {
+                    nonFailedCount++;
+                } else {
+                    noIssueCount++;
+                }
             }
         });
-        
+            
         this.statsDisplay.innerHTML = `
             <div class="font-semibold text-lg mb-2">Audit Stats</div>
             <div class="grid grid-cols-3 gap-4">
@@ -627,6 +663,7 @@ export class NoteApp {
     }
     
     // Add new method for calculating and displaying project fail rates
+// Add new method for calculating and displaying project fail rates
     updateProjectFailRates() {
         if (!this.projectFailRateDisplay) return;
         
@@ -638,10 +675,15 @@ export class NoteApp {
             if (!projectID) return; // Skip notes without project ID
             
             if (!projectStats[projectID]) {
-                projectStats[projectID] = { total: 0, failed: 0 };
+                projectStats[projectID] = { 
+                    total: 0, 
+                    failed: 0,
+                    totalTime: 0  // Add tracking for total time
+                };
             }
             
             projectStats[projectID].total++;
+            projectStats[projectID].totalTime += note.timer.getSeconds(); // Add time to total
             
             if (note.elements.failingIssues.value.trim() !== '') {
                 projectStats[projectID].failed++;
@@ -658,12 +700,21 @@ export class NoteApp {
             
             for (const [projectID, stats] of Object.entries(projectStats)) {
                 const failRate = stats.total > 0 ? (stats.failed / stats.total * 100).toFixed(1) : 0;
+                // Calculate average time per note
+                const avgTimeSeconds = stats.total > 0 ? Math.round(stats.totalTime / stats.total) : 0;
+                // Format average time
+                const avgTime = new Timer().formatTime(avgTimeSeconds);
+                
+                // Truncate project ID to show only last 5 characters
+                const displayID = projectID.length > 5 ? 
+                    projectID.substring(projectID.length - 5) : 
+                    projectID;
                 
                 html += `
                     <div>
                         <div class="flex justify-between mb-1">
-                            <span class="font-medium">${projectID}</span>
-                            <span>${failRate}% (${stats.failed}/${stats.total})</span>
+                            <span class="font-medium">${displayID}</span>
+                            <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
                             <div class="bg-red-600 h-2.5 rounded-full" style="width: ${failRate}%"></div>

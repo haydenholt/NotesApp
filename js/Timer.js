@@ -8,6 +8,7 @@ export class Timer {
         this.displayInterval = null;
         this.displayElement = null;
         this.noteId = null;
+        this.additionalTime = 0; // Store additional time from previous sessions
     }
 
     start() {
@@ -27,10 +28,30 @@ export class Timer {
         }
     }
 
+    // New method to restart a timer that was previously stopped
+    restart() {
+        if (this.startTimestamp && this.endTimestamp) {
+            // Calculate time spent in previous session and add to additionalTime
+            this.additionalTime += Math.floor((this.endTimestamp - this.startTimestamp) / 1000);
+            // Reset timestamps for new session
+            this.startTimestamp = Date.now();
+            this.endTimestamp = null;
+            this.startDisplay();
+            this.saveState();
+        } else if (!this.startTimestamp) {
+            // If timer wasn't started before, just start it
+            this.start();
+        }
+    }
+
     getSeconds() {
         if (!this.startTimestamp) return 0;
-        const end = this.endTimestamp || Date.now();
-        return Math.floor((end - this.startTimestamp) / 1000);
+        
+        const currentTime = this.endTimestamp || Date.now();
+        const sessionTime = Math.floor((currentTime - this.startTimestamp) / 1000);
+        
+        // Include time from previous sessions
+        return sessionTime + this.additionalTime;
     }
 
     formatTime(seconds) {
@@ -67,6 +88,7 @@ export class Timer {
             if (savedNotes[this.noteId]) {
                 savedNotes[this.noteId].startTimestamp = this.startTimestamp;
                 savedNotes[this.noteId].endTimestamp = this.endTimestamp;
+                savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
                 localStorage.setItem(window.app.currentDate, JSON.stringify(savedNotes));
             }
         }
