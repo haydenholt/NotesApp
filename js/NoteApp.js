@@ -11,6 +11,10 @@ export class NoteApp {
         this.dateSelector = document.getElementById('dateSelector');
         this.statsDisplay = document.getElementById('statsDisplay');
         this.projectFailRateDisplay = document.getElementById('projectFailRateDisplay');
+        this.searchInput = document.getElementById('searchInput');
+        this.clearSearchButton = document.getElementById('clearSearchButton');
+        this.originalNotes = []; // Store original notes for search filtering
+        this.isSearchActive = false;
         
         // Initialize date
         const today = new Date().toISOString().split('T')[0];
@@ -20,11 +24,32 @@ export class NoteApp {
         // Set up event listeners
         this.dateSelector.addEventListener('change', () => {
             this.currentDate = this.dateSelector.value;
-            this.loadNotes();
+            // Only reload notes if not in search mode
+            if (!this.isSearchActive) {
+                this.loadNotes();
+            }
         });
         
         // Add date navigation buttons
         this.addDateNavigationButtons();
+        
+        // Set up search functionality
+        this.searchInput.addEventListener('input', () => {
+            const query = this.searchInput.value.trim();
+            if (query === '' && this.isSearchActive) {
+                // Reset to current date view when clearing an active search
+                this.isSearchActive = false;
+                this.loadNotes();
+            } else if (query !== '') {
+                this.searchNotes(query);
+            }
+        });
+        
+        this.clearSearchButton.addEventListener('click', () => {
+            this.searchInput.value = '';
+            this.isSearchActive = false;
+            this.loadNotes();
+        });
     
         this.loadNotes();
         this.updateTotalTime();
@@ -158,6 +183,14 @@ export class NoteApp {
             if (allCompleted) {
                 this.createNewNote(this.getNextNoteNumber());
             }
+        }
+        
+        // Store original notes for search filtering
+        this.updateOriginalNotes();
+        
+        // Check if there's an active search and apply it
+        if (this.searchInput.value.trim() !== '') {
+            this.searchNotes(this.searchInput.value);
         }
         
         // Update statistics after loading notes
@@ -522,31 +555,41 @@ export class NoteApp {
     }
 
     saveNote(number, startTimestamp, endTimestamp, completed) {
-        const noteElements = this.notes.find(note => 
-            note.container.dataset.noteId == number)?.elements;
-        
-        if (!noteElements) return;
-        
-        const noteTimer = this.notes.find(note => 
-            note.container.dataset.noteId == number)?.timer;
-
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
-        savedNotes[number] = { 
-            failingIssues: noteElements.failingIssues.value,
-            nonFailingIssues: noteElements.nonFailingIssues.value,
-            discussion: noteElements.discussion.value,
-            attemptID: noteElements.attemptID.value,
-            projectID: noteElements.projectID.value,
-            startTimestamp, 
-            endTimestamp, 
-            completed,
-            additionalTime: noteTimer ? noteTimer.additionalTime : 0 // Save additionalTime
+        const noteElement = document.querySelector(`.flex[data-note-id="${number}"]`);
+        
+        if (!noteElement) return;
+        
+        // Get all textareas from the current note
+        const failingIssuesTextarea = noteElement.querySelector('textarea[placeholder="Type failing issues..."]');
+        const nonFailingIssuesTextarea = noteElement.querySelector('textarea[placeholder="Type non-failing issues..."]');
+        const discussionTextarea = noteElement.querySelector('textarea[placeholder="Type discussion..."]');
+        
+        // Get the ID inputs
+        const projectIDInput = noteElement.querySelector('input[placeholder="Enter ID"]');
+        const attemptIDInput = noteElement.querySelectorAll('input[placeholder="Enter ID"]')[1];
+        
+        // Create the note object with all the data
+        const note = {
+            failingIssues: failingIssuesTextarea ? failingIssuesTextarea.value : '',
+            nonFailingIssues: nonFailingIssuesTextarea ? nonFailingIssuesTextarea.value : '',
+            discussion: discussionTextarea ? discussionTextarea.value : '',
+            startTimestamp: startTimestamp || Date.now(),
+            endTimestamp: endTimestamp,
+            completed: completed,
+            projectID: projectIDInput ? projectIDInput.value : '',
+            attemptID: attemptIDInput ? attemptIDInput.value : '',
+            additionalTime: 0 // Initialize additionalTime to 0 for new notes
         };
+        
+        // Save to local storage
+        savedNotes[number] = note;
         localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
         
-        // Update statistics after saving
-        this.updateStatistics();
-        this.updateProjectFailRates();
+        // Check if there's an active search and apply it if needed
+        if (this.searchInput.value.trim() !== '') {
+            this.searchNotes(this.searchInput.value);
+        }
     }
 
     completeNoteEditing(number) {
@@ -599,6 +642,11 @@ export class NoteApp {
             // Update statistics after completion
             this.updateStatistics();
             this.updateProjectFailRates();
+            
+            // Check if there's an active search and apply it if needed
+            if (this.searchInput.value.trim() !== '') {
+                this.searchNotes(this.searchInput.value);
+            }
         }
     }
 
@@ -655,6 +703,11 @@ export class NoteApp {
             // Update statistics
             this.updateStatistics();
             this.updateProjectFailRates();
+            
+            // Check if there's an active search and apply it if needed
+            if (this.searchInput.value.trim() !== '') {
+                this.searchNotes(this.searchInput.value);
+            }
         }
     }
 
@@ -787,6 +840,378 @@ export class NoteApp {
         }
         
         this.projectFailRateDisplay.innerHTML = html;
+    }
+
+    // Helper method to update the list of original notes
+    updateOriginalNotes() {
+        this.originalNotes = Array.from(this.container.children);
+    }
+
+    // Add search functionality
+    searchNotes(query) {
+        query = query.trim().toLowerCase();
+        
+        // Set search active flag
+        this.isSearchActive = true;
+        
+        // Clear the current container and update originalNotes
+        if (query !== '') {
+            this.container.innerHTML = '';
+            this.originalNotes = [];
+            
+            // Add a heading for search results
+            const heading = document.createElement('div');
+            heading.className = 'w-full text-lg font-bold mb-4 text-gray-700';
+            heading.textContent = 'Search Results';
+            this.container.appendChild(heading);
+            
+            // Get all dates from localStorage
+            const allNotes = [];
+            const dateKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    dateKeys.push(key);
+                }
+            }
+            
+            // Sort date keys in descending order (newest first)
+            dateKeys.sort().reverse();
+            
+            // Search across all dates
+            dateKeys.forEach(dateKey => {
+                const notesForDate = JSON.parse(localStorage.getItem(dateKey) || '{}');
+                
+                Object.entries(notesForDate).forEach(([id, note]) => {
+                    const projectID = (note.projectID || '').toLowerCase();
+                    const attemptID = (note.attemptID || '').toLowerCase();
+                    
+                    if (projectID.includes(query) || attemptID.includes(query)) {
+                        allNotes.push({
+                            dateKey,
+                            id,
+                            note,
+                            formattedDate: this.formatDate(dateKey),
+                            matchesProjectID: projectID.includes(query)
+                        });
+                    }
+                });
+            });
+            
+            // Render all search results at once without pagination
+            allNotes.forEach(item => {
+                this.renderSearchResult(item.dateKey, item.id, item.note, item.formattedDate);
+            });
+            
+            // Add count information
+            if (allNotes.length > 0) {
+                const countInfo = document.createElement('div');
+                countInfo.className = 'text-center text-sm text-gray-500 mt-4 mb-6';
+                countInfo.textContent = `Showing all ${allNotes.length} matching notes`;
+                this.container.appendChild(countInfo);
+            }
+            
+            // If no results found
+            if (allNotes.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'w-full text-center py-8 text-gray-500';
+                noResults.textContent = 'No matching notes found';
+                this.container.appendChild(noResults);
+                
+                // Clear stats for empty search results
+                this.updateEmptySearchStats();
+            } else {
+                // Update statistics for search results
+                this.updateSearchStatistics(allNotes);
+                this.updateSearchProjectFailRates(allNotes);
+            }
+            
+        } else {
+            // If search query is empty, load notes for the current date
+            this.isSearchActive = false;
+            this.loadNotes();
+        }
+    }
+    
+    // Update statistics based on search results
+    updateSearchStatistics(searchResults) {
+        if (!this.statsDisplay) return;
+        
+        let failedCount = 0;
+        let nonFailedCount = 0;
+        let noIssueCount = 0;
+        
+        searchResults.forEach(item => {
+            const note = item.note;
+            
+            // Only count if the note is completed
+            if (note.completed) {
+                const hasFailing = note.failingIssues && note.failingIssues.trim() !== '';
+                const hasNonFailing = note.nonFailingIssues && note.nonFailingIssues.trim() !== '';
+                
+                if (hasFailing) {
+                    failedCount++;
+                } else if (hasNonFailing) {
+                    nonFailedCount++;
+                } else {
+                    noIssueCount++;
+                }
+            }
+        });
+        
+        this.statsDisplay.innerHTML = `
+            <div class="font-semibold text-lg mb-2">Search Results Stats</div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-red-100 p-3 rounded shadow-sm">
+                    <div class="font-semibold text-red-800">Fails</div>
+                    <div class="text-2xl text-red-700">${failedCount}</div>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded shadow-sm">
+                    <div class="font-semibold text-yellow-800">Non-fails</div>
+                    <div class="text-2xl text-yellow-700">${nonFailedCount}</div>
+                </div>
+                <div class="bg-gray-100 p-3 rounded shadow-sm">
+                    <div class="font-semibold text-gray-800">No Issues</div>
+                    <div class="text-2xl text-gray-700">${noIssueCount}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Update project fail rates based on search results
+    updateSearchProjectFailRates(searchResults) {
+        if (!this.projectFailRateDisplay) return;
+        
+        // Group notes by project ID
+        const projectStats = {};
+        
+        searchResults.forEach(item => {
+            const note = item.note;
+            const projectID = note.projectID ? note.projectID.trim() : '';
+            if (!projectID) return; // Skip notes without project ID
+            
+            if (!projectStats[projectID]) {
+                projectStats[projectID] = { 
+                    total: 0, 
+                    failed: 0,
+                    nonFailed: 0,
+                    totalTime: 0
+                };
+            }
+            
+            projectStats[projectID].total++;
+            
+            // Add timer seconds if available
+            if (note.startTimestamp && note.endTimestamp) {
+                const startTime = new Date(note.startTimestamp).getTime();
+                const endTime = new Date(note.endTimestamp).getTime();
+                const seconds = Math.floor((endTime - startTime) / 1000);
+                projectStats[projectID].totalTime += seconds;
+            }
+            
+            // Add additional time if it exists
+            if (note.additionalTime) {
+                projectStats[projectID].totalTime += parseInt(note.additionalTime) || 0;
+            }
+            
+            if (note.failingIssues && note.failingIssues.trim() !== '') {
+                projectStats[projectID].failed++;
+            } else if (note.nonFailingIssues && note.nonFailingIssues.trim() !== '') {
+                projectStats[projectID].nonFailed++;
+            }
+        });
+        
+        // Create the HTML for the project fail rate breakdown
+        let html = `<div class="font-semibold text-lg mb-2">Search Results Project Fail Rates</div>`;
+        
+        if (Object.keys(projectStats).length === 0) {
+            html += '<div class="text-gray-500 italic">No projects with data available in search results</div>';
+        } else {
+            html += '<div class="space-y-3">';
+            
+            for (const [projectID, stats] of Object.entries(projectStats)) {
+                const failRate = stats.total > 0 ? (stats.failed / stats.total * 100).toFixed(1) : 0;
+                const nonFailRate = stats.total > 0 ? (stats.nonFailed / stats.total * 100).toFixed(1) : 0;
+                // Calculate average time per note
+                const avgTimeSeconds = stats.total > 0 ? Math.round(stats.totalTime / stats.total) : 0;
+                // Format average time
+                const avgTime = new Timer().formatTime(avgTimeSeconds);
+                
+                // Truncate project ID to show only last 5 characters
+                const displayID = projectID.length > 5 ? 
+                    projectID.substring(projectID.length - 5) : 
+                    projectID;
+                
+                html += `
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="font-medium">${displayID}</span>
+                            <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
+                            <div class="bg-red-200 h-2.5 absolute" style="width: ${failRate}%"></div>
+                            <div class="bg-yellow-200 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+        }
+        
+        this.projectFailRateDisplay.innerHTML = html;
+    }
+    
+    // Update stats for empty search results
+    updateEmptySearchStats() {
+        if (this.statsDisplay) {
+            this.statsDisplay.innerHTML = `
+                <div class="font-semibold text-lg mb-2">Search Results Stats</div>
+                <div class="text-gray-500 italic">No matching results found</div>
+            `;
+        }
+        
+        if (this.projectFailRateDisplay) {
+            this.projectFailRateDisplay.innerHTML = `
+                <div class="font-semibold text-lg mb-2">Search Results Project Fail Rates</div>
+                <div class="text-gray-500 italic">No matching results found</div>
+            `;
+        }
+    }
+    
+    // Helper method to format date for display
+    formatDate(dateString) {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Format as "Today", "Yesterday", or the actual date
+        if (dateString === today.toISOString().split('T')[0]) {
+            return "Today";
+        } else if (dateString === yesterday.toISOString().split('T')[0]) {
+            return "Yesterday";
+        } else {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short', 
+                day: 'numeric'
+            });
+        }
+    }
+    
+    // Render an individual search result
+    renderSearchResult(dateKey, id, note, formattedDate) {
+        // Create result container
+        const resultContainer = document.createElement('div');
+        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow bg-white relative';
+        
+        // Date label
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'absolute top-2 right-2 text-xs bg-gray-200 px-2 py-1 rounded text-gray-700';
+        dateLabel.textContent = formattedDate;
+        resultContainer.appendChild(dateLabel);
+        
+        // Left sidebar with ID fields
+        const leftSidebar = document.createElement('div');
+        leftSidebar.className = 'flex flex-col mr-6 min-w-40 flex-shrink-0'; // Wider sidebar with flex-shrink-0
+        
+        // Note ID (number)
+        const numberLabel = document.createElement('div');
+        numberLabel.className = 'text-gray-600 font-bold mb-2';
+        numberLabel.textContent = `Note #${id}`;
+        leftSidebar.appendChild(numberLabel);
+        
+        // Project ID
+        if (note.projectID) {
+            const projectIDLabel = document.createElement('div');
+            projectIDLabel.className = 'text-xs text-gray-500';
+            projectIDLabel.textContent = 'Project ID:';
+            
+            const projectIDValue = document.createElement('div');
+            projectIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
+            projectIDValue.textContent = note.projectID;
+            
+            leftSidebar.appendChild(projectIDLabel);
+            leftSidebar.appendChild(projectIDValue);
+        }
+        
+        // Attempt ID
+        if (note.attemptID) {
+            const attemptIDLabel = document.createElement('div');
+            attemptIDLabel.className = 'text-xs text-gray-500';
+            attemptIDLabel.textContent = 'Attempt ID:';
+            
+            const attemptIDValue = document.createElement('div');
+            attemptIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
+            attemptIDValue.textContent = note.attemptID;
+            
+            leftSidebar.appendChild(attemptIDLabel);
+            leftSidebar.appendChild(attemptIDValue);
+        }
+        
+        // View full note button
+        const viewButton = document.createElement('button');
+        viewButton.className = 'mt-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded w-full'; // Make button full width
+        viewButton.textContent = 'View Full Note';
+        viewButton.addEventListener('click', () => {
+            // Change to the date of this note and load all notes for that date
+            this.dateSelector.value = dateKey;
+            this.currentDate = dateKey;
+            this.searchInput.value = '';
+            this.isSearchActive = false;
+            this.loadNotes();
+            
+            // Highlight the specific note
+            setTimeout(() => {
+                const noteElement = document.querySelector(`.flex[data-note-id="${id}"]`);
+                if (noteElement) {
+                    noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    noteElement.classList.add('ring-2', 'ring-blue-500');
+                    setTimeout(() => {
+                        noteElement.classList.remove('ring-2', 'ring-blue-500');
+                    }, 2000);
+                }
+            }, 100);
+        });
+        leftSidebar.appendChild(viewButton);
+        
+        // Content preview
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'flex-grow overflow-hidden'; // Add overflow-hidden
+        
+        // Add note content preview
+        const sections = [
+            { label: 'Failing issues:', value: note.failingIssues, key: 'failingIssues' },
+            { label: 'Non-failing issues:', value: note.nonFailingIssues, key: 'nonFailingIssues' },
+            { label: 'Discussion:', value: note.discussion, key: 'discussion' }
+        ];
+        
+        sections.forEach(section => {
+            if (section.value && section.value.trim()) {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'mb-2';
+                
+                const label = document.createElement('div');
+                label.className = 'font-bold text-sm text-gray-700';
+                label.textContent = section.label;
+                
+                const content = document.createElement('div');
+                content.className = 'text-sm text-gray-600 whitespace-pre-wrap break-words'; // Add break-words
+                // Truncate long content
+                content.textContent = section.value.length > 150 
+                    ? section.value.substring(0, 150) + '...' 
+                    : section.value;
+                
+                sectionDiv.appendChild(label);
+                sectionDiv.appendChild(content);
+                contentContainer.appendChild(sectionDiv);
+            }
+        });
+        
+        resultContainer.appendChild(leftSidebar);
+        resultContainer.appendChild(contentContainer);
+        this.container.appendChild(resultContainer);
     }
 }
 
