@@ -574,7 +574,7 @@ export class NoteApp {
         // Add completed class
         note.container.classList.add('bg-gray-50');
         
-        // FIX: Update timer to green when completed
+        // Update timer to green when completed
         const timerDisplay = note.timer.displayElement;
         timerDisplay.classList.remove('text-gray-600');
         timerDisplay.classList.add('text-green-600');
@@ -776,8 +776,8 @@ export class NoteApp {
                             <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
-                            <div class="bg-red-600 h-2.5 absolute" style="width: ${failRate}%"></div>
-                            <div class="bg-yellow-500 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
+                            <div class="bg-red-200 h-2.5 absolute" style="width: ${failRate}%"></div>
+                            <div class="bg-yellow-200 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
                         </div>
                     </div>
                 `;
