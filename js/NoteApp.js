@@ -277,7 +277,7 @@ export class NoteApp {
         
         const attemptIDInput = document.createElement('input');
         attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-                                   (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
         attemptIDInput.style.direction = 'rtl';
         attemptIDInput.placeholder = 'Enter ID';
         attemptIDInput.value = attemptID;
@@ -296,10 +296,10 @@ export class NoteApp {
         projectIDInput.value = projectID;
         projectIDInput.disabled = completed;
         
-        idFieldsContainer.appendChild(attemptIDLabel);
-        idFieldsContainer.appendChild(attemptIDInput);
         idFieldsContainer.appendChild(projectIDLabel);
         idFieldsContainer.appendChild(projectIDInput);
+        idFieldsContainer.appendChild(attemptIDLabel);
+        idFieldsContainer.appendChild(attemptIDInput);
         
         leftSidebar.appendChild(idFieldsContainer);
 
@@ -719,7 +719,6 @@ export class NoteApp {
     }
     
     // Add new method for calculating and displaying project fail rates
-// Add new method for calculating and displaying project fail rates
     updateProjectFailRates() {
         if (!this.projectFailRateDisplay) return;
         
@@ -734,6 +733,7 @@ export class NoteApp {
                 projectStats[projectID] = { 
                     total: 0, 
                     failed: 0,
+                    nonFailed: 0,
                     totalTime: 0  // Add tracking for total time
                 };
             }
@@ -743,6 +743,8 @@ export class NoteApp {
             
             if (note.elements.failingIssues.value.trim() !== '') {
                 projectStats[projectID].failed++;
+            } else if (note.elements.nonFailingIssues.value.trim() !== '') {
+                projectStats[projectID].nonFailed++;
             }
         });
         
@@ -756,6 +758,7 @@ export class NoteApp {
             
             for (const [projectID, stats] of Object.entries(projectStats)) {
                 const failRate = stats.total > 0 ? (stats.failed / stats.total * 100).toFixed(1) : 0;
+                const nonFailRate = stats.total > 0 ? (stats.nonFailed / stats.total * 100).toFixed(1) : 0;
                 // Calculate average time per note
                 const avgTimeSeconds = stats.total > 0 ? Math.round(stats.totalTime / stats.total) : 0;
                 // Format average time
@@ -772,8 +775,9 @@ export class NoteApp {
                             <span class="font-medium">${displayID}</span>
                             <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-red-600 h-2.5 rounded-full" style="width: ${failRate}%"></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
+                            <div class="bg-red-600 h-2.5 absolute" style="width: ${failRate}%"></div>
+                            <div class="bg-yellow-500 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
                         </div>
                     </div>
                 `;

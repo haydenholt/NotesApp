@@ -8,7 +8,7 @@ export class ViewManager {
         this.currentView = 'notes'; // 'notes' or 'diff'
         
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'a') {
+            if (e.ctrlKey && e.key === 'd') {
                 e.preventDefault(); // Prevent browser default behavior
                 this.toggleView();
             }
