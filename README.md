@@ -4,13 +4,12 @@ A web-based note-taking application with time tracking and text comparison featu
 
 ## Features
 
-- **Note Taking**: Create and manage notes with timestamps
+- **Time Tracking**: Track total time spent on task. The time starts once an ID or text is entered into a note.
+- **Off-Platform Time Tracking**: Track time spent on activities outside the platform (training, sheetwork, blocked time)
 - **Feedback**: Auto-format feedback with Ctrl-X
-- **Time Tracking**: Track total time spent on task
 - **Writing Tool Integration**: Works seamlessly with Quillbot and Grammarly for enhanced writing and editing
-- **Statistics Display**: View statistics about your notes
 - **Text Diff Tool**: Compare two versions of text with a built-in diff viewer
-- **Keyboard Shortcuts**: Quick navigation between views (Ctrl+D)
+
 
 ## Installation
 
@@ -39,24 +38,32 @@ python -m http.server 8000
    - Access project fail rate information
    - Use Quillbot or Grammarly browser extensions for enhanced writing assistance
 
-2. **Diff View** (Ctrl+D):
+2. **Off-Platform Time Tracking**:
+   - Features include:
+     - Date-specific timers that maintain independent tracking for each day
+     - Start/stop timers for each category
+     - Edit timer values by hovering over the timer and clicking the edit icon
+     - Sticky timer display that follows you as you scroll down the page
+   - Track time spent on different activities outside the platform:
+     - Project training
+     - Sheetwork
+     - Blocked from working
+
+3. **Diff View** (Ctrl+D):
    - Paste original and modified text
    - Compare differences between texts
-   - Use writing tools to improve text before comparison
+
+## Keyboard Controls
+
+- **Ctrl+Enter**: Finish current note and stop the timer
+- **Ctrl+X**: Copy formatted feedback to clipboard
+- **Ctrl+D**: Switch between Notes view and Diff view
 
 ## Writing Tool Integration
 
 Timer Notes is fully compatible with popular writing enhancement tools:
 - **Quillbot**: Use for paraphrasing and grammar checking
 - **Grammarly**: Get real-time writing suggestions and corrections
-- Both tools work seamlessly in both Notes View and Diff View
-
-## Dependencies
-
-- [Tailwind CSS](https://tailwindcss.com/) - For styling
-- Modern web browser with JavaScript enabled
-- Microsoft Edge (recommended for app installation)
-- Python (required for full screen)
 
 ## License
 
