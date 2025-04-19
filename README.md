@@ -65,6 +65,5 @@ Timer Notes is fully compatible with popular writing enhancement tools:
 - **Quillbot**: Use for paraphrasing and grammar checking
 - **Grammarly**: Get real-time writing suggestions and corrections
 
-## License
-
-[Add your license information here] 
+## Screenshot
+![alt text](image-1.png)
