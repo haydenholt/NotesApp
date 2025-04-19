@@ -1357,9 +1357,9 @@ export class NoteApp {
         
         // Create the three timers
         const categories = [
-            { id: 'projectTraining', label: 'Project training' },
-            { id: 'sheetwork', label: 'Sheetwork' },
-            { id: 'blocked', label: 'Blocked from working' }
+            { id: 'projectTraining', label: 'Project Training' },
+            { id: 'sheetwork', label: 'Sheet Work' },
+            { id: 'blocked', label: 'Blocked from Working' }
         ];
         
         categories.forEach(category => {
@@ -1547,17 +1547,18 @@ export class NoteApp {
         
         // Create start button
         const startButton = document.createElement('button');
-        startButton.className = 'flex-1 bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 py-1 px-2 rounded text-sm transition-colors';
+        startButton.className = 'w-full bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 py-1 px-2 rounded text-sm transition-colors';
         startButton.textContent = 'Start';
         
         // Create stop button
         const stopButton = document.createElement('button');
-        stopButton.className = 'flex-1 bg-red-100 hover:bg-red-100 text-red-700 border border-red-100 py-1 px-2 rounded text-sm transition-colors';
+        stopButton.className = 'w-full bg-red-100 hover:bg-red-100 text-red-700 border border-red-100 py-1 px-2 rounded text-sm transition-colors';
         stopButton.textContent = 'Stop';
-        stopButton.disabled = !this.offPlatformTimer.timers[categoryId].startTime;
-        if (stopButton.disabled) {
-            stopButton.classList.add('opacity-50', 'cursor-not-allowed');
-        }
+        
+        // Set initial button display based on timer state
+        const isTimerRunning = !!this.offPlatformTimer.timers[categoryId].startTime;
+        startButton.style.display = isTimerRunning ? 'none' : 'block';
+        stopButton.style.display = isTimerRunning ? 'block' : 'none';
         
         // Start timer event listener
         startButton.addEventListener('click', () => {
@@ -1574,31 +1575,23 @@ export class NoteApp {
             // Visual feedback when started
             card.classList.add('ring-1', 'ring-green-200');
             
-            // Update button states
-            startButton.disabled = true;
-            startButton.classList.add('opacity-50', 'cursor-not-allowed');
-            stopButton.disabled = false;
-            stopButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            // Update button visibility
+            startButton.style.display = 'none';
+            stopButton.style.display = 'block';
         });
         
         this.offPlatformTimer.onStop(categoryId, () => {
             // Visual feedback when stopped
             card.classList.remove('ring-1', 'ring-green-200');
             
-            // Update button states
-            startButton.disabled = false;
-            startButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            stopButton.disabled = true;
-            stopButton.classList.add('opacity-50', 'cursor-not-allowed');
+            // Update button visibility
+            startButton.style.display = 'block';
+            stopButton.style.display = 'none';
         });
         
         // If timer is already running, update UI accordingly
         if (this.offPlatformTimer.timers[categoryId].startTime) {
             card.classList.add('ring-1', 'ring-green-200');
-            startButton.disabled = true;
-            startButton.classList.add('opacity-50', 'cursor-not-allowed');
-            stopButton.disabled = false;
-            stopButton.classList.remove('opacity-50', 'cursor-not-allowed');
         }
         
         buttonContainer.appendChild(startButton);
