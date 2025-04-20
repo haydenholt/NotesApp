@@ -260,4 +260,19 @@ describe('DiffTool', () => {
     // Verify generateDiff was called with the character mode
     expect(generateDiffSpy).toHaveBeenCalledWith('test', 'test2', 'character');
   });
+  
+  test('should display identical text correctly without differences', () => {
+    // Set identical text in both areas
+    const testText = 'This is identical text';
+    originalTextArea.value = testText;
+    modifiedTextArea.value = testText;
+    
+    // Call compare directly
+    diffTool.compareTexts();
+    
+    // Verify that the result contains the text but no highlighting for additions/deletions
+    expect(diffResultElement.innerHTML).toContain(testText);
+    expect(diffResultElement.innerHTML).not.toContain('bg-green-200'); // No additions
+    expect(diffResultElement.innerHTML).not.toContain('bg-red-200');   // No deletions
+  });
 }); 
