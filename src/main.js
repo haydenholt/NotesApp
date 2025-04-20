@@ -1,9 +1,9 @@
 /**
  * Main entry point for the Timer Notes application
  */
-import NoteApp from './NoteApp.js';
-import DiffTool from './DiffTool.js';
-import ViewManager from './ViewManager.js';
+import NoteApp from './app/NoteApp.js';
+import DiffTool from './components/DiffTool.js';
+import ViewManager from './components/ViewManager.js';
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {

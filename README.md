@@ -2,6 +2,7 @@
 
 A web-based note-taking application with time tracking and text comparison features.
 
+
 ## Features
 
 - **Time Tracking**: Track total time spent on task. The time starts once an ID or text is entered into a note.

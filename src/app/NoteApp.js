@@ -1,4 +1,4 @@
-import Timer from './Timer.js';
+import Timer from '../components/Timer.js';
 import OffPlatformTimer from './OffPlatformTimer.js';
 
 /**
