@@ -1562,24 +1562,51 @@ export class NoteApp {
         // Update on start and stop
         Object.keys(this.offPlatformTimer.timers).forEach(category => {
             this.offPlatformTimer.onStart(category, () => {
+                // Create and store a reference to the sticky update interval
+                if (!this.stickyUpdateIntervals) {
+                    this.stickyUpdateIntervals = {};
+                }
+                
+                // Clear any existing interval for this category
+                if (this.stickyUpdateIntervals[category]) {
+                    clearInterval(this.stickyUpdateIntervals[category]);
+                }
+                
                 // Update display references for the sticky timer
-                if (this.offPlatformTimer.displayElements[`sticky_${category}`]) {
-                    // Start a separate interval for the sticky display
-                    const updateStickyDisplay = () => {
-                        if (this.offPlatformTimer.displayElements[`sticky_${category}`]) {
-                            this.offPlatformTimer.displayElements[`sticky_${category}`].textContent = 
-                                this.offPlatformTimer.formatTime(this.offPlatformTimer.getSeconds(category));
-                        }
-                    };
+                updateStickyContainer();
+                
+                // Start a dedicated interval for updating the sticky display that runs independently
+                this.stickyUpdateIntervals[category] = setInterval(() => {
+                    if (this.offPlatformTimer.displayElements[`sticky_${category}`]) {
+                        this.offPlatformTimer.displayElements[`sticky_${category}`].textContent = 
+                            this.offPlatformTimer.formatTime(this.offPlatformTimer.getSeconds(category));
+                    }
                     
-                    setInterval(updateStickyDisplay, 1000);
-                    updateStickyDisplay();
+                    // Also check if we need to update visibility
+                    const stickyContainer = document.getElementById('stickyTimerContainer');
+                    if (stickyContainer) {
+                        const offPlatformSection = document.querySelector('.off-platform-section');
+                        if (offPlatformSection) {
+                            const sectionBottom = offPlatformSection.getBoundingClientRect().bottom;
+                            if (sectionBottom < 0) {
+                                stickyContainer.classList.remove('hidden');
+                            } else {
+                                stickyContainer.classList.add('hidden');
+                            }
+                        }
+                    }
+                }, 1000);
+            });
+            
+            this.offPlatformTimer.onStop(category, () => {
+                // Clear the sticky update interval when the timer stops
+                if (this.stickyUpdateIntervals && this.stickyUpdateIntervals[category]) {
+                    clearInterval(this.stickyUpdateIntervals[category]);
+                    this.stickyUpdateIntervals[category] = null;
                 }
                 
                 updateStickyContainer();
             });
-            
-            this.offPlatformTimer.onStop(category, updateStickyContainer);
         });
         
         // Set up scroll event listener
