@@ -28,16 +28,17 @@ npm run test:coverage
 
 ## Test Structure
 
-Tests are organized in the `js/__tests__` directory and follow these naming conventions:
+Tests are organized in the `tests` directory and mirror the structure of the `src` directory:
+- `tests/components/` contains tests for components in `src/components/`
+- `tests/app/` contains tests for application logic in `src/app/`
 - Test files are named after the module they test, with `.test.js` suffix
-- Each component has its own test file
 
 ## Writing Tests
 
 ### Test File Template
 
 ```javascript
-import ComponentToTest from '../ComponentToTest.js';
+import ComponentToTest from '../../src/components/ComponentToTest.js';
 
 describe('ComponentToTest', () => {
   let componentInstance;
@@ -100,7 +101,16 @@ The coverage report helps identify untested parts of the codebase. The goal is t
 View the coverage report in your browser:
 ```bash
 npm run test:coverage
+```
+
+On Linux/macOS:
+```bash
 open coverage/lcov-report/index.html
+```
+
+On Windows:
+```bash
+start coverage/lcov-report/index.html
 ```
 
 ## Continuous Integration
