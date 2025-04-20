@@ -16,22 +16,36 @@ export class NoteApp {
         this.clearSearchButton = document.getElementById('clearSearchButton');
         this.originalNotes = []; // Store original notes for search filtering
         this.isSearchActive = false;
-        
-        // Initialize off-platform timer
-        this.offPlatformTimer = new OffPlatformTimer();
+        this.activeTimers = {}; // Object to store active timers by date
+        this.editingNotes = {}; // Track which notes are being edited (vs. new notes), per date
         
         // Initialize date
         const today = new Date().toISOString().split('T')[0];
         this.dateSelector.value = today;
         this.currentDate = today;
+        
+        // Initialize off-platform timer with current date
+        this.offPlatformTimer = new OffPlatformTimer();
+        this.offPlatformTimer.currentDate = this.currentDate;
     
         // Set up event listeners
         this.dateSelector.addEventListener('change', () => {
-            // Stop all note timers but keep off-platform timers running
-            this.stopAllNoteTimers();
+            // No longer stopping all note timers
+            
+            // First save the state of note timers
+            this.saveActiveTimers();
+            
+            // Save and stop the current off-platform timer state
+            if (this.offPlatformTimer) {
+                this.offPlatformTimer.saveTimerState();
+            }
             
             // Update current date
             this.currentDate = this.dateSelector.value;
+            
+            // Update off-platform timer date and load state for the new date
+            this.offPlatformTimer.currentDate = this.currentDate;
+            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (!this.isSearchActive) {
@@ -82,11 +96,17 @@ export class NoteApp {
             this.loadNotes();
         });
     
+        // Load notes and create off-platform section
         this.loadNotes();
         this.updateTotalTime();
         
         // Make the app instance globally available for the Timer class
         window.app = this;
+        
+        // Create the off-platform section after window.app is set
+        setTimeout(() => {
+            this.createOffPlatformSection();
+        }, 0);
     }
     
     // New method to add date navigation buttons
@@ -101,13 +121,24 @@ export class NoteApp {
         prevDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-l';
         prevDayButton.title = 'Previous day';
         prevDayButton.addEventListener('click', () => {
-            // Stop all note timers but keep off-platform timers running
-            this.stopAllNoteTimers();
+            // No longer stopping all note timers
+            
+            // First save the state of note timers
+            this.saveActiveTimers();
+            
+            // Save and stop the current off-platform timer state
+            if (this.offPlatformTimer) {
+                this.offPlatformTimer.saveTimerState();
+            }
             
             const currentDate = new Date(this.dateSelector.value);
             currentDate.setDate(currentDate.getDate() - 1);
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
+            
+            // Update off-platform timer date and load state for the new date
+            this.offPlatformTimer.currentDate = this.currentDate;
+            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (!this.isSearchActive) {
@@ -136,13 +167,24 @@ export class NoteApp {
         nextDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-r';
         nextDayButton.title = 'Next day';
         nextDayButton.addEventListener('click', () => {
-            // Stop all note timers but keep off-platform timers running
-            this.stopAllNoteTimers();
+            // No longer stopping all note timers
+            
+            // First save the state of note timers
+            this.saveActiveTimers();
+            
+            // Save and stop the current off-platform timer state
+            if (this.offPlatformTimer) {
+                this.offPlatformTimer.saveTimerState();
+            }
             
             const currentDate = new Date(this.dateSelector.value);
             currentDate.setDate(currentDate.getDate() + 1);
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
+            
+            // Update off-platform timer date and load state for the new date
+            this.offPlatformTimer.currentDate = this.currentDate;
+            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (!this.isSearchActive) {
@@ -196,9 +238,7 @@ export class NoteApp {
     }
 
     loadNotes() {
-        // Stop all note timers but keep off-platform timers running
-        this.stopAllNoteTimers();
-        
+        // No longer stopping all note timers
         // Clear the notes container
         this.container.innerHTML = '';
         this.notes = [];
@@ -215,8 +255,8 @@ export class NoteApp {
         // Re-save cleaned notes
         localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
         
-        // Add the off-platform time section
-        this.createOffPlatformSection();
+        // We no longer create the off-platform section here
+        // since it's now handled separately
         
         const sortedNotes = Object.entries(savedNotes)
             .sort(([a], [b]) => parseInt(a) - parseInt(b));
@@ -493,7 +533,6 @@ export class NoteApp {
         attemptIDInput.addEventListener('input', () => {
             if (!hasStarted && !completed) {
                 hasStarted = true;
-                this.stopAllTimers();
                 timer.start();
                 saveButton.style.display = 'block';
             }
@@ -503,7 +542,6 @@ export class NoteApp {
         projectIDInput.addEventListener('input', () => {
             if (!hasStarted && !completed) {
                 hasStarted = true;
-                this.stopAllTimers();
                 timer.start();
                 saveButton.style.display = 'block';
             }
@@ -562,7 +600,12 @@ export class NoteApp {
                     editButton.style.display = 'block';
                     
                     this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
-                    this.createNewNote(this.getNextNoteNumber());
+                    
+                    // Always create a new note when completing with Ctrl+Enter,
+                    // but only if not in search mode
+                    if (!this.isSearchActive) {
+                        this.createNewNote(this.getNextNoteNumber());
+                    }
                 }
             }
         });
@@ -603,9 +646,17 @@ export class NoteApp {
         // Start timer if there's saved text and not completed
         if ((failingIssues || nonFailingIssues || discussion || attemptID || projectID) && !completed && startTimestamp && !endTimestamp) {
             hasStarted = true;
-            this.stopAllTimers();
+            // Modified: don't stop all timers anymore
             timer.startDisplay();
             // Show save button if editing is in progress
+            saveButton.style.display = 'block';
+        }
+        
+        // Check if this note had an active timer from a previous view
+        if (this.activeTimers[this.currentDate] && this.activeTimers[this.currentDate][number] && !completed) {
+            // This note had an active timer before, so restart it
+            hasStarted = true;
+            timer.startDisplay();
             saveButton.style.display = 'block';
         }
         
@@ -706,6 +757,10 @@ export class NoteApp {
         // Update the saved state
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
         if (savedNotes[number]) {
+            // Check if this note was explicitly being edited (not a new note)
+            const isEditing = this.editingNotes[this.currentDate] && 
+                            this.editingNotes[this.currentDate][number] === true;
+            
             savedNotes[number].completed = true;
             
             // If the timer was running, stop it
@@ -724,9 +779,18 @@ export class NoteApp {
             this.updateStatistics();
             this.updateProjectFailRates();
             
+            // If was editing, remove from editing notes
+            if (isEditing && this.editingNotes[this.currentDate]) {
+                delete this.editingNotes[this.currentDate][number];
+            }
+            
             // Check if there's an active search and apply it if needed
             if (this.searchInput.value.trim() !== '') {
                 this.searchNotes(this.searchInput.value);
+            } else if (!isEditing) {
+                // Only create a new note if this wasn't being edited
+                // and we're not in search mode
+                this.createNewNote(this.getNextNoteNumber());
             }
         }
     }
@@ -737,6 +801,12 @@ export class NoteApp {
         
         const isCompleted = note.container.classList.contains('bg-gray-50');
         if (isCompleted) {
+            // Mark this note as being edited (not a new note), with date context
+            if (!this.editingNotes[this.currentDate]) {
+                this.editingNotes[this.currentDate] = {};
+            }
+            this.editingNotes[this.currentDate][number] = true;
+            
             // Enable all textareas
             Object.values(note.elements).forEach(element => {
                 if (element.tagName === 'TEXTAREA') {
@@ -774,7 +844,6 @@ export class NoteApp {
             }
             
             // Restart timer regardless of endTimestamp
-            this.stopAllTimers();
             note.timer.restart(); // Use the new restart method instead of startDisplay
             
             // Update button visibility
@@ -951,8 +1020,7 @@ export class NoteApp {
         // Set search active flag
         this.isSearchActive = true;
         
-        // Stop all note timers but keep off-platform timers running
-        this.stopAllNoteTimers();
+        // No longer stopping all note timers
         
         // Hide the off-platform section during search
         const offPlatformContainer = document.getElementById('offPlatformContainer');
@@ -1336,10 +1404,14 @@ export class NoteApp {
         offPlatformContainer.innerHTML = '';
         
         // Create a sticky container for active timers
-        const stickyContainer = document.createElement('div');
-        stickyContainer.id = 'stickyTimerContainer';
-        stickyContainer.className = 'hidden fixed top-0 left-0 right-0 bg-white shadow-md p-3 z-50 transition-all duration-300';
-        document.body.appendChild(stickyContainer);
+        const stickyContainer = document.getElementById('stickyTimerContainer') || document.createElement('div');
+        if (!document.getElementById('stickyTimerContainer')) {
+            stickyContainer.id = 'stickyTimerContainer';
+            stickyContainer.className = 'hidden fixed top-0 left-0 right-0 bg-white shadow-md p-3 z-50 transition-all duration-300';
+            document.body.appendChild(stickyContainer);
+        } else {
+            stickyContainer.innerHTML = '';
+        }
         
         // Create the main container for the off-platform section
         const offPlatformSection = document.createElement('div');
@@ -1391,8 +1463,17 @@ export class NoteApp {
         // Add the off-platform section to its dedicated container
         offPlatformContainer.appendChild(offPlatformSection);
         
-        // Load timer state from localStorage
+        // Ensure current date is set before loading state
+        this.offPlatformTimer.currentDate = this.currentDate;
+        
+        // Load timer state from localStorage and update displays
         this.offPlatformTimer.loadTimerState();
+        
+        // Make sure all displays are updated
+        Object.keys(this.offPlatformTimer.timers).forEach(category => {
+            this.offPlatformTimer.updateDisplay(category);
+        });
+        this.offPlatformTimer.updateTotalDisplay();
         
         // Set up scroll event listener for sticky timer
         this.setupStickyTimerBehavior();
@@ -1744,6 +1825,20 @@ export class NoteApp {
         // Focus hours input
         hoursInput.focus();
         hoursInput.select();
+    }
+
+    // New method to save active timers when switching dates
+    saveActiveTimers() {
+        // Save currently running note timers
+        this.notes.forEach(note => {
+            // Only save running timers
+            if (note.timer.startTimestamp && !note.timer.endTimestamp) {
+                if (!this.activeTimers[this.currentDate]) {
+                    this.activeTimers[this.currentDate] = {};
+                }
+                this.activeTimers[this.currentDate][note.container.dataset.noteId] = true;
+            }
+        });
     }
 }
 

@@ -3,7 +3,7 @@
  */
 export class OffPlatformTimer {
     constructor() {
-        // Initialize timers for each category
+        // Initialize base timer structure
         this.timers = {
             projectTraining: { startTime: null, totalSeconds: 0 },
             sheetwork: { startTime: null, totalSeconds: 0 },
@@ -22,6 +22,9 @@ export class OffPlatformTimer {
             sheetwork: null,
             blocked: null
         };
+        
+        // Add currentDate property
+        this.currentDate = null;
         
         // Add callback hooks for UI updates
         this.onStartCallbacks = {};
@@ -74,22 +77,76 @@ export class OffPlatformTimer {
         }
     }
     
+    // Get current date's timer data key
+    getStorageKey() {
+        return `offPlatform_${this.currentDate}`;
+    }
+    
+    // Get fresh timer data for current date
+    getTimerData() {
+        const data = JSON.parse(localStorage.getItem(this.getStorageKey()) || '{}');
+        if (!data.timers) {
+            data.timers = {
+                projectTraining: { startTime: null, totalSeconds: 0 },
+                sheetwork: { startTime: null, totalSeconds: 0 },
+                blocked: { startTime: null, totalSeconds: 0 }
+            };
+        }
+        return data;
+    }
+    
+    // Save timer data for current date
+    saveTimerData(data) {
+        localStorage.setItem(this.getStorageKey(), JSON.stringify(data));
+    }
+    
     // Start timer for a specific category
     startTimer(category) {
-        if (!this.timers[category].startTime) {
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        // Only start if not already running
+        if (!data.timers[category].startTime) {
             // Stop any other running timers first
-            Object.keys(this.timers).forEach(otherCategory => {
-                if (otherCategory !== category && this.timers[otherCategory].startTime) {
-                    this.stopTimer(otherCategory);
+            Object.keys(data.timers).forEach(otherCategory => {
+                if (otherCategory !== category && data.timers[otherCategory].startTime) {
+                    // We need to calculate and add the elapsed time
+                    const elapsedSeconds = Math.floor((Date.now() - data.timers[otherCategory].startTime) / 1000);
+                    data.timers[otherCategory].totalSeconds += elapsedSeconds;
+                    data.timers[otherCategory].startTime = null;
+                    
+                    // Also clear any shouldBeRunning flags
+                    if (data.timers[otherCategory].shouldBeRunning) {
+                        delete data.timers[otherCategory].shouldBeRunning;
+                    }
+                    
+                    // Update UI for stopped timer
+                    this.stopDisplay(otherCategory);
+                    if (this.displayElements[otherCategory]) {
+                        this.displayElements[otherCategory].classList.remove('text-green-600');
+                    }
+                    this.triggerStopCallbacks(otherCategory);
                 }
             });
             
-            this.timers[category].startTime = Date.now();
+            // Start this timer
+            data.timers[category].startTime = Date.now();
+            
+            // Clear any existing shouldBeRunning flag
+            if (data.timers[category].shouldBeRunning) {
+                delete data.timers[category].shouldBeRunning;
+            }
+            
+            this.saveTimerData(data);
+            
+            // Update our in-memory state for UI updates
+            this.timers = data.timers;
+            
+            // Update UI
             this.startDisplay(category);
-            this.saveTimerState();
             this.triggerStartCallbacks(category);
             
-            // Add active class to the time display for visual feedback
+            // Add active class to the time display
             if (this.displayElements[category]) {
                 this.displayElements[category].classList.add('text-green-600');
             }
@@ -98,27 +155,33 @@ export class OffPlatformTimer {
     
     // Stop timer for a specific category
     stopTimer(category) {
-        if (this.timers[category].startTime) {
-            // Add elapsed time to total
-            const elapsedSeconds = Math.floor((Date.now() - this.timers[category].startTime) / 1000);
-            this.timers[category].totalSeconds += elapsedSeconds;
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        if (data.timers[category].startTime) {
+            // Calculate elapsed time
+            const elapsedSeconds = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
+            data.timers[category].totalSeconds += elapsedSeconds;
+            data.timers[category].startTime = null;
             
-            // Reset start time
-            this.timers[category].startTime = null;
+            // Clear any shouldBeRunning flag
+            if (data.timers[category].shouldBeRunning) {
+                delete data.timers[category].shouldBeRunning;
+            }
             
-            // Stop display updates
+            // Save updated data
+            this.saveTimerData(data);
+            
+            // Update our in-memory state
+            this.timers = data.timers;
+            
+            // Update UI
             this.stopDisplay(category);
-            
-            // Save state
-            this.saveTimerState();
-            
-            // Update total display
+            this.updateDisplay(category);
             this.updateTotalDisplay();
-            
-            // Execute UI callback
             this.triggerStopCallbacks(category);
             
-            // Remove active class from the time display
+            // Remove active class from time display
             if (this.displayElements[category]) {
                 this.displayElements[category].classList.remove('text-green-600');
             }
@@ -130,41 +193,53 @@ export class OffPlatformTimer {
         // Convert to total seconds
         const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
         
-        // Update the timer value
-        if (this.timers[category]) {
-            // If timer is running, stop it first to capture elapsed time
-            const wasRunning = !!this.timers[category].startTime;
-            if (wasRunning) {
-                this.stopTimer(category);
-            }
-            
-            // Set the new total
-            this.timers[category].totalSeconds = totalSeconds;
-            
-            // Restart if it was running
-            if (wasRunning) {
-                this.startTimer(category);
-            } else {
-                // Just update the display
-                this.updateDisplay(category);
-                this.updateTotalDisplay();
-            }
-            
-            // Save state
-            this.saveTimerState();
-            
-            // Trigger edit callbacks
-            this.triggerEditCallbacks(category);
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        // Check if timer is running
+        const wasRunning = !!data.timers[category].startTime;
+        
+        // Stop if running
+        if (wasRunning) {
+            // Calculate elapsed time
+            const elapsedSeconds = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
+            data.timers[category].totalSeconds += elapsedSeconds;
+            data.timers[category].startTime = null;
         }
+        
+        // Set new total
+        data.timers[category].totalSeconds = totalSeconds;
+        
+        // Restart if was running
+        if (wasRunning) {
+            data.timers[category].startTime = Date.now();
+        }
+        
+        // Save updated data
+        this.saveTimerData(data);
+        
+        // Update our in-memory state
+        this.timers = data.timers;
+        
+        // Update UI
+        if (wasRunning) {
+            this.startDisplay(category);
+        } else {
+            this.updateDisplay(category);
+        }
+        this.updateTotalDisplay();
+        this.triggerEditCallbacks(category);
     }
     
     // Get seconds for a specific category
     getSeconds(category) {
-        let seconds = this.timers[category].totalSeconds;
+        // Get fresh timer data
+        const data = this.getTimerData();
+        let seconds = data.timers[category].totalSeconds;
         
         // If timer is running, add current elapsed time
-        if (this.timers[category].startTime) {
-            const currentElapsed = Math.floor((Date.now() - this.timers[category].startTime) / 1000);
+        if (data.timers[category].startTime) {
+            const currentElapsed = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
             seconds += currentElapsed;
         }
         
@@ -173,8 +248,19 @@ export class OffPlatformTimer {
     
     // Get total seconds across all categories
     getTotalSeconds() {
-        return Object.keys(this.timers).reduce((total, category) => {
-            return total + this.getSeconds(category);
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        return Object.keys(data.timers).reduce((total, category) => {
+            let categorySeconds = data.timers[category].totalSeconds;
+            
+            // Add running time if applicable
+            if (data.timers[category].startTime) {
+                const currentElapsed = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
+                categorySeconds += currentElapsed;
+            }
+            
+            return total + categorySeconds;
         }, 0);
     }
     
@@ -232,83 +318,116 @@ export class OffPlatformTimer {
     
     // Stop all timers
     stopAllTimers() {
-        Object.keys(this.timers).forEach(category => {
-            this.stopTimer(category);
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        Object.keys(data.timers).forEach(category => {
+            if (data.timers[category].startTime) {
+                // Calculate elapsed time
+                const elapsedSeconds = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
+                data.timers[category].totalSeconds += elapsedSeconds;
+                data.timers[category].startTime = null;
+                
+                // Clear any shouldBeRunning flag
+                if (data.timers[category].shouldBeRunning) {
+                    delete data.timers[category].shouldBeRunning;
+                }
+                
+                // Update UI
+                this.stopDisplay(category);
+                if (this.displayElements[category]) {
+                    this.displayElements[category].classList.remove('text-green-600');
+                }
+            }
         });
+        
+        // Save updated data
+        this.saveTimerData(data);
+        
+        // Update our in-memory state
+        this.timers = data.timers;
+        
+        // Update total display
+        this.updateTotalDisplay();
     }
     
     // Save timer state to localStorage
     saveTimerState() {
-        if (window.app) {
-            const currentDate = window.app.currentDate;
-            const offPlatformData = JSON.parse(localStorage.getItem(`offPlatform_${currentDate}`) || '{}');
-            
-            // Save current timer state
-            offPlatformData.timers = {
-                projectTraining: {
-                    startTime: this.timers.projectTraining.startTime,
-                    totalSeconds: this.timers.projectTraining.totalSeconds
-                },
-                sheetwork: {
-                    startTime: this.timers.sheetwork.startTime,
-                    totalSeconds: this.timers.sheetwork.totalSeconds
-                },
-                blocked: {
-                    startTime: this.timers.blocked.startTime,
-                    totalSeconds: this.timers.blocked.totalSeconds
-                }
-            };
-            
-            localStorage.setItem(`offPlatform_${currentDate}`, JSON.stringify(offPlatformData));
-        }
+        // Get fresh timer data
+        const data = this.getTimerData();
+        
+        // For any running timers, add elapsed time to total and mark them as "shouldBeRunning"
+        Object.keys(data.timers).forEach(category => {
+            if (data.timers[category].startTime) {
+                const elapsedSeconds = Math.floor((Date.now() - data.timers[category].startTime) / 1000);
+                data.timers[category].totalSeconds += elapsedSeconds;
+                // Instead of stopping the timer, mark it as "shouldBeRunning" for this date
+                data.timers[category].shouldBeRunning = true;
+                data.timers[category].startTime = null; // Temporarily stop timer
+            }
+        });
+        
+        // Save updated data
+        this.saveTimerData(data);
+        
+        // Update our in-memory state
+        this.timers = data.timers;
     }
     
     // Load timer state from localStorage
     loadTimerState() {
-        if (window.app) {
-            const currentDate = window.app.currentDate;
-            const offPlatformData = JSON.parse(localStorage.getItem(`offPlatform_${currentDate}`) || '{}');
+        if (this.currentDate) {
+            // Stop all display intervals
+            Object.keys(this.updateIntervals).forEach(category => {
+                if (this.updateIntervals[category]) {
+                    clearInterval(this.updateIntervals[category]);
+                    this.updateIntervals[category] = null;
+                }
+            });
             
-            if (offPlatformData.timers) {
-                // Preserve running timers from previous state
-                const runningTimers = {};
-                Object.keys(this.timers).forEach(category => {
-                    if (this.timers[category].startTime) {
-                        // Calculate and add elapsed time to the total before switching
-                        const elapsedSeconds = Math.floor((Date.now() - this.timers[category].startTime) / 1000);
-                        this.timers[category].totalSeconds += elapsedSeconds;
-                        runningTimers[category] = true;
+            // Get fresh timer data for current date
+            const data = this.getTimerData();
+            
+            // Update in-memory state
+            this.timers = JSON.parse(JSON.stringify(data.timers));
+            
+            // Update UI for all timers
+            Object.keys(this.timers).forEach(category => {
+                // Reset any UI indicators
+                if (this.displayElements[category]) {
+                    this.displayElements[category].classList.remove('text-green-600');
+                }
+                
+                // Check if this timer should be running based on previous state
+                if (this.timers[category].shouldBeRunning) {
+                    // Restart the timer
+                    this.timers[category].startTime = Date.now();
+                    data.timers[category].startTime = Date.now();
+                    delete this.timers[category].shouldBeRunning;
+                    delete data.timers[category].shouldBeRunning;
+                    this.saveTimerData(data);
+                    
+                    // Start display updates for running timers
+                    this.startDisplay(category);
+                    
+                    // Add active class to the time display
+                    if (this.displayElements[category]) {
+                        this.displayElements[category].classList.add('text-green-600');
                     }
-                });
-                
-                // Load saved timer state for the new date
-                this.timers = offPlatformData.timers;
-                
-                // Restore running state for timers that were running before date change
-                Object.keys(runningTimers).forEach(category => {
-                    if (!this.timers[category].startTime) {
-                        this.timers[category].startTime = Date.now();
-                    }
-                });
-                
-                // Restart display for running timers
-                Object.keys(this.timers).forEach(category => {
-                    if (this.timers[category].startTime) {
-                        this.startDisplay(category);
-                        this.triggerStartCallbacks(category);
-                        
-                        // Add active class to the time display
-                        if (this.displayElements[category]) {
-                            this.displayElements[category].classList.add('text-green-600');
-                        }
-                    } else {
-                        this.updateDisplay(category);
-                    }
-                });
-                
-                this.updateTotalDisplay();
-                this.saveTimerState();
-            }
+                    
+                    // Trigger callbacks
+                    this.triggerStartCallbacks(category);
+                } else {
+                    // Just update display for non-running timers
+                    this.updateDisplay(category);
+                    
+                    // Always trigger stop callbacks for non-running timers to ensure UI is reset
+                    this.triggerStopCallbacks(category);
+                }
+            });
+            
+            // Update total display
+            this.updateTotalDisplay();
         }
     }
 }
