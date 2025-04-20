@@ -599,10 +599,9 @@ export class NoteApp {
                     saveButton.style.display = 'none';
                     editButton.style.display = 'block';
                     
-                    this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
+                    // Calls saveNote with the *local* variable 'completed' (true)
+                    this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed); 
                     
-                    // Always create a new note when completing with Ctrl+Enter,
-                    // but only if not in search mode
                     if (!this.isSearchActive) {
                         this.createNewNote(this.getNextNoteNumber());
                     }
@@ -716,6 +715,7 @@ export class NoteApp {
         
         // Save to local storage
         savedNotes[number] = note;
+        
         localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
         
         // Check if there's an active search and apply it if needed
