@@ -884,7 +884,7 @@ export class NoteApp {
     updateTotalTime() {
         const updateDisplay = () => {
             const totalSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
-            this.totalTimeDisplay.textContent = `Total Time: ${new Timer().formatTime(totalSeconds)}`;
+            this.totalTimeDisplay.textContent = `On-platform Time: ${new Timer().formatTime(totalSeconds)}`;
         };
         
         setInterval(updateDisplay, 1000);
