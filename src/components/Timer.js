@@ -9,6 +9,7 @@ export class Timer {
         this.displayElement = null;
         this.noteId = null;
         this.additionalTime = 0; // Store additional time from previous sessions
+        this.completed = false; // Add a property to track completion status
     }
 
     start() {
@@ -34,10 +35,9 @@ export class Timer {
             this.start();
             return
         } 
-        // Only add the previous session time if this is a restart from a completed state
 
-            // Calculate time spent in previous session and add to additionalTime
-            this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
+        // Calculate time spent in previous session and add to additionalTime
+        this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
 
         // Reset timestamps for new session
         this.startTimestamp = Date.now();
@@ -91,6 +91,7 @@ export class Timer {
                 savedNotes[this.noteId].startTimestamp = this.startTimestamp;
                 savedNotes[this.noteId].endTimestamp = this.endTimestamp;
                 savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
+                savedNotes[this.noteId].completed = this.completed; // Save completion status
                 localStorage.setItem(window.app.currentDate, JSON.stringify(savedNotes));
             }
         }

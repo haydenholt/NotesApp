@@ -578,8 +578,6 @@ export class NoteApp {
                     // Call completeNoteEditing without changing the local completed flag
                     this.completeNoteEditing(number);
                     
-                    // Let the note.container.classList.add('bg-gray-50') in completeNoteEditing
-                    // handle the UI update without using a local flag
                 }
             }
         });
@@ -588,6 +586,7 @@ export class NoteApp {
         timer.displayElement = timerDisplay;
         timer.noteId = number;
         timer.additionalTime = additionalTime || 0; // Initialize with saved additional time
+        timer.completed = completed; // Set timer's completed property
         timer.updateDisplay();
 
         noteContainer.appendChild(leftSidebar);
@@ -603,7 +602,8 @@ export class NoteApp {
                 projectID: projectIDInput
             },
             editButton,
-            saveButton
+            saveButton,
+            completed: completed // Add completed property to the note object
         });
         
         if (!completed) {
@@ -725,6 +725,11 @@ export class NoteApp {
         note.container.classList.remove('bg-white');
         note.container.classList.add('bg-gray-50');
         
+        // Set the completed state on the note object
+        note.completed = true;
+        // Sync with timer
+        note.timer.completed = true;
+        
         // Update timer to green when completed
         const timerDisplay = note.timer.displayElement;
         timerDisplay.classList.remove('text-gray-600');
@@ -759,7 +764,7 @@ export class NoteApp {
                 // Check if there's already an empty note
                 const hasEmptyNote = this.notes.some(n => {
                     // An empty note has no text in any fields and is not completed
-                    return !n.container.classList.contains('bg-gray-50') && 
+                    return !n.completed && 
                            n.elements.failingIssues.value.trim() === '' &&
                            n.elements.nonFailingIssues.value.trim() === '' &&
                            n.elements.discussion.value.trim() === '' &&
@@ -792,7 +797,7 @@ export class NoteApp {
         const note = this.notes.find(n => n.container.dataset.noteId == number);
         if (!note) return;
         
-        const isCompleted = note.container.classList.contains('bg-gray-50');
+        const isCompleted = note.completed; // Use the note property instead of checking CSS
         if (isCompleted) {
             // Mark this note as being edited (not a new note), with date context
             if (!this.editingNotes[this.currentDate]) {
@@ -818,9 +823,14 @@ export class NoteApp {
             note.elements.projectID.classList.remove('text-gray-500', 'bg-gray-100');
             note.elements.projectID.classList.add('text-black');
             
-            // Remove completed class
+            // Remove completed styling
             note.container.classList.remove('bg-gray-50');
             note.container.classList.add('bg-white');
+            
+            // Update note object property
+            note.completed = false;
+            // Sync with timer
+            note.timer.completed = false;
             
             // FIX: Update timer color back to gray when editing
             const timerDisplay = note.timer.displayElement;
@@ -894,8 +904,8 @@ export class NoteApp {
         let noIssueCount = 0;
         
         this.notes.forEach(note => {
-            // Check if the note is completed by looking at the container class
-            const isCompleted = note.container.classList.contains('bg-gray-50');
+            // Use the note completed property instead of checking CSS
+            const isCompleted = note.completed;
             
             // Only count if the note is completed
             if (isCompleted) {
@@ -1862,7 +1872,7 @@ export class NoteApp {
             
             // Save which notes are being edited
             const noteId = note.container.dataset.noteId;
-            const isBeingEdited = !note.container.classList.contains('bg-gray-50') && 
+            const isBeingEdited = !note.completed && 
                            !note.elements.failingIssues.disabled;
             
             if (isBeingEdited) {

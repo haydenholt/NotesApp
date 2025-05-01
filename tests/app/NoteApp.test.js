@@ -37,15 +37,11 @@ describe('NoteApp', () => {
   let mockSearchInput;
   let mockClearSearchButton;
   let mockOffPlatformContainer;
-  let originalHTML;
 
   beforeEach(() => {
     // Reset mocks
     // jest.clearAllMocks(); // Not needed if not using spies extensively
     jest.useFakeTimers();
-
-    // Save original HTML for page reload simulation
-    originalHTML = document.body.innerHTML;
 
     // Assign the mock to window.localStorage
     Object.defineProperty(window, 'localStorage', {
@@ -193,19 +189,18 @@ describe('NoteApp', () => {
     });
     failingIssuesTextarea.dispatchEvent(event);
 
-    // Note: With the new behavior, a new note is always created automatically
-    // so we no longer need to manually create a new note here
-
     // Should have two notes now (completed one and a new empty one)
     const notes = document.querySelectorAll('#notesContainer > div');
     expect(notes.length).toBe(2);
 
-    // First note should be completed
-    expect(notes[0].classList.contains('bg-gray-50')).toBe(true);
+    // Check note completed status using the property instead of CSS class
+    const noteIndex = notes[0].dataset.noteId - 1; // Convert to 0-based index
+    expect(noteApp.notes[noteIndex].completed).toBe(true);
     expect(notes[0].querySelector('textarea').disabled).toBe(true);
 
     // Second note should be empty and active
-    expect(notes[1].classList.contains('bg-gray-50')).toBe(false);
+    const noteIndex2 = notes[1].dataset.noteId - 1;
+    expect(noteApp.notes[noteIndex2].completed).toBe(false);
     expect(notes[1].querySelector('textarea').disabled).toBe(false);
     expect(notes[1].querySelector('textarea').value).toBe('');
   });
@@ -264,7 +259,10 @@ describe('NoteApp', () => {
     // Note should be editable again
     const textarea = note.querySelector('textarea');
     expect(textarea.disabled).toBe(false);
-    expect(note.classList.contains('bg-gray-50')).toBe(false);
+    
+    // Check note completion status using property instead of CSS class
+    const noteIndex = note.dataset.noteId - 1;
+    expect(noteApp.notes[noteIndex].completed).toBe(false);
   });
 
   test('should update statistics when notes are completed', () => {
@@ -357,17 +355,17 @@ describe('NoteApp', () => {
 
     // Verify completion and initial time
     const initialNoteElement = document.querySelector('.flex[data-note-id="1"]');
-    expect(initialNoteElement.classList.contains('bg-gray-50')).toBe(true);
+    const noteIndex = initialNoteElement.dataset.noteId - 1;
+    expect(noteApp.notes[noteIndex].completed).toBe(true);
     
     // 2. Click edit button on the first (completed) note
-
     const editButton = initialNoteElement.querySelector('button[title="Edit note"]');
     editButton.click();
     editButton.click();
     expect(timerDisplay.textContent).toBe('00:00:01');
     
     // Verify note is editable
-    expect(initialNoteElement.classList.contains('bg-gray-50')).toBe(false);
+    expect(noteApp.notes[noteIndex].completed).toBe(false);
     expect(failingIssuesTextarea.disabled).toBe(false);
     
     // 3. Verify timer restarts and accumulates time (simulate 2 more seconds of editing)
@@ -381,8 +379,8 @@ describe('NoteApp', () => {
     // 5. Re-complete the note using Ctrl+Enter
     failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
 
-    // 6. Verify note is completed again (using original element reference)
-    expect(initialNoteElement.classList.contains('bg-gray-50')).toBe(true);
+    // 6. Verify note is completed again
+    expect(noteApp.notes[noteIndex].completed).toBe(true);
     expect(failingIssuesTextarea.disabled).toBe(true);
 
     // 7. Verify timer shows the final updated total time and is stopped
@@ -429,7 +427,9 @@ describe('NoteApp', () => {
     // After completion, verify a new empty note is created
     let notes = document.querySelectorAll('#notesContainer > div');
     expect(notes.length).toBe(2);
-    expect(notes[0].classList.contains('bg-gray-50')).toBe(true); // First note is completed
+    
+    const firstNoteIndex = notes[0].dataset.noteId - 1;
+    expect(noteApp.notes[firstNoteIndex].completed).toBe(true); // First note is completed
     expect(notes[1].querySelector('textarea').value).toBe(''); // Second note is empty
     
     // Click edit button on the first (completed) note
@@ -437,7 +437,7 @@ describe('NoteApp', () => {
     editButton.click();
     
     // Verify the note is in edit mode
-    expect(notes[0].classList.contains('bg-gray-50')).toBe(false);
+    expect(noteApp.notes[firstNoteIndex].completed).toBe(false);
     expect(notes[0].querySelector('textarea').disabled).toBe(false);
     
     // Make an edit
@@ -463,7 +463,7 @@ describe('NoteApp', () => {
     const notesCountBefore = notes.length;
     
     // Complete the edited note
-    const activeNoteTextarea = document.querySelector('#notesContainer > div:not(.bg-gray-50) textarea[placeholder="Type failing issues..."]');
+    const activeNoteTextarea = document.querySelector('textarea[placeholder="Type failing issues..."]:not([disabled])');
     activeNoteTextarea.dispatchEvent(ctrlEnterEvent);
     
     // Count notes after completion
@@ -474,7 +474,8 @@ describe('NoteApp', () => {
     expect(notesCountAfter).toBeGreaterThanOrEqual(notesCountBefore);
     
     // Verify the first note is completed
-    expect(notes[0].classList.contains('bg-gray-50')).toBe(true);
+    const updatedFirstNoteIndex = notes[0].dataset.noteId - 1;
+    expect(noteApp.notes[updatedFirstNoteIndex].completed).toBe(true);
     
     // Verify we have an empty note available for new input
     const hasEmptyNote = Array.from(notes).some(noteElem => {
@@ -837,7 +838,8 @@ describe('NoteApp', () => {
     saveButton.click();
     
     // Note should be completed
-    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    const noteIndex = note.dataset.noteId - 1;
+    expect(noteApp.notes[noteIndex].completed).toBe(true);
     expect(failingIssuesTextarea.disabled).toBe(true);
     
     // Save button should be hidden, edit button should be visible
@@ -1512,12 +1514,16 @@ describe('NoteApp', () => {
     // Advance timer
     jest.advanceTimersByTime(5000);
     
-    // Complete the note using the save button instead of Ctrl+Enter
-    const saveButton = note.querySelector('button[title="Save note"]');
-    saveButton.click();
+    // Complete the note
+    const ctrlEnterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true
+    });
+    failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
     
     // Verify note is completed
-    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    const noteIndex = note.dataset.noteId - 1;
+    expect(noteApp.notes[noteIndex].completed).toBe(true);
     expect(timerDisplay.textContent).toBe('00:00:05');
     
     // Edit the note
@@ -1556,8 +1562,9 @@ describe('NoteApp', () => {
     firstTextarea.value = 'First note issue';
     firstTextarea.dispatchEvent(new Event('input'));
     
-    // Create second note manually by calling NoteApp.createNewNote directly
-    noteApp.createNewNote(2);
+    // Create second note
+    const addButton = document.querySelector('button[title="Add new note"]');
+    addButton.click();
     
     const secondNote = document.querySelectorAll('#notesContainer > div')[1];
     const secondTextarea = secondNote.querySelector('textarea[placeholder="Type failing issues..."]');
@@ -1569,15 +1576,19 @@ describe('NoteApp', () => {
     // Advance timer for both notes
     jest.advanceTimersByTime(5000);
     
-    // Complete both notes using save buttons
-    const firstSaveButton = firstNote.querySelector('button[title="Save note"]');
-    const secondSaveButton = secondNote.querySelector('button[title="Save note"]');
-    firstSaveButton.click();
-    secondSaveButton.click();
+    // Complete both notes
+    const ctrlEnterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true
+    });
+    firstTextarea.dispatchEvent(ctrlEnterEvent);
+    secondTextarea.dispatchEvent(ctrlEnterEvent);
     
     // Verify both notes are completed
-    expect(firstNote.classList.contains('bg-gray-50')).toBe(true);
-    expect(secondNote.classList.contains('bg-gray-50')).toBe(true);
+    const firstNoteIndex = firstNote.dataset.noteId - 1;
+    const secondNoteIndex = secondNote.dataset.noteId - 1;
+    expect(noteApp.notes[firstNoteIndex].completed).toBe(true);
+    expect(noteApp.notes[secondNoteIndex].completed).toBe(true);
     expect(firstTimerDisplay.textContent).toBe('00:00:05');
     expect(secondTimerDisplay.textContent).toBe('00:00:05');
     
