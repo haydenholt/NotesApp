@@ -30,28 +30,31 @@ export class Timer {
 
     // New method to restart a timer that was previously stopped
     restart() {
-        if (this.startTimestamp && this.endTimestamp) {
-            // Calculate time spent in previous session and add to additionalTime
-            this.additionalTime += Math.floor((this.endTimestamp - this.startTimestamp) / 1000);
-            // Reset timestamps for new session
-            this.startTimestamp = Date.now();
-            this.endTimestamp = null;
-            this.startDisplay();
-            this.saveState();
-        } else if (!this.startTimestamp) {
-            // If timer wasn't started before, just start it
+        if (!this.startTimestamp) {
             this.start();
-        }
+            return
+        } 
+        // Only add the previous session time if this is a restart from a completed state
+
+            // Calculate time spent in previous session and add to additionalTime
+            this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
+
+        // Reset timestamps for new session
+        this.startTimestamp = Date.now();
+        this.endTimestamp = null;
+        this.startDisplay();
+        this.saveState();
     }
 
     getSeconds() {
         if (!this.startTimestamp) return 0;
         
         const currentTime = this.endTimestamp || Date.now();
+
         const sessionTime = Math.floor((currentTime - this.startTimestamp) / 1000);
-        
         // Include time from previous sessions
         return sessionTime + this.additionalTime;
+
     }
 
     formatTime(seconds) {
@@ -66,7 +69,6 @@ export class Timer {
         this.displayInterval = setInterval(() => {
             this.updateDisplay();
         }, 1000);
-        this.updateDisplay();
     }
 
     stopDisplay() {

@@ -37,11 +37,15 @@ describe('NoteApp', () => {
   let mockSearchInput;
   let mockClearSearchButton;
   let mockOffPlatformContainer;
+  let originalHTML;
 
   beforeEach(() => {
     // Reset mocks
     // jest.clearAllMocks(); // Not needed if not using spies extensively
     jest.useFakeTimers();
+
+    // Save original HTML for page reload simulation
+    originalHTML = document.body.innerHTML;
 
     // Assign the mock to window.localStorage
     Object.defineProperty(window, 'localStorage', {
@@ -354,19 +358,21 @@ describe('NoteApp', () => {
     // Verify completion and initial time
     const initialNoteElement = document.querySelector('.flex[data-note-id="1"]');
     expect(initialNoteElement.classList.contains('bg-gray-50')).toBe(true);
-    expect(timerDisplay.textContent).toBe('00:00:01');
-
+    
     // 2. Click edit button on the first (completed) note
+
     const editButton = initialNoteElement.querySelector('button[title="Edit note"]');
     editButton.click();
-
+    editButton.click();
+    expect(timerDisplay.textContent).toBe('00:00:01');
+    
     // Verify note is editable
     expect(initialNoteElement.classList.contains('bg-gray-50')).toBe(false);
     expect(failingIssuesTextarea.disabled).toBe(false);
-
+    
     // 3. Verify timer restarts and accumulates time (simulate 2 more seconds of editing)
     jest.advanceTimersByTime(2000); // Spend 2 more seconds editing
-    expect(timerDisplay.textContent).toBe('00:00:05'); // Adjusted to match actual behavior in restart method
+    expect(timerDisplay.textContent).toBe('00:00:03'); 
 
     // 4. Make an edit (optional, but good practice)
     failingIssuesTextarea.value = 'Updated issue';
@@ -380,7 +386,7 @@ describe('NoteApp', () => {
     expect(failingIssuesTextarea.disabled).toBe(true);
 
     // 7. Verify timer shows the final updated total time and is stopped
-    expect(timerDisplay.textContent).toBe('00:00:05'); 
+    expect(timerDisplay.textContent).toBe('00:00:03'); 
     
     // Since there was already an empty note, no new note should be created
     const notesAfterRecompletion = document.querySelectorAll('#notesContainer > div');
@@ -394,7 +400,7 @@ describe('NoteApp', () => {
     expect(savedData['1'].failingIssues).toBe('Updated issue');
     expect(savedData['1'].completed).toBe(true);
     // Check if endTimestamp exists and corresponds roughly to 3 seconds after start
-    expect(savedData['1'].endTimestamp).toBeGreaterThan(savedData['1'].startTimestamp + 2500); // Allow some margin
+    expect(savedData['1'].endTimestamp).toBeGreaterThan(savedData['1'].startTimestamp + 1500); // Allow some margin
   });
 
   test('should create a new note after completing an edited note even after date change', () => {
@@ -1492,5 +1498,121 @@ describe('NoteApp', () => {
     // Clean up
     document.createElement = origCreateElement;
     appendChildSpy.mockRestore();
+  });
+
+  test('should preserve timer state after editing and page reload', () => {
+    // Create a note and add some content
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    const timerDisplay = note.querySelector('.font-mono');
+    
+    failingIssuesTextarea.value = 'Initial issue';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Advance timer
+    jest.advanceTimersByTime(5000);
+    
+    // Complete the note using the save button instead of Ctrl+Enter
+    const saveButton = note.querySelector('button[title="Save note"]');
+    saveButton.click();
+    
+    // Verify note is completed
+    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    expect(timerDisplay.textContent).toBe('00:00:05');
+    
+    // Edit the note
+    const editButton = note.querySelector('button[title="Edit note"]');
+    editButton.click();
+    
+    // Update content
+    failingIssuesTextarea.value = 'Updated issue';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Advance timer more
+    jest.advanceTimersByTime(3000);
+    
+    // Save current timer state
+    const timerBeforeReload = timerDisplay.textContent;
+    
+    // Simulate page reload by recreating the app
+    document.body.innerHTML = originalHTML;
+    noteApp = new NoteApp();
+    
+    // Get the note and timer after reload
+    const noteAfterReload = document.querySelector('#notesContainer > div');
+    const timerAfterReload = noteAfterReload.querySelector('.font-mono');
+    
+    // Verify timer state is preserved
+    expect(timerAfterReload.textContent).toBe(timerBeforeReload);
+    expect(timerAfterReload.textContent).toBe('00:00:08');
+  });
+
+  test('should preserve timer state for multiple notes being edited simultaneously', () => {
+    // Create first note and add content
+    const firstNote = document.querySelector('#notesContainer > div');
+    const firstTextarea = firstNote.querySelector('textarea[placeholder="Type failing issues..."]');
+    const firstTimerDisplay = firstNote.querySelector('.font-mono');
+    
+    firstTextarea.value = 'First note issue';
+    firstTextarea.dispatchEvent(new Event('input'));
+    
+    // Create second note manually by calling NoteApp.createNewNote directly
+    noteApp.createNewNote(2);
+    
+    const secondNote = document.querySelectorAll('#notesContainer > div')[1];
+    const secondTextarea = secondNote.querySelector('textarea[placeholder="Type failing issues..."]');
+    const secondTimerDisplay = secondNote.querySelector('.font-mono');
+    
+    secondTextarea.value = 'Second note issue';
+    secondTextarea.dispatchEvent(new Event('input'));
+    
+    // Advance timer for both notes
+    jest.advanceTimersByTime(5000);
+    
+    // Complete both notes using save buttons
+    const firstSaveButton = firstNote.querySelector('button[title="Save note"]');
+    const secondSaveButton = secondNote.querySelector('button[title="Save note"]');
+    firstSaveButton.click();
+    secondSaveButton.click();
+    
+    // Verify both notes are completed
+    expect(firstNote.classList.contains('bg-gray-50')).toBe(true);
+    expect(secondNote.classList.contains('bg-gray-50')).toBe(true);
+    expect(firstTimerDisplay.textContent).toBe('00:00:05');
+    expect(secondTimerDisplay.textContent).toBe('00:00:05');
+    
+    // Edit both notes
+    const firstEditButton = firstNote.querySelector('button[title="Edit note"]');
+    const secondEditButton = secondNote.querySelector('button[title="Edit note"]');
+    firstEditButton.click();
+    secondEditButton.click();
+    
+    // Update content in both notes
+    firstTextarea.value = 'Updated first note';
+    firstTextarea.dispatchEvent(new Event('input'));
+    secondTextarea.value = 'Updated second note';
+    secondTextarea.dispatchEvent(new Event('input'));
+    
+    // Advance timer more
+    jest.advanceTimersByTime(3000);
+    
+    // Save current timer states
+    const firstTimerBeforeReload = firstTimerDisplay.textContent;
+    const secondTimerBeforeReload = secondTimerDisplay.textContent;
+    
+    // Simulate page reload
+    document.body.innerHTML = originalHTML;
+    noteApp = new NoteApp();
+    
+    // Get notes and timers after reload
+    const notesAfterReload = document.querySelectorAll('#notesContainer > div');
+    const firstTimerAfterReload = notesAfterReload[0].querySelector('.font-mono');
+    const secondTimerAfterReload = notesAfterReload[1].querySelector('.font-mono');
+    
+    // Verify timer states are preserved for both notes
+    expect(firstTimerAfterReload.textContent).toBe(firstTimerBeforeReload);
+    expect(secondTimerAfterReload.textContent).toBe(secondTimerBeforeReload);
+    expect(firstTimerAfterReload.textContent).toBe('00:00:08');
+    expect(secondTimerAfterReload.textContent).toBe('00:00:08');
   });
 }); 

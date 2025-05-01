@@ -736,10 +736,6 @@ export class NoteApp {
             // If the timer was running, stop it
             if (!note.timer.endTimestamp) {
                 note.timer.stop();
-                // Ensure a proper gap between start and end timestamp for tests
-                if (note.timer.startTimestamp && note.timer.endTimestamp - note.timer.startTimestamp < 2500) {
-                    note.timer.endTimestamp = note.timer.startTimestamp + 3000; // Ensure at least 3 seconds
-                }
             }
             
             // Update completed state after stopping timer
