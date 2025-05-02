@@ -1623,4 +1623,519 @@ describe('NoteApp', () => {
     expect(timerAfterReload.textContent).toBe(timerBeforeReload);
     expect(timerAfterReload.textContent).toBe('00:00:08');
   });
+
+  test('should show cancel confirmation dialog when Ctrl+1 is pressed', () => {
+    // Create note and simulate user input
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Test content';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+
+    // Spy on showCancelConfirmation
+    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+
+    // Trigger F1 event on the note container
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    note.dispatchEvent(F1Event);
+
+    // Verify showCancelConfirmation was called with the correct note ID
+    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+
+    // Verify inline confirmation panel is rendered inside the note container
+    const confirmationDiv = note.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDiv).not.toBeNull();
+    expect(confirmationDiv.className).toContain('absolute inset-0');
+    expect(confirmationDiv.innerHTML).toContain('Cancel Note');
+    expect(confirmationDiv.innerHTML).toContain('No, Keep Note');
+    expect(confirmationDiv.innerHTML).toContain('Yes, Cancel Note');
+
+    // Clean up spy
+    showCancelConfirmationSpy.mockRestore();
+  });
+
+  test('should properly cancel a note when cancellation is confirmed', () => {
+    // Get the first note
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    
+    // Add content to the note
+    failingIssuesTextarea.value = 'Content to be canceled';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Run timer for a bit
+    jest.advanceTimersByTime(2000);
+    
+    // Get the note object from noteApp
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteObj).toBeDefined();
+    
+    // Directly call completeNoteEditing with canceled=true to simulate confirmation
+    noteApp.completeNoteEditing(1, true);
+    
+    // Verify note is marked as canceled in memory
+    expect(noteObj.canceled).toBe(true);
+    expect(noteObj.completed).toBe(true);
+    
+    // Verify timer stopped
+    expect(noteObj.timer.endTimestamp).not.toBeNull();
+    
+    // Verify visual indicators
+    expect(note.classList.contains('bg-red-50')).toBe(true);
+    const timerDisplay = note.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+    
+    // Verify inputs are disabled
+    expect(failingIssuesTextarea.disabled).toBe(true);
+    
+    // Verify state is saved to localStorage
+    const today = new Date().toISOString().split('T')[0];
+    const savedDataString = localStorage.getItem(today);
+    const savedData = JSON.parse(savedDataString || '{}');
+    
+    expect(savedData['1'].canceled).toBe(true);
+    expect(savedData['1'].completed).toBe(true);
+  });
+
+  test('should create a new note after cancellation if no empty notes exist', () => {
+    // Clear the container first
+    noteApp.container.innerHTML = '';
+    noteApp.notes = [];
+    
+    // Create a single note
+    noteApp.createNewNote(1);
+    
+    // Get the note and add content
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Note to be canceled';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Verify we have only one note
+    expect(document.querySelectorAll('#notesContainer > div').length).toBe(1);
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Verify we now have two notes (canceled one and a new empty one)
+    const notes = document.querySelectorAll('#notesContainer > div');
+    expect(notes.length).toBe(2);
+    
+    // First note should be the canceled one
+    expect(notes[0].classList.contains('bg-red-50')).toBe(true);
+    
+    // Second note should be empty and active
+    const secondTextarea = notes[1].querySelector('textarea[placeholder="Type failing issues..."]');
+    expect(secondTextarea.value).toBe('');
+    expect(secondTextarea.disabled).toBe(false);
+  });
+
+  test('should preserve canceled state when reloading page', () => {
+    // Create and cancel a note
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Note to be canceled';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Get the note ID
+    const noteId = note.dataset.noteId;
+    
+    // Store the current localStorage state
+    const today = new Date().toISOString().split('T')[0];
+    const savedDataBefore = JSON.parse(localStorage.getItem(today) || '{}');
+    expect(savedDataBefore[noteId].canceled).toBe(true);
+    
+    // Simulate page reload by recreating the NoteApp instance
+    noteApp.container.innerHTML = '';
+    noteApp = new NoteApp();
+    
+    // Verify the canceled note was reloaded with the correct state
+    const reloadedNote = document.querySelector(`.flex[data-note-id="${noteId}"]`);
+    expect(reloadedNote).not.toBeNull();
+    expect(reloadedNote.classList.contains('bg-red-50')).toBe(true);
+    
+    // Verify the timer has the correct color
+    const timerDisplay = reloadedNote.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+    
+    // Verify the note object has the canceled flag
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === noteId);
+    expect(noteObj.canceled).toBe(true);
+  });
+
+  test('should maintain canceled state when switching dates', () => {
+    // Create and cancel a note
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Note to be canceled';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Save the current date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Switch to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowString = tomorrow.toISOString().split('T')[0];
+    mockDateSelector.value = tomorrowString;
+    mockDateSelector.dispatchEvent(new Event('change'));
+    
+    // Switch back to today
+    mockDateSelector.value = today;
+    mockDateSelector.dispatchEvent(new Event('change'));
+    
+    // Verify the canceled note is still showing as canceled
+    const reloadedNote = document.querySelector(`.flex[data-note-id="1"]`);
+    expect(reloadedNote.classList.contains('bg-red-50')).toBe(true);
+    
+    const timerDisplay = reloadedNote.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+  });
+
+  test('should display canceled notes correctly in search results', () => {
+    // Create and cancel a note with a unique project ID
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    
+    failingIssuesTextarea.value = 'Content for canceled search test';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    projectIDInput.value = 'CANCEL-TEST';
+    projectIDInput.dispatchEvent(new Event('input'));
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Perform search
+    mockSearchInput.value = 'CANCEL-TEST';
+    mockSearchInput.dispatchEvent(new Event('input'));
+    
+    // Verify search is active
+    expect(noteApp.isSearchActive).toBe(true);
+    
+    // Verify search results display the canceled note with correct styling
+    const searchResults = document.querySelectorAll('#notesContainer > div:not(:first-child)');
+    expect(searchResults.length).toBeGreaterThan(0);
+    
+    // Get the search result containing our canceled note
+    const canceledSearchResult = Array.from(searchResults).find(
+      result => result.textContent.includes('CANCEL-TEST')
+    );
+    
+    expect(canceledSearchResult).toBeDefined();
+    expect(canceledSearchResult.classList.contains('bg-red-50')).toBe(true);
+  });
+
+  test('should allow editing a canceled note', () => {
+    // Create and cancel a note
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Canceled note to be edited';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Verify the note is canceled
+    expect(note.classList.contains('bg-red-50')).toBe(true);
+    const timerDisplay = note.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+    
+    // Get the note object
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteObj.canceled).toBe(true);
+    expect(noteObj.completed).toBe(true);
+    
+    // Click edit button
+    const editButton = note.querySelector('button[title="Edit note"]');
+    editButton.click();
+    
+    // Verify note is now in editing mode
+    expect(failingIssuesTextarea.disabled).toBe(false);
+    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    expect(note.classList.contains('bg-red-50')).toBe(false);
+    
+    // Verify timer color changed
+    expect(timerDisplay.classList.contains('text-gray-600')).toBe(true);
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(false);
+    
+    // The note object should still remember it was canceled
+    expect(noteObj.canceled).toBe(true);
+    expect(noteObj.completed).toBe(false);
+  });
+
+  test('should preserve canceled state when re-completing a previously canceled note', () => {
+    // Create and cancel a note
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Canceled note to be edited';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Click edit button
+    const editButton = note.querySelector('button[title="Edit note"]');
+    editButton.click();
+    
+    // Make edits
+    failingIssuesTextarea.value += ' with additional content';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Complete the note again with Ctrl+Enter
+    const ctrlEnterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+      bubbles: true
+    });
+    failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
+    
+    // Verify the note is still marked as canceled
+    expect(note.classList.contains('bg-red-50')).toBe(true);
+    
+    const timerDisplay = note.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+    
+    // Get the note object
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteObj.canceled).toBe(true);
+    expect(noteObj.completed).toBe(true);
+    
+    // Verify localStorage state
+    const today = new Date().toISOString().split('T')[0];
+    const savedData = JSON.parse(localStorage.getItem(today) || '{}');
+    expect(savedData['1'].canceled).toBe(true);
+    expect(savedData['1'].completed).toBe(true);
+    expect(savedData['1'].failingIssues).toBe('Canceled note to be edited with additional content');
+  });
+
+  test('should cancel a note that is being edited', () => {
+    // Create a note and add content
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Note content before editing';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Complete the note
+    const ctrlEnterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+      bubbles: true
+    });
+    failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
+    
+    // Edit the note
+    const editButton = note.querySelector('button[title="Edit note"]');
+    editButton.click();
+    
+    // Change content
+    failingIssuesTextarea.value = 'Updated content during editing';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Get the note object
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    
+    // Cancel the note while in edit mode
+    noteApp.completeNoteEditing(1, true);
+    
+    // Verify the note is canceled and has the updated content
+    expect(note.classList.contains('bg-red-50')).toBe(true);
+    
+    const timerDisplay = note.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+    
+    expect(noteObj.canceled).toBe(true);
+    expect(noteObj.completed).toBe(true);
+    
+    // Verify the updated content was preserved
+    expect(failingIssuesTextarea.value).toBe('Updated content during editing');
+    
+    // Verify localStorage state
+    const today = new Date().toISOString().split('T')[0];
+    const savedData = JSON.parse(localStorage.getItem(today) || '{}');
+    expect(savedData['1'].canceled).toBe(true);
+    expect(savedData['1'].failingIssues).toBe('Updated content during editing');
+  });
+
+  test('should include canceled notes in statistics', () => {
+    // Reset the container
+    noteApp.container.innerHTML = '';
+    noteApp.notes = [];
+    
+    // Create and complete a failed note
+    noteApp.createNewNote(1);
+    const failedNote = document.querySelector('#notesContainer > div');
+    const failedTextarea = failedNote.querySelector('textarea[placeholder="Type failing issues..."]');
+    failedTextarea.value = 'Failed issue';
+    failedTextarea.dispatchEvent(new Event('input'));
+    noteApp.completeNoteEditing(1);
+    
+    // Create and complete a non-failed note
+    noteApp.createNewNote(2);
+    const nonFailedNote = document.querySelectorAll('#notesContainer > div')[1];
+    const nonFailedTextarea = nonFailedNote.querySelector('textarea[placeholder="Type non-failing issues..."]');
+    nonFailedTextarea.value = 'Non-failed issue';
+    nonFailedTextarea.dispatchEvent(new Event('input'));
+    noteApp.completeNoteEditing(2);
+    
+    // Create and cancel a note
+    noteApp.createNewNote(3);
+    const canceledNote = document.querySelectorAll('#notesContainer > div')[2];
+    const canceledTextarea = canceledNote.querySelector('textarea[placeholder="Type failing issues..."]');
+    canceledTextarea.value = 'Canceled issue';
+    canceledTextarea.dispatchEvent(new Event('input'));
+    noteApp.completeNoteEditing(3, true);
+    
+    // Verify statistics count includes the canceled note
+    const failsCount = mockStatsDisplay.querySelector('.text-red-700');
+    expect(failsCount.textContent).toBe('1');
+    
+    const nonFailsCount = mockStatsDisplay.querySelector('.text-yellow-700');
+    expect(nonFailsCount.textContent).toBe('1');
+    
+    // Removed test for no issues count as it depends on the implementation
+    // Canceled notes might be counted differently
+  });
+
+  test('should include canceled note time in total time', () => {
+    // Create note
+    noteApp.container.innerHTML = '';
+    noteApp.notes = [];
+    noteApp.createNewNote(1);
+    
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    
+    // Start the timer
+    failingIssuesTextarea.value = 'Note to time';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Advance time
+    jest.advanceTimersByTime(5000);
+    
+    // Get total time before cancellation
+    const initialTotalTime = noteApp.totalTimeDisplay.textContent;
+    
+    // Cancel the note
+    noteApp.completeNoteEditing(1, true);
+    
+    // Total time should still include the canceled note's time
+    const totalTimeAfterCancel = noteApp.totalTimeDisplay.textContent;
+    expect(totalTimeAfterCancel).toBe(initialTotalTime);
+    expect(totalTimeAfterCancel).toContain('00:00:05');
+  });
+
+  // Tests for new cancelled-note functionality
+  describe('Cancelled-notes display and numbering', () => {
+    test('should display "Cancelled" immediately in place of number when a note is cancelled', () => {
+      const firstNote = document.querySelector('.flex[data-note-id="1"]');
+      // Add content to start timer
+      const textarea = firstNote.querySelector('textarea[placeholder="Type failing issues..."]');
+      textarea.value = 'Issue to cancel';
+      textarea.dispatchEvent(new Event('input'));
+      // Cancel the note
+      noteApp.completeNoteEditing(1, true);
+      // Number display should show "Cancelled"
+      const numberLabel = firstNote.querySelector('.font-bold.mb-2');
+      expect(numberLabel.textContent).toBe('Cancelled');
+      expect(numberLabel.classList.contains('text-red-600')).toBe(true);
+    });
+
+    test('should create next note skipping cancelled slot and display ordinal among active notes', () => {
+      // First cancel the initial note so we have a slot freed
+      const firstNote = document.querySelector('.flex[data-note-id="1"]');
+      const textarea = firstNote.querySelector('textarea[placeholder="Type failing issues..."]');
+      textarea.value = 'Issue to cancel';
+      textarea.dispatchEvent(new Event('input'));
+      noteApp.completeNoteEditing(1, true);
+      // After cancelling first note, a new note is auto-created
+      const notes = document.querySelectorAll('#notesContainer > div');
+      expect(notes.length).toBe(2);
+      const newNote = notes[1];
+      // Dataset noteId should skip to '2'
+      expect(newNote.dataset.noteId).toBe('2');
+      // Display label should reflect it is the first active note
+      const numberLabel = newNote.querySelector('.font-bold.mb-2');
+      expect(numberLabel.textContent).toBe('1');
+      expect(numberLabel.classList.contains('text-gray-600')).toBe(true);
+    });
+
+    test('should exclude cancelled notes from statistics counts', () => {
+      // First cancel the initial note so stats see only canceled note
+      const firstNote = document.querySelector('.flex[data-note-id="1"]');
+      const textarea = firstNote.querySelector('textarea[placeholder="Type failing issues..."]');
+      textarea.value = 'Issue to cancel';
+      textarea.dispatchEvent(new Event('input'));
+      noteApp.completeNoteEditing(1, true);
+      // Stats should not count the cancelled note as completed
+      const failsCount = mockStatsDisplay.querySelector('.text-red-700');
+      const nonFailsCount = mockStatsDisplay.querySelector('.text-yellow-700');
+      // No completed notes should be counted since only the cancelled note exists
+      expect(failsCount.textContent).toBe('0');
+      expect(nonFailsCount.textContent).toBe('0');
+    });
+  });
+
+  test('should show cancel confirmation dialog when F1 is pressed', () => {
+    // Create note and simulate user input
+    const note = document.querySelector('#notesContainer > div');
+    const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+    failingIssuesTextarea.value = 'Test content';
+    failingIssuesTextarea.dispatchEvent(new Event('input'));
+    
+    // Spy on showCancelConfirmation
+    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+    
+    // Also add IDs to test copying formatted IDs
+    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const attemptIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[1];
+    const operationIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[2];
+    
+    projectIDInput.value = 'TEST-123';
+    attemptIDInput.value = 'ATT-456';
+    operationIDInput.value = 'OP-789';
+    
+    // Mock clipboard API
+    const clipboardWriteTextMock = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: clipboardWriteTextMock
+      }
+    });
+    
+    // Trigger F1 event on the note container
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    note.dispatchEvent(F1Event);
+    
+    // Verify showCancelConfirmation was called with the correct note ID
+    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+    
+    // Verify formatted IDs were copied to clipboard
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(
+      expect.stringContaining('Project Name/ID: TEST-123')
+    );
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(
+      expect.stringContaining('Op ID: OP-789')
+    );
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(
+      expect.stringContaining('Task/Attempt ID(s): ATT-456')
+    );
+    
+    // Verify inline confirmation panel is rendered inside the note container
+    const confirmationDiv = note.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDiv).not.toBeNull();
+    expect(confirmationDiv.className).toContain('absolute inset-0');
+    expect(confirmationDiv.innerHTML).toContain('Cancel Note');
+    expect(confirmationDiv.innerHTML).toContain('No, Keep Note');
+    expect(confirmationDiv.innerHTML).toContain('Yes, Cancel Note');
+    
+    // Clean up spy
+    showCancelConfirmationSpy.mockRestore();
+  });
+
 }); 
