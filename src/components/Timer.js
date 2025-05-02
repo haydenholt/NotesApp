@@ -9,12 +9,15 @@ export class Timer {
         this.displayElement = null;
         this.noteId = null;
         this.additionalTime = 0; // Store additional time from previous sessions
+        this.completed = false; // Add a property to track completion status
+        this.hasStarted = startTimestamp !== null; // Track if timer has ever been started
     }
 
     start() {
         if (!this.startTimestamp) {
             this.startTimestamp = Date.now();
             this.endTimestamp = null;
+            this.hasStarted = true;
             this.startDisplay();
             this.saveState();
         }
@@ -30,28 +33,31 @@ export class Timer {
 
     // New method to restart a timer that was previously stopped
     restart() {
-        if (this.startTimestamp && this.endTimestamp) {
-            // Calculate time spent in previous session and add to additionalTime
-            this.additionalTime += Math.floor((this.endTimestamp - this.startTimestamp) / 1000);
-            // Reset timestamps for new session
-            this.startTimestamp = Date.now();
-            this.endTimestamp = null;
-            this.startDisplay();
-            this.saveState();
-        } else if (!this.startTimestamp) {
-            // If timer wasn't started before, just start it
+        if (!this.startTimestamp) {
             this.start();
-        }
+            return
+        } 
+
+        // Calculate time spent in previous session and add to additionalTime
+        this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
+
+        // Reset timestamps for new session
+        this.startTimestamp = Date.now();
+        this.endTimestamp = null;
+        this.hasStarted = true;
+        this.startDisplay();
+        this.saveState();
     }
 
     getSeconds() {
         if (!this.startTimestamp) return 0;
         
         const currentTime = this.endTimestamp || Date.now();
+
         const sessionTime = Math.floor((currentTime - this.startTimestamp) / 1000);
-        
         // Include time from previous sessions
         return sessionTime + this.additionalTime;
+
     }
 
     formatTime(seconds) {
@@ -66,7 +72,6 @@ export class Timer {
         this.displayInterval = setInterval(() => {
             this.updateDisplay();
         }, 1000);
-        this.updateDisplay();
     }
 
     stopDisplay() {
@@ -89,6 +94,8 @@ export class Timer {
                 savedNotes[this.noteId].startTimestamp = this.startTimestamp;
                 savedNotes[this.noteId].endTimestamp = this.endTimestamp;
                 savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
+                savedNotes[this.noteId].completed = this.completed; // Save completion status
+                savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
                 localStorage.setItem(window.app.currentDate, JSON.stringify(savedNotes));
             }
         }

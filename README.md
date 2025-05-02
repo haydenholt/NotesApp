@@ -10,6 +10,7 @@ A web-based note-taking application with time tracking and text comparison featu
 - **Feedback**: Auto-format feedback with Ctrl-X
 - **Writing Tool Integration**: Works seamlessly with Quillbot and Grammarly for enhanced writing and editing
 - **Text Diff Tool**: Compare two versions of text with a built-in diff viewer
+- **Note Cancellation**: Press `F1` on any non-completed note mark the note as a canceled task
 
 
 ## Installation
@@ -59,6 +60,7 @@ python -m http.server 8000
 - **Ctrl+Enter**: Finish current note and stop the timer
 - **Ctrl+X**: Copy formatted feedback to clipboard
 - **Ctrl+D**: Switch between Notes view and Diff view
+- **F1**: Cancel the current active note
 
 ## Writing Tool Integration
 

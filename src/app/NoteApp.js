@@ -18,6 +18,7 @@ export class NoteApp {
         this.isSearchActive = false;
         this.activeTimers = {}; // Object to store active timers by date
         this.editingNotes = {}; // Track which notes are being edited (vs. new notes), per date
+        this.pendingCancellations = {}; // Track pending note cancellations
         
         // Initialize date
         const today = new Date().toISOString().split('T')[0];
@@ -77,7 +78,17 @@ export class NoteApp {
             if (query === '' && this.isSearchActive) {
                 // Reset to current date view when clearing an active search
                 this.isSearchActive = false;
+                
+                // Show the off-platform container again
+                const offPlatformContainer = document.getElementById('offPlatformContainer');
+                if (offPlatformContainer) {
+                    offPlatformContainer.style.display = '';
+                }
+                
                 this.loadNotes();
+                
+                // Recreate the off-platform section to ensure timers are visible
+                this.createOffPlatformSection();
             } else if (query !== '') {
                 this.searchNotes(query);
             }
@@ -94,6 +105,9 @@ export class NoteApp {
             }
             
             this.loadNotes();
+            
+            // Recreate the off-platform section to ensure timers are visible
+            this.createOffPlatformSection();
         });
     
         // Load notes and create off-platform section
@@ -228,8 +242,7 @@ export class NoteApp {
 
     getNextNoteNumber() {
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
-        
-        // Find the lowest available number (no gaps)
+        // Find the lowest available number (no gaps), treating cancelled as used
         let nextNumber = 1;
         while (savedNotes.hasOwnProperty(nextNumber)) {
             nextNumber++;
@@ -271,7 +284,9 @@ export class NoteApp {
                 let discussion = '';
                 let attemptID = '';
                 let projectID = '';
+                let operationID = '';
                 let additionalTime = note.additionalTime || 0; // Add additionalTime with default
+                let canceled = note.canceled || false; // Get canceled state with default
                 
                 if (note.hasOwnProperty('text')) {
                     // Old format - migrate the text to failing issues
@@ -283,6 +298,7 @@ export class NoteApp {
                     discussion = note.discussion || '';
                     attemptID = note.attemptID || '';
                     projectID = note.projectID || '';
+                    operationID = note.operationID || '';
                 }
                 
                 this.createNewNote(
@@ -295,7 +311,9 @@ export class NoteApp {
                     note.completed,
                     attemptID,
                     projectID,
-                    additionalTime // Pass additionalTime to createNewNote
+                    additionalTime, // Pass additionalTime to createNewNote
+                    operationID, // Pass operationID to createNewNote
+                    canceled // Pass canceled state to createNewNote
                 );
             });
 
@@ -350,10 +368,13 @@ export class NoteApp {
         localStorage.setItem(this.currentDate, JSON.stringify(renumberedNotes));
     }
 
-    createNewNote(number, failingIssues = '', nonFailingIssues = '', discussion = '', startTimestamp = null, endTimestamp = null, completed = false, attemptID = '', projectID = '', additionalTime = 0) {
+    createNewNote(number, failingIssues = '', nonFailingIssues = '', discussion = '', startTimestamp = null, endTimestamp = null, completed = false, attemptID = '', projectID = '', additionalTime = 0, operationID = '', canceled = false) {
         // Create the note container with Tailwind classes
         const noteContainer = document.createElement('div');
-        noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' + (completed ? 'bg-gray-50' : 'bg-white');
+        noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' + 
+            (completed ? 
+                (canceled ? 'bg-red-50' : 'bg-gray-50') : 
+                'bg-white');
         noteContainer.dataset.noteId = number;
 
         // Create action buttons
@@ -408,15 +429,26 @@ export class NoteApp {
         const leftSidebar = document.createElement('div');
         leftSidebar.className = 'flex flex-col mr-4 min-w-32';
 
-        // Number display
+        // Number display - hide for cancelled notes, use dynamic ordinal for non-cancelled notes
         const numberDisplay = document.createElement('div');
         numberDisplay.className = 'text-gray-600 font-bold mb-2';
-        numberDisplay.textContent = number;
+        // If note is completed and cancelled, show "Cancelled"; otherwise, show its position among non-cancelled notes
+        if (completed && canceled) {
+            numberDisplay.textContent = "Cancelled";
+            numberDisplay.className = 'text-red-600 font-bold mb-2';
+        } else {
+            // Compute dynamic display index based on existing non-cancelled notes
+            const existingNonCancelled = this.notes.filter(n => !n.canceled).length;
+            numberDisplay.textContent = String(existingNonCancelled + 1);
+        }
         leftSidebar.appendChild(numberDisplay);
 
         // Timer display - FIX: Use the same class for all completed notes
         const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'font-mono text-base mb-3 ' + (completed ? 'text-green-600' : 'text-gray-600');
+        timerDisplay.className = 'font-mono text-base mb-3 ' + 
+            (completed ? 
+                (canceled ? 'text-red-600' : 'text-green-600') : 
+                'text-gray-600');
         timerDisplay.textContent = '00:00:00';
         leftSidebar.appendChild(timerDisplay);
 
@@ -450,10 +482,25 @@ export class NoteApp {
         projectIDInput.value = projectID;
         projectIDInput.disabled = completed;
         
+        // Operation ID field
+        const operationIDLabel = document.createElement('label');
+        operationIDLabel.className = 'text-xs text-gray-500 mt-1';
+        operationIDLabel.textContent = 'Operation ID:';
+        
+        const operationIDInput = document.createElement('input');
+        operationIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
+                                  (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        operationIDInput.style.direction = 'rtl';
+        operationIDInput.placeholder = 'Enter ID';
+        operationIDInput.value = operationID;
+        operationIDInput.disabled = completed;
+        
         idFieldsContainer.appendChild(projectIDLabel);
         idFieldsContainer.appendChild(projectIDInput);
         idFieldsContainer.appendChild(attemptIDLabel);
         idFieldsContainer.appendChild(attemptIDInput);
+        idFieldsContainer.appendChild(operationIDLabel);
+        idFieldsContainer.appendChild(operationIDInput);
         
         leftSidebar.appendChild(idFieldsContainer);
 
@@ -511,8 +558,8 @@ export class NoteApp {
                 // Call the adjustment function
                 adjustHeight();
                 
-                if (!hasStarted && !completed) {
-                    hasStarted = true;
+                if (!timer.hasStarted && !completed) {
+                    timer.hasStarted = true;
                     this.stopAllTimers();
                     timer.start();
                     // Show save button when editing begins
@@ -521,18 +568,36 @@ export class NoteApp {
                 this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
             });
 
+            // Add Ctrl+Enter handler to each textarea
+            textarea.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    // Always allow Ctrl+Enter for notes with content
+                    if (timer.hasStarted) {
+                        e.preventDefault();
+
+                        // Mark as being edited to prevent creating a new note
+                        if (!this.editingNotes[this.currentDate]) {
+                            this.editingNotes[this.currentDate] = {};
+                        }
+                        this.editingNotes[this.currentDate][number] = true;
+                        
+                        // Complete the note
+                        this.completeNoteEditing(number);
+                    }
+                }
+            });
+
             sectionDiv.appendChild(label);
             sectionDiv.appendChild(textarea);
             contentContainer.appendChild(sectionDiv);
         });
 
         // Add event listeners to ID fields
-        let hasStarted = false;
         
         // Start timer when IDs are entered
         attemptIDInput.addEventListener('input', () => {
-            if (!hasStarted && !completed) {
-                hasStarted = true;
+            if (!timer.hasStarted && !completed) {
+                timer.hasStarted = true;
                 timer.start();
                 saveButton.style.display = 'block';
             }
@@ -540,16 +605,53 @@ export class NoteApp {
         });
         
         projectIDInput.addEventListener('input', () => {
-            if (!hasStarted && !completed) {
-                hasStarted = true;
+            if (!timer.hasStarted && !completed) {
+                timer.hasStarted = true;
                 timer.start();
                 saveButton.style.display = 'block';
             }
             this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
         });
 
-        // Add copy functionality for Ctrl+C
+        // Add event listener for Operation ID
+        operationIDInput.addEventListener('input', () => {
+            if (!timer.hasStarted && !completed) {
+                timer.hasStarted = true;
+                timer.start();
+                saveButton.style.display = 'block';
+            }
+            this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
+        });
+
+        // Add event listeners for F1 to copy IDs
         noteContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                // Copy IDs first
+                const projectID = projectIDInput.value || '';
+                const operationID = operationIDInput.value || '';
+                const attemptID = attemptIDInput.value || '';
+                
+                // Format and copy IDs to clipboard
+                const formattedIDs = this.getFormattedIDs(projectID, operationID, attemptID);
+                
+                // Use clipboard API or fallback
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(formattedIDs)
+                        .catch(err => {
+                            console.error('Failed to copy formatted IDs: ', err);
+                            this.fallbackCopy(formattedIDs);
+                        });
+                } else {
+                    this.fallbackCopy(formattedIDs);
+                }
+                
+                // Show cancel confirmation
+                if (!completed) {
+                    this.showCancelConfirmation(number);
+                }
+            }
+            // Keep existing Ctrl+x functionality
             if (e.ctrlKey && e.key === 'x') {
                 // Don't prevent default to allow normal copy behavior in addition to our custom one
                 const text = this.getFormattedNoteText(
@@ -558,15 +660,24 @@ export class NoteApp {
                     sectionElements.discussion.value,
                 );
                 
-                navigator.clipboard.writeText(text)
-                    .catch(err => console.error('Failed to copy: ', err));
+                // Check if clipboard API is available
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .catch(err => {
+                            console.error('Failed to copy: ', err);
+                            this.fallbackCopy(text);
+                        });
+                } else {
+                    // Use fallback method if clipboard API is not available
+                    this.fallbackCopy(text);
+                }
             }
         });
 
         contentContainer.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
-                // Use the local `completed` flag for the check
-                if (hasStarted && !completed) { 
+                // Always allow Ctrl+Enter for notes with content, regardless of completed state
+                if (timer.hasStarted) { 
                     e.preventDefault();
 
                     // Mark as being edited to prevent creating a new note
@@ -577,9 +688,6 @@ export class NoteApp {
                     
                     // Call completeNoteEditing without changing the local completed flag
                     this.completeNoteEditing(number);
-                    
-                    // Let the note.container.classList.add('bg-gray-50') in completeNoteEditing
-                    // handle the UI update without using a local flag
                 }
             }
         });
@@ -588,6 +696,13 @@ export class NoteApp {
         timer.displayElement = timerDisplay;
         timer.noteId = number;
         timer.additionalTime = additionalTime || 0; // Initialize with saved additional time
+        timer.completed = completed; // Set timer's completed property
+        
+        // Initialize hasStarted based on content
+        if ((failingIssues || nonFailingIssues || discussion || attemptID || projectID)) {
+            timer.hasStarted = true;
+        }
+        
         timer.updateDisplay();
 
         noteContainer.appendChild(leftSidebar);
@@ -600,11 +715,18 @@ export class NoteApp {
             elements: {
                 ...sectionElements,
                 attemptID: attemptIDInput,
-                projectID: projectIDInput
+                projectID: projectIDInput,
+                operationID: operationIDInput
             },
             editButton,
-            saveButton
+            saveButton,
+            completed: completed, // Add completed property to the note object
+            canceled: canceled // Add canceled property to track cancellation state
         });
+        // Re-show inline cancel confirmation if pending
+        if (this.pendingCancellations[this.currentDate] && this.pendingCancellations[this.currentDate][number]) {
+            this.showCancelConfirmation(number);
+        }
         
         if (!completed) {
             // Focus the first section
@@ -618,8 +740,7 @@ export class NoteApp {
         });
 
         // Start timer if there's saved text and not completed
-        if ((failingIssues || nonFailingIssues || discussion || attemptID || projectID) && !completed && startTimestamp && !endTimestamp) {
-            hasStarted = true;
+        if (timer.hasStarted && !completed && startTimestamp && !endTimestamp) {
             // Modified: don't stop all timers anymore
             timer.startDisplay();
             // Show save button if editing is in progress
@@ -629,9 +750,19 @@ export class NoteApp {
         // Check if this note had an active timer from a previous view
         if (this.activeTimers[this.currentDate] && this.activeTimers[this.currentDate][number] && !completed) {
             // This note had an active timer before, so restart it
-            hasStarted = true;
+            timer.hasStarted = true;
             timer.startDisplay();
             saveButton.style.display = 'block';
+        }
+        
+        // Apply correct styling for canceled notes on reload
+        if (completed && canceled) {
+            noteContainer.classList.remove('bg-gray-50');
+            noteContainer.classList.add('bg-red-50');
+            
+            // Make sure timer has the correct color
+            timerDisplay.classList.remove('text-green-600');
+            timerDisplay.classList.add('text-red-600');
         }
         
         // Update statistics
@@ -660,7 +791,7 @@ export class NoteApp {
         return sections.join('\n\n');
     }
 
-    saveNote(number, startTimestamp, endTimestamp, completed) {
+    saveNote(number, startTimestamp, endTimestamp, completed, canceled = false) {
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
         const noteElement = document.querySelector(`.flex[data-note-id="${number}"]`);
         
@@ -674,6 +805,12 @@ export class NoteApp {
         // Get the ID inputs
         const projectIDInput = noteElement.querySelector('input[placeholder="Enter ID"]');
         const attemptIDInput = noteElement.querySelectorAll('input[placeholder="Enter ID"]')[1];
+        const operationIDInput = noteElement.querySelectorAll('input[placeholder="Enter ID"]')[2];
+        
+        // Find the note in our array to get the timer
+        const noteObj = this.notes.find(n => n.container.dataset.noteId == number);
+        const hasStarted = noteObj ? noteObj.timer.hasStarted : false;
+        const isCanceled = noteObj ? noteObj.canceled : canceled;
         
         // Create the note object with all the data
         const note = {
@@ -685,7 +822,10 @@ export class NoteApp {
             completed: completed,
             projectID: projectIDInput ? projectIDInput.value : '',
             attemptID: attemptIDInput ? attemptIDInput.value : '',
-            additionalTime: 0 // Initialize additionalTime to 0 for new notes
+            operationID: operationIDInput ? operationIDInput.value : '',
+            additionalTime: noteObj ? noteObj.timer.additionalTime : 0,
+            hasStarted: hasStarted,  // Save the hasStarted state
+            canceled: isCanceled  // Save the canceled state
         };
         
         // Save to local storage
@@ -699,9 +839,12 @@ export class NoteApp {
         }
     }
 
-    completeNoteEditing(number) {
+    completeNoteEditing(number, canceled = false) {
         const note = this.notes.find(n => n.container.dataset.noteId == number);
         if (!note) return;
+        
+        // Check if this is a new cancel operation or if the note was already canceled
+        const isCanceled = canceled || note.canceled;
         
         // Disable all textareas
         Object.values(note.elements).forEach(element => {
@@ -721,14 +864,45 @@ export class NoteApp {
         note.elements.projectID.classList.remove('text-black');
         note.elements.projectID.classList.add('text-gray-500', 'bg-gray-100');
         
-        // Add completed class here - make sure to remove any non-completed class first
-        note.container.classList.remove('bg-white');
-        note.container.classList.add('bg-gray-50');
+        note.elements.operationID.disabled = true;
+        note.elements.operationID.classList.remove('text-black');
+        note.elements.operationID.classList.add('text-gray-500', 'bg-gray-100');
         
-        // Update timer to green when completed
+        // Add completed class here - make sure to remove any non-completed class first
+        note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
+        
+        // Apply different styling for canceled notes
+        if (isCanceled) {
+            note.container.classList.add('bg-red-50');
+            // Mark the note as canceled
+            note.canceled = true;
+            
+            // Immediately update the number display to show "Cancelled"
+            const numberDisplay = note.container.querySelector('.font-bold.mb-2');
+            if (numberDisplay) {
+                numberDisplay.textContent = 'Cancelled';
+                numberDisplay.classList.remove('text-gray-600');
+                numberDisplay.classList.add('text-red-600');
+            }
+        } else {
+            note.container.classList.add('bg-gray-50');
+            // Ensure note is not marked as canceled
+            note.canceled = false;
+        }
+        
+        // Set the completed state on the note object
+        note.completed = true;
+        // Sync with timer
+        note.timer.completed = true;
+        
+        // Update timer color based on canceled state
         const timerDisplay = note.timer.displayElement;
-        timerDisplay.classList.remove('text-gray-600');
-        timerDisplay.classList.add('text-green-600');
+        timerDisplay.classList.remove('text-gray-600', 'text-green-600', 'text-red-600');
+        if (isCanceled) {
+            timerDisplay.classList.add('text-red-600');
+        } else {
+            timerDisplay.classList.add('text-green-600');
+        }
         
         // Update the saved state
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
@@ -736,15 +910,16 @@ export class NoteApp {
             // If the timer was running, stop it
             if (!note.timer.endTimestamp) {
                 note.timer.stop();
-                // Ensure a proper gap between start and end timestamp for tests
-                if (note.timer.startTimestamp && note.timer.endTimestamp - note.timer.startTimestamp < 2500) {
-                    note.timer.endTimestamp = note.timer.startTimestamp + 3000; // Ensure at least 3 seconds
-                }
             }
+            
+            // Make sure hasStarted is true
+            note.timer.hasStarted = true;
             
             // Update completed state after stopping timer
             savedNotes[number].completed = true;
             savedNotes[number].endTimestamp = note.timer.endTimestamp;
+            savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
+            savedNotes[number].canceled = isCanceled; // Save the canceled state
             
             localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             
@@ -760,10 +935,21 @@ export class NoteApp {
             if (this.searchInput.value.trim() !== '') {
                 this.searchNotes(this.searchInput.value);
             } else if (!this.isSearchActive) {
-                // Check if there's already an empty note
+                // Check if there's already an empty note or any note in progress
+                const hasInProgressNote = this.notes.some(n => {
+                    // A note is in progress if it's not completed and has any content
+                    return !n.completed && (
+                        n.elements.failingIssues.value.trim() !== '' ||
+                        n.elements.nonFailingIssues.value.trim() !== '' ||
+                        n.elements.discussion.value.trim() !== '' ||
+                        n.elements.projectID.value.trim() !== '' ||
+                        n.elements.attemptID.value.trim() !== ''
+                    );
+                });
+                
                 const hasEmptyNote = this.notes.some(n => {
                     // An empty note has no text in any fields and is not completed
-                    return !n.container.classList.contains('bg-gray-50') && 
+                    return !n.completed && 
                            n.elements.failingIssues.value.trim() === '' &&
                            n.elements.nonFailingIssues.value.trim() === '' &&
                            n.elements.discussion.value.trim() === '' &&
@@ -779,8 +965,11 @@ export class NoteApp {
                 // If this note was specifically flagged for date-change editing, force create a new note
                 const forceCreateNew = localStorage.getItem('forceCreateNewOnEdit') === 'true';
                 
-                // Only create a new note if there isn't already an empty note or this is our edge case
-                if (!hasEmptyNote || forceCreateNew) {
+                // Create a new note only if:
+                // 1. There's no empty note already AND
+                // 2. There's no note in progress AND
+                // 3. Either it's a force create situation OR this wasn't a note being edited
+                if ((!hasEmptyNote && !hasInProgressNote) || forceCreateNew) {
                     this.createNewNote(this.getNextNoteNumber());
                 }
             }
@@ -796,13 +985,16 @@ export class NoteApp {
         const note = this.notes.find(n => n.container.dataset.noteId == number);
         if (!note) return;
         
-        const isCompleted = note.container.classList.contains('bg-gray-50');
+        const isCompleted = note.completed; // Use the note property instead of checking CSS
         if (isCompleted) {
             // Mark this note as being edited (not a new note), with date context
             if (!this.editingNotes[this.currentDate]) {
                 this.editingNotes[this.currentDate] = {};
             }
             this.editingNotes[this.currentDate][number] = true;
+            
+            // Store the canceled state for when we save the note later
+            const wasCanceled = note.canceled;
             
             // Enable all textareas
             Object.values(note.elements).forEach(element => {
@@ -822,13 +1014,27 @@ export class NoteApp {
             note.elements.projectID.classList.remove('text-gray-500', 'bg-gray-100');
             note.elements.projectID.classList.add('text-black');
             
-            // Remove completed class
-            note.container.classList.remove('bg-gray-50');
-            note.container.classList.add('bg-white');
+            note.elements.operationID.disabled = false;
+            note.elements.operationID.classList.remove('text-gray-500', 'bg-gray-100');
+            note.elements.operationID.classList.add('text-black');
+            
+            // Update styling (will be changed once we reload)
+            note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
+            note.container.classList.add('bg-gray-50');
+            
+            // Update note object property
+            note.completed = false;
+            // Important: Preserve the canceled state even though we're editing
+            // We'll use this when re-completing the note
+            
+            // Sync with timer
+            note.timer.completed = false;
+            // Make sure hasStarted is true when editing a completed note
+            note.timer.hasStarted = true;
             
             // FIX: Update timer color back to gray when editing
             const timerDisplay = note.timer.displayElement;
-            timerDisplay.classList.remove('text-green-600');
+            timerDisplay.classList.remove('text-green-600', 'text-red-600');
             timerDisplay.classList.add('text-gray-600');
             
             // Focus the first textarea
@@ -838,6 +1044,9 @@ export class NoteApp {
             const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
             if (savedNotes[number]) {
                 savedNotes[number].completed = false;
+                savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
+                // Important: Ensure canceled state is preserved in localStorage
+                // This will be used when the note is completed again
                 localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             }
             
@@ -898,11 +1107,12 @@ export class NoteApp {
         let noIssueCount = 0;
         
         this.notes.forEach(note => {
-            // Check if the note is completed by looking at the container class
-            const isCompleted = note.container.classList.contains('bg-gray-50');
+            // Use the note completed property instead of checking CSS
+            const isCompleted = note.completed;
+            const isCanceled = note.canceled;
             
-            // Only count if the note is completed
-            if (isCompleted) {
+            // Only count if the note is completed AND not cancelled
+            if (isCompleted && !isCanceled) {
                 const hasFailing = note.elements.failingIssues.value.trim() !== '';
                 const hasNonFailing = note.elements.nonFailingIssues.value.trim() !== '';
                 
@@ -945,6 +1155,9 @@ export class NoteApp {
         this.notes.forEach(note => {
             const projectID = note.elements.projectID.value.trim();
             if (!projectID) return; // Skip notes without project ID
+            
+            // Skip cancelled notes for project statistics
+            if (note.canceled) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
@@ -1057,8 +1270,9 @@ export class NoteApp {
                 Object.entries(notesForDate).forEach(([id, note]) => {
                     const projectID = (note.projectID || '').toLowerCase();
                     const attemptID = (note.attemptID || '').toLowerCase();
+                    const operationID = (note.operationID || '').toLowerCase();
                     
-                    if (projectID.includes(query) || attemptID.includes(query)) {
+                    if (projectID.includes(query) || operationID.includes(query) || attemptID.includes(query)) {
                         allNotes.push({
                             dateKey,
                             id,
@@ -1122,8 +1336,8 @@ export class NoteApp {
         searchResults.forEach(item => {
             const note = item.note;
             
-            // Only count if the note is completed
-            if (note.completed) {
+            // Only count if the note is completed AND not cancelled
+            if (note.completed && !note.canceled) {
                 const hasFailing = note.failingIssues && note.failingIssues.trim() !== '';
                 const hasNonFailing = note.nonFailingIssues && note.nonFailingIssues.trim() !== '';
                 
@@ -1167,6 +1381,9 @@ export class NoteApp {
             const note = item.note;
             const projectID = note.projectID ? note.projectID.trim() : '';
             if (!projectID) return; // Skip notes without project ID
+            
+            // Skip cancelled notes for project statistics
+            if (note.canceled) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
@@ -1282,7 +1499,21 @@ export class NoteApp {
     renderSearchResult(dateKey, id, note, formattedDate) {
         // Create result container
         const resultContainer = document.createElement('div');
+        
+        // Set background color based on note state
+        let bgColorClass = 'bg-white';
+        if (note.completed) {
+            bgColorClass = note.canceled ? 'bg-red-50' : 'bg-gray-50';
+        }
+        
+        // Use the original class string for tests compatibility
         resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow bg-white relative';
+        
+        // Apply the correct background color override
+        if (bgColorClass !== 'bg-white') {
+            resultContainer.classList.remove('bg-white');
+            resultContainer.classList.add(bgColorClass);
+        }
         
         // Date label
         const dateLabel = document.createElement('div');
@@ -1294,10 +1525,15 @@ export class NoteApp {
         const leftSidebar = document.createElement('div');
         leftSidebar.className = 'flex flex-col mr-6 min-w-40 flex-shrink-0'; // Wider sidebar with flex-shrink-0
         
-        // Note ID (number)
+        // Note ID (number) - show "Cancelled" for cancelled notes
         const numberLabel = document.createElement('div');
         numberLabel.className = 'text-gray-600 font-bold mb-2';
-        numberLabel.textContent = `Note #${id}`;
+        if (note.canceled) {
+            numberLabel.textContent = 'Cancelled';
+            numberLabel.className = 'text-red-600 font-bold mb-2';
+        } else {
+            numberLabel.textContent = `Note #${id}`;
+        }
         leftSidebar.appendChild(numberLabel);
         
         // Project ID
@@ -1314,6 +1550,7 @@ export class NoteApp {
             leftSidebar.appendChild(projectIDValue);
         }
         
+        
         // Attempt ID
         if (note.attemptID) {
             const attemptIDLabel = document.createElement('div');
@@ -1328,6 +1565,19 @@ export class NoteApp {
             leftSidebar.appendChild(attemptIDValue);
         }
         
+        // Operation ID
+        if (note.operationID) {
+            const operationIDLabel = document.createElement('div');
+            operationIDLabel.className = 'text-xs text-gray-500';
+            operationIDLabel.textContent = 'Operation ID:';
+            
+            const operationIDValue = document.createElement('div');
+            operationIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
+            operationIDValue.textContent = note.operationID;
+            
+            leftSidebar.appendChild(operationIDLabel);
+            leftSidebar.appendChild(operationIDValue);
+        }
         // View full note button
         const viewButton = document.createElement('button');
         viewButton.className = 'mt-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded w-full'; // Make button full width
@@ -1829,15 +2079,15 @@ export class NoteApp {
         buttonContainer.appendChild(cancelButton);
         buttonContainer.appendChild(saveButton);
         
-        // Assemble form
-        form.appendChild(timeInputContainer);
-        form.appendChild(buttonContainer);
-        
         // Prevent form submission
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             saveButton.click();
         });
+        
+        // Assemble form
+        form.appendChild(timeInputContainer);
+        form.appendChild(buttonContainer);
         
         // Assemble dialog
         dialog.appendChild(header);
@@ -1866,7 +2116,7 @@ export class NoteApp {
             
             // Save which notes are being edited
             const noteId = note.container.dataset.noteId;
-            const isBeingEdited = !note.container.classList.contains('bg-gray-50') && 
+            const isBeingEdited = !note.completed && 
                            !note.elements.failingIssues.disabled;
             
             if (isBeingEdited) {
@@ -1877,6 +2127,104 @@ export class NoteApp {
                 this.editingNotes[this.currentDate][noteId] = true;
             }
         });
+    }
+
+    // Add fallback copy method to NoteApp class
+    fallbackCopy(text) {
+        try {
+            // Create a temporary textarea element
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            
+            // Make the textarea out of viewport
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            
+            // Select and copy
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            
+            // Clean up
+            document.body.removeChild(textArea);
+            
+            if (!successful) {
+                console.error('fallbackCopy: Unable to copy');
+            }
+        } catch (err) {
+            console.error('fallbackCopy failed:', err);
+        }
+    }
+
+    // New method to format IDs in the required format
+    getFormattedIDs(projectID, operationID, attemptID) {
+        return `• Project Name/ID: ${projectID}\n• Op ID: ${operationID}\n• Reason: \n• Task/Attempt ID(s): ${attemptID}`;
+    }
+
+    // Refactored method to show cancel confirmation inline within the note
+    showCancelConfirmation(number) {
+        const note = this.notes.find(n => n.container.dataset.noteId == number);
+        if (!note || note.completed) return;
+        // Initialize pendingCancellations map for current date
+        if (!this.pendingCancellations) {
+            this.pendingCancellations = {};
+        }
+        if (!this.pendingCancellations[this.currentDate]) {
+            this.pendingCancellations[this.currentDate] = {};
+        }
+        this.pendingCancellations[this.currentDate][number] = true;
+        // Avoid duplicate confirmation
+        if (note.confirmationDiv) return;
+        const container = note.container;
+        container.style.position = 'relative';
+        const confirmationDiv = document.createElement('div');
+        confirmationDiv.className = 'absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center p-4 z-10';
+        confirmationDiv.dataset.confirmation = 'cancel';
+        // Store reference to manage duplicate confirmations and removal
+        note.confirmationDiv = confirmationDiv;
+
+        const title = document.createElement('h3');
+        title.className = 'text-lg font-bold text-gray-900 mb-2';
+        title.textContent = 'Cancel Note';
+        confirmationDiv.appendChild(title);
+
+        const message = document.createElement('p');
+        message.className = 'text-gray-700 mb-4 text-center';
+        message.textContent = 'Are you sure you want to cancel this note? This will stop the timer and mark the note as canceled.';
+        confirmationDiv.appendChild(message);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'flex gap-2';
+        confirmationDiv.appendChild(buttonContainer);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded';
+        cancelBtn.textContent = 'No, Keep Note';
+        cancelBtn.addEventListener('click', () => {
+            delete this.pendingCancellations[this.currentDate][number];
+            container.removeChild(confirmationDiv);
+            delete note.confirmationDiv;
+        });
+        buttonContainer.appendChild(cancelBtn);
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded';
+        confirmBtn.textContent = 'Yes, Cancel Note';
+        confirmBtn.addEventListener('click', () => {
+            delete this.pendingCancellations[this.currentDate][number];
+            // Save and complete cancellation
+            this.saveNote(number, note.timer.startTimestamp, note.timer.endTimestamp, false, true);
+            this.completeNoteEditing(number, true);
+            container.removeChild(confirmationDiv);
+            delete note.confirmationDiv;
+        });
+        buttonContainer.appendChild(confirmBtn);
+
+        container.appendChild(confirmationDiv);
+        confirmBtn.focus();
     }
 }
 
