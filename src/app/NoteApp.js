@@ -77,7 +77,17 @@ export class NoteApp {
             if (query === '' && this.isSearchActive) {
                 // Reset to current date view when clearing an active search
                 this.isSearchActive = false;
+                
+                // Show the off-platform container again
+                const offPlatformContainer = document.getElementById('offPlatformContainer');
+                if (offPlatformContainer) {
+                    offPlatformContainer.style.display = '';
+                }
+                
                 this.loadNotes();
+                
+                // Recreate the off-platform section to ensure timers are visible
+                this.createOffPlatformSection();
             } else if (query !== '') {
                 this.searchNotes(query);
             }
@@ -94,6 +104,9 @@ export class NoteApp {
             }
             
             this.loadNotes();
+            
+            // Recreate the off-platform section to ensure timers are visible
+            this.createOffPlatformSection();
         });
     
         // Load notes and create off-platform section
@@ -511,8 +524,8 @@ export class NoteApp {
                 // Call the adjustment function
                 adjustHeight();
                 
-                if (!hasStarted && !completed) {
-                    hasStarted = true;
+                if (!timer.hasStarted && !completed) {
+                    timer.hasStarted = true;
                     this.stopAllTimers();
                     timer.start();
                     // Show save button when editing begins
@@ -521,18 +534,36 @@ export class NoteApp {
                 this.saveNote(number, timer.startTimestamp, timer.endTimestamp, completed);
             });
 
+            // Add Ctrl+Enter handler to each textarea
+            textarea.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    // Always allow Ctrl+Enter for notes with content
+                    if (timer.hasStarted) {
+                        e.preventDefault();
+
+                        // Mark as being edited to prevent creating a new note
+                        if (!this.editingNotes[this.currentDate]) {
+                            this.editingNotes[this.currentDate] = {};
+                        }
+                        this.editingNotes[this.currentDate][number] = true;
+                        
+                        // Complete the note
+                        this.completeNoteEditing(number);
+                    }
+                }
+            });
+
             sectionDiv.appendChild(label);
             sectionDiv.appendChild(textarea);
             contentContainer.appendChild(sectionDiv);
         });
 
         // Add event listeners to ID fields
-        let hasStarted = false;
         
         // Start timer when IDs are entered
         attemptIDInput.addEventListener('input', () => {
-            if (!hasStarted && !completed) {
-                hasStarted = true;
+            if (!timer.hasStarted && !completed) {
+                timer.hasStarted = true;
                 timer.start();
                 saveButton.style.display = 'block';
             }
@@ -540,8 +571,8 @@ export class NoteApp {
         });
         
         projectIDInput.addEventListener('input', () => {
-            if (!hasStarted && !completed) {
-                hasStarted = true;
+            if (!timer.hasStarted && !completed) {
+                timer.hasStarted = true;
                 timer.start();
                 saveButton.style.display = 'block';
             }
@@ -565,8 +596,8 @@ export class NoteApp {
 
         contentContainer.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
-                // Use the local `completed` flag for the check
-                if (hasStarted && !completed) { 
+                // Always allow Ctrl+Enter for notes with content, regardless of completed state
+                if (timer.hasStarted) { 
                     e.preventDefault();
 
                     // Mark as being edited to prevent creating a new note
@@ -577,7 +608,6 @@ export class NoteApp {
                     
                     // Call completeNoteEditing without changing the local completed flag
                     this.completeNoteEditing(number);
-                    
                 }
             }
         });
@@ -587,6 +617,12 @@ export class NoteApp {
         timer.noteId = number;
         timer.additionalTime = additionalTime || 0; // Initialize with saved additional time
         timer.completed = completed; // Set timer's completed property
+        
+        // Initialize hasStarted based on content
+        if ((failingIssues || nonFailingIssues || discussion || attemptID || projectID)) {
+            timer.hasStarted = true;
+        }
+        
         timer.updateDisplay();
 
         noteContainer.appendChild(leftSidebar);
@@ -618,8 +654,7 @@ export class NoteApp {
         });
 
         // Start timer if there's saved text and not completed
-        if ((failingIssues || nonFailingIssues || discussion || attemptID || projectID) && !completed && startTimestamp && !endTimestamp) {
-            hasStarted = true;
+        if (timer.hasStarted && !completed && startTimestamp && !endTimestamp) {
             // Modified: don't stop all timers anymore
             timer.startDisplay();
             // Show save button if editing is in progress
@@ -629,7 +664,7 @@ export class NoteApp {
         // Check if this note had an active timer from a previous view
         if (this.activeTimers[this.currentDate] && this.activeTimers[this.currentDate][number] && !completed) {
             // This note had an active timer before, so restart it
-            hasStarted = true;
+            timer.hasStarted = true;
             timer.startDisplay();
             saveButton.style.display = 'block';
         }
@@ -675,6 +710,10 @@ export class NoteApp {
         const projectIDInput = noteElement.querySelector('input[placeholder="Enter ID"]');
         const attemptIDInput = noteElement.querySelectorAll('input[placeholder="Enter ID"]')[1];
         
+        // Find the note in our array to get the timer
+        const noteObj = this.notes.find(n => n.container.dataset.noteId == number);
+        const hasStarted = noteObj ? noteObj.timer.hasStarted : false;
+        
         // Create the note object with all the data
         const note = {
             failingIssues: failingIssuesTextarea ? failingIssuesTextarea.value : '',
@@ -685,7 +724,8 @@ export class NoteApp {
             completed: completed,
             projectID: projectIDInput ? projectIDInput.value : '',
             attemptID: attemptIDInput ? attemptIDInput.value : '',
-            additionalTime: 0 // Initialize additionalTime to 0 for new notes
+            additionalTime: noteObj ? noteObj.timer.additionalTime : 0,
+            hasStarted: hasStarted  // Save the hasStarted state
         };
         
         // Save to local storage
@@ -743,9 +783,13 @@ export class NoteApp {
                 note.timer.stop();
             }
             
+            // Make sure hasStarted is true
+            note.timer.hasStarted = true;
+            
             // Update completed state after stopping timer
             savedNotes[number].completed = true;
             savedNotes[number].endTimestamp = note.timer.endTimestamp;
+            savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
             
             localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             
@@ -761,7 +805,18 @@ export class NoteApp {
             if (this.searchInput.value.trim() !== '') {
                 this.searchNotes(this.searchInput.value);
             } else if (!this.isSearchActive) {
-                // Check if there's already an empty note
+                // Check if there's already an empty note or any note in progress
+                const hasInProgressNote = this.notes.some(n => {
+                    // A note is in progress if it's not completed and has any content
+                    return !n.completed && (
+                        n.elements.failingIssues.value.trim() !== '' ||
+                        n.elements.nonFailingIssues.value.trim() !== '' ||
+                        n.elements.discussion.value.trim() !== '' ||
+                        n.elements.projectID.value.trim() !== '' ||
+                        n.elements.attemptID.value.trim() !== ''
+                    );
+                });
+                
                 const hasEmptyNote = this.notes.some(n => {
                     // An empty note has no text in any fields and is not completed
                     return !n.completed && 
@@ -780,8 +835,11 @@ export class NoteApp {
                 // If this note was specifically flagged for date-change editing, force create a new note
                 const forceCreateNew = localStorage.getItem('forceCreateNewOnEdit') === 'true';
                 
-                // Only create a new note if there isn't already an empty note or this is our edge case
-                if (!hasEmptyNote || forceCreateNew) {
+                // Create a new note only if:
+                // 1. There's no empty note already AND
+                // 2. There's no note in progress AND
+                // 3. Either it's a force create situation OR this wasn't a note being edited
+                if ((!hasEmptyNote && !hasInProgressNote) || forceCreateNew) {
                     this.createNewNote(this.getNextNoteNumber());
                 }
             }
@@ -831,6 +889,8 @@ export class NoteApp {
             note.completed = false;
             // Sync with timer
             note.timer.completed = false;
+            // Make sure hasStarted is true when editing a completed note
+            note.timer.hasStarted = true;
             
             // FIX: Update timer color back to gray when editing
             const timerDisplay = note.timer.displayElement;
@@ -844,6 +904,7 @@ export class NoteApp {
             const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
             if (savedNotes[number]) {
                 savedNotes[number].completed = false;
+                savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
                 localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             }
             
