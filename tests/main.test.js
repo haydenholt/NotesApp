@@ -23,6 +23,8 @@ jest.mock('../src/components/ViewManager.js', () => {
   return mockViewManager;
 });
 
+
+
 describe('Main Module', () => {
   let realAddEventListener;
   let domContentLoadedCallback;

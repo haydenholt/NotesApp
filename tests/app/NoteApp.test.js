@@ -324,8 +324,7 @@ describe('NoteApp', () => {
 
     // Verify search results
     const notesContainer = document.querySelector('#notesContainer');
-    const searchResultElements = notesContainer.querySelectorAll('.flex.mb-4.p-4.rounded-lg.shadow.bg-white.relative');
-
+    const searchResultElements = notesContainer.querySelectorAll('.flex.mb-4.p-4.rounded-lg.shadow.relative');
     expect(searchResultElements.length).toBeGreaterThan(0);
     expect(notesContainer.textContent).toContain(projectID);
 
