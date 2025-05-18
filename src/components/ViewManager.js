@@ -1,29 +1,97 @@
+import SystemPromptView from './SystemPromptView.js';
+
 /**
- * Manages switching between Notes view and Diff view
+ * Manages switching between Notes view, Diff view, and System Prompt view
  */
 export class ViewManager {
     constructor() {
         this.notesView = document.getElementById('notesView');
         this.diffView = document.getElementById('diffView');
-        this.currentView = 'notes'; // 'notes' or 'diff'
+        // Get the container for the SystemPromptView
+        this.systemPromptViewContainer = document.getElementById('systemPromptView'); 
+        this.systemPromptViewInstance = null; // To hold the instance
+
+        // Store view containers for easy toggling
+        this.viewElements = {
+            notes: this.notesView,
+            diff: this.diffView,
+            systemPrompt: this.systemPromptViewContainer
+        };
+        this.currentView = 'notes'; // 'notes', 'diff', or 'systemPrompt'
         
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'd') {
-                e.preventDefault(); // Prevent browser default behavior
-                this.toggleView();
+                e.preventDefault();
+                this.toggleBetweenNotesAndDiff();
+            } else if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                if (this.currentView === 'systemPrompt') {
+                    this.showView('notes');
+                } else {
+                    this.showView('systemPrompt');
+                }
+            }
+        });
+
+        if (!this.systemPromptViewContainer) {
+            console.error("[ViewManager] System Prompt View container element NOT FOUND!");
+        }
+    }
+
+    hideAllViews() {
+        Object.values(this.viewElements).forEach(view => {
+            if (view) {
+                view.classList.add('hidden');
             }
         });
     }
-    
-    toggleView() {
-        if (this.currentView === 'notes') {
-            this.notesView.classList.add('hidden');
-            this.diffView.classList.remove('hidden');
-            this.currentView = 'diff';
+
+    showView(viewName) {
+        this.hideAllViews();
+        let viewToShow;
+        switch (viewName) {
+            case 'notes':
+                viewToShow = this.viewElements.notes;
+                this.currentView = 'notes';
+                break;
+            case 'diff':
+                viewToShow = this.viewElements.diff;
+                this.currentView = 'diff';
+                break;
+            case 'systemPrompt':
+                if (!this.systemPromptViewContainer) {
+                    console.error('[ViewManager] CRITICAL: systemPromptViewContainer is null when trying to show systemPrompt view!');
+                    return; 
+                }
+                if (!this.systemPromptViewInstance) {
+                    try {
+                        this.systemPromptViewInstance = new SystemPromptView('systemPromptView');
+                    } catch (error) {
+                        console.error('[ViewManager] ERROR creating SystemPromptView instance:', error);
+                        return; // Stop if instance creation fails
+                    }
+                }
+                viewToShow = this.viewElements.systemPrompt;
+                this.currentView = 'systemPrompt';
+                break;
+            default:
+                viewToShow = this.viewElements.notes;
+                this.currentView = 'notes';
+        }
+        if (viewToShow) {
+            viewToShow.classList.remove('hidden');
         } else {
-            this.notesView.classList.remove('hidden');
-            this.diffView.classList.add('hidden');
-            this.currentView = 'notes';
+            console.error(`[ViewManager] No view element found to show for: ${viewName}`);
+        }
+    }
+    
+    toggleBetweenNotesAndDiff() {
+        if (this.currentView === 'notes') {
+            this.showView('diff');
+        } else if (this.currentView === 'diff') {
+            this.showView('notes');
+        } else {
+            this.showView('notes');
         }
     }
 }

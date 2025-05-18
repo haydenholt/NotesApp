@@ -37,6 +37,12 @@ describe('NoteApp', () => {
   let mockSearchInput;
   let mockClearSearchButton;
   let mockOffPlatformContainer;
+  // Add mocks for System Prompt View elements
+  let mockSystemPromptInputCode;
+  let mockCopySystemPromptButton1;
+  let mockSystemPromptInputPrompt2;
+  let mockSystemPromptInputResponse2;
+  let mockCopySystemPromptButton2;
 
   beforeEach(() => {
     // Reset mocks
@@ -75,6 +81,18 @@ describe('NoteApp', () => {
     mockOffPlatformContainer = document.createElement('div');
     mockOffPlatformContainer.id = 'offPlatformContainer';
 
+    // Create mock System Prompt View elements
+    mockSystemPromptInputCode = document.createElement('textarea');
+    mockSystemPromptInputCode.id = 'systemPromptInputCode';
+    mockCopySystemPromptButton1 = document.createElement('button');
+    mockCopySystemPromptButton1.id = 'copySystemPromptButton1';
+    mockSystemPromptInputPrompt2 = document.createElement('textarea');
+    mockSystemPromptInputPrompt2.id = 'systemPromptInputPrompt2';
+    mockSystemPromptInputResponse2 = document.createElement('textarea');
+    mockSystemPromptInputResponse2.id = 'systemPromptInputResponse2';
+    mockCopySystemPromptButton2 = document.createElement('button');
+    mockCopySystemPromptButton2.id = 'copySystemPromptButton2';
+
     // Add elements to document
     document.body.appendChild(mockContainer);
     document.body.appendChild(mockTotalTimeDisplay);
@@ -84,6 +102,12 @@ describe('NoteApp', () => {
     document.body.appendChild(mockSearchInput);
     document.body.appendChild(mockClearSearchButton);
     document.body.appendChild(mockOffPlatformContainer);
+    // Add System Prompt View elements to document
+    document.body.appendChild(mockSystemPromptInputCode);
+    document.body.appendChild(mockCopySystemPromptButton1);
+    document.body.appendChild(mockSystemPromptInputPrompt2);
+    document.body.appendChild(mockSystemPromptInputResponse2);
+    document.body.appendChild(mockCopySystemPromptButton2);
 
     // Remove the old spy-based localStorage mocks
     // jest.spyOn(Storage.prototype, ...) calls removed
@@ -1598,6 +1622,18 @@ describe('NoteApp', () => {
     const mockOffPlatformContainer = document.createElement('div');
     mockOffPlatformContainer.id = 'offPlatformContainer';
 
+    // Recreate System Prompt View elements as well for this test
+    const mockSystemPromptInputCode = document.createElement('textarea');
+    mockSystemPromptInputCode.id = 'systemPromptInputCode';
+    const mockCopySystemPromptButton1 = document.createElement('button');
+    mockCopySystemPromptButton1.id = 'copySystemPromptButton1';
+    const mockSystemPromptInputPrompt2 = document.createElement('textarea');
+    mockSystemPromptInputPrompt2.id = 'systemPromptInputPrompt2';
+    const mockSystemPromptInputResponse2 = document.createElement('textarea');
+    mockSystemPromptInputResponse2.id = 'systemPromptInputResponse2';
+    const mockCopySystemPromptButton2 = document.createElement('button');
+    mockCopySystemPromptButton2.id = 'copySystemPromptButton2';
+
     // Add elements to document
     document.body.appendChild(mockContainer);
     document.body.appendChild(mockTotalTimeDisplay);
@@ -1607,6 +1643,12 @@ describe('NoteApp', () => {
     document.body.appendChild(mockSearchInput);
     document.body.appendChild(mockClearSearchButton);
     document.body.appendChild(mockOffPlatformContainer);
+    // Add System Prompt View elements to document for this test
+    document.body.appendChild(mockSystemPromptInputCode);
+    document.body.appendChild(mockCopySystemPromptButton1);
+    document.body.appendChild(mockSystemPromptInputPrompt2);
+    document.body.appendChild(mockSystemPromptInputResponse2);
+    document.body.appendChild(mockCopySystemPromptButton2);
     
     // Set the date again
     const today = new Date().toISOString().split('T')[0];
