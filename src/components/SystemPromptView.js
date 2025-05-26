@@ -191,9 +191,9 @@ Review the response for:
 Offer a thorough evaluation for each dimension and, where applicable, provide examples to illustrate recommended improvements or corrections. Maintain a clear, friendly, and professional tone in responses, keeping feedback focused and relevant to the provided code.
 4. **Code Documentation** - Check if the documentation (if present) is accurate, meaningful and reflects the code well
 5. **Code Design** - Code design constitutes good programming practices such as modularity, separation of concerns, abstraction, etc. Briefly comment on how well the code adheres to good programming practices
-6. ** Explanation Accuracy** - Check if the explanation is accurate. All statements should be truthful and not misleading. The changelog, if present, should accurately reflect the changes made to the code.
+6. **Explanation Accuracy** - Check if the explanation is accurate. All statements should be truthful and not misleading. The changelog, if present, should accurately reflect the changes made to the code.
 
-Try to be as concise as possible with your responses while not omitting any important call outs. Got it? I will provide you with the prompt and response now.
+Try to be as concise as possible with your responses while not omitting any important call outs. Be very critical in your evaluation, and provide a summary of the biggest flaws at the end. Got it? I will provide you with the prompt and response now.
 <prompt>
 {{PROMPT_PLACEHOLDER}}
 </prompt>
