@@ -9,6 +9,7 @@ describe('ViewManager', () => {
     document.body.innerHTML = `
       <div id="notesView"></div>
       <div id="diffView" class="hidden"></div>
+      <div id="systemPromptView" class="hidden"></div>
     `;
     
     // Create a new ViewManager instance

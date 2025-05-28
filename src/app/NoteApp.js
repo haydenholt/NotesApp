@@ -534,6 +534,11 @@ export class NoteApp {
             textarea.value = section.value;
             textarea.disabled = completed;
             
+            // Add bottom margin if not completed
+            if (!completed) {
+                textarea.classList.add('pb-6'); // Changed to smaller padding
+            }
+            
             // Store reference to the textarea
             sectionElements[section.key] = textarea;
 
@@ -852,6 +857,7 @@ export class NoteApp {
                 element.disabled = true;
                 element.classList.remove('text-black');
                 element.classList.add('text-gray-500');
+                element.classList.remove('pb-6'); // Changed to smaller padding
             }
         });
         
@@ -1002,6 +1008,7 @@ export class NoteApp {
                     element.disabled = false;
                     element.classList.remove('text-gray-500');
                     element.classList.add('text-black');
+                    element.classList.add('pb-6'); // Changed to smaller padding
                 }
             });
             
