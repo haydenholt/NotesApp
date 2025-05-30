@@ -652,9 +652,7 @@ export class NoteApp {
                 }
                 
                 // Show cancel confirmation
-                if (!completed) {
-                    this.showCancelConfirmation(number);
-                }
+                this.showCancelConfirmation(number);
             }
             // Keep existing Ctrl+x functionality
             if (e.ctrlKey && e.key === 'x') {
@@ -845,46 +843,39 @@ export class NoteApp {
     }
 
     completeNoteEditing(number, canceled = false) {
-        const note = this.notes.find(n => n.container.dataset.noteId == number);
-        if (!note) return;
+        const noteIndex = this.notes.findIndex(n => n.container.dataset.noteId == number);
+        if (noteIndex === -1) {
+            return;
+        }
+
+        const note = this.notes[noteIndex];
         
-        // Check if this is a new cancel operation or if the note was already canceled
         const isCanceled = canceled || note.canceled;
         
-        // Disable all textareas
+        // Disable all textareas and ID fields (UI updates)
         Object.values(note.elements).forEach(element => {
             if (element.tagName === 'TEXTAREA') {
                 element.disabled = true;
                 element.classList.remove('text-black');
                 element.classList.add('text-gray-500');
-                element.classList.remove('pb-6'); // Changed to smaller padding
+                element.classList.remove('pb-6');
             }
         });
-        
-        // Disable ID fields
         note.elements.attemptID.disabled = true;
         note.elements.attemptID.classList.remove('text-black');
         note.elements.attemptID.classList.add('text-gray-500', 'bg-gray-100');
-        
         note.elements.projectID.disabled = true;
         note.elements.projectID.classList.remove('text-black');
         note.elements.projectID.classList.add('text-gray-500', 'bg-gray-100');
-        
         note.elements.operationID.disabled = true;
         note.elements.operationID.classList.remove('text-black');
         note.elements.operationID.classList.add('text-gray-500', 'bg-gray-100');
         
-        // Add completed class here - make sure to remove any non-completed class first
+        // UI styling for note container and number display based on isCanceled
         note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
-        
-        // Apply different styling for canceled notes
+        const numberDisplay = note.container.querySelector('.font-bold.mb-2');
         if (isCanceled) {
             note.container.classList.add('bg-red-50');
-            // Mark the note as canceled
-            note.canceled = true;
-            
-            // Immediately update the number display to show "Cancelled"
-            const numberDisplay = note.container.querySelector('.font-bold.mb-2');
             if (numberDisplay) {
                 numberDisplay.textContent = 'Cancelled';
                 numberDisplay.classList.remove('text-gray-600');
@@ -892,16 +883,26 @@ export class NoteApp {
             }
         } else {
             note.container.classList.add('bg-gray-50');
-            // Ensure note is not marked as canceled
-            note.canceled = false;
+            if (numberDisplay && numberDisplay.textContent === 'Cancelled') {
+                 const nonCancelledNotes = this.notes.filter(n => !n.canceled && n.container.dataset.noteId <= number);
+                 numberDisplay.textContent = String(nonCancelledNotes.length); 
+                 numberDisplay.classList.remove('text-red-600');
+                 numberDisplay.classList.add('text-gray-600');
+            }
         }
         
-        // Set the completed state on the note object
+        // Update in-memory note object properties
         note.completed = true;
-        // Sync with timer
-        note.timer.completed = true;
+        note.canceled = isCanceled;
         
-        // Update timer color based on canceled state
+        // Sync and update in-memory timer properties
+        note.timer.completed = true;
+        if (!note.timer.endTimestamp && note.timer.hasStarted) {
+            note.timer.stop();
+        }
+        note.timer.hasStarted = true; // Ensure hasStarted is true
+        
+        // Update timer display UI
         const timerDisplay = note.timer.displayElement;
         timerDisplay.classList.remove('text-gray-600', 'text-green-600', 'text-red-600');
         if (isCanceled) {
@@ -909,81 +910,45 @@ export class NoteApp {
         } else {
             timerDisplay.classList.add('text-green-600');
         }
-        
-        // Update the saved state
+
+        // Explicitly update the note in the this.notes array with the modified object
+        this.notes[noteIndex] = note;
+
+        // Update the saved state in localStorage
         const savedNotes = JSON.parse(localStorage.getItem(this.currentDate) || '{}');
         if (savedNotes[number]) {
-            // If the timer was running, stop it
-            if (!note.timer.endTimestamp) {
-                note.timer.stop();
-            }
-            
-            // Make sure hasStarted is true
-            note.timer.hasStarted = true;
-            
-            // Update completed state after stopping timer
-            savedNotes[number].completed = true;
+            savedNotes[number].completed = note.completed; // Use updated in-memory state
             savedNotes[number].endTimestamp = note.timer.endTimestamp;
-            savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
-            savedNotes[number].canceled = isCanceled; // Save the canceled state
+            savedNotes[number].hasStarted = note.timer.hasStarted;
+            savedNotes[number].canceled = note.canceled; // Use updated in-memory state
             
             localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             
-            // Update button visibility
+            // Update button visibility (UI)
             note.saveButton.style.display = 'none';
             note.editButton.style.display = 'block';
             
-            // Update statistics after completion
+            // Update statistics (UI)
             this.updateStatistics();
             this.updateProjectFailRates();
             
-            // Check if there's an active search and apply it if needed
+            // Logic for creating a new note if needed
             if (this.searchInput.value.trim() !== '') {
                 this.searchNotes(this.searchInput.value);
             } else if (!this.isSearchActive) {
-                // Check if there's already an empty note or any note in progress
-                const hasInProgressNote = this.notes.some(n => {
-                    // A note is in progress if it's not completed and has any content
-                    return !n.completed && (
-                        n.elements.failingIssues.value.trim() !== '' ||
-                        n.elements.nonFailingIssues.value.trim() !== '' ||
-                        n.elements.discussion.value.trim() !== '' ||
-                        n.elements.projectID.value.trim() !== '' ||
-                        n.elements.attemptID.value.trim() !== ''
-                    );
-                });
-                
-                const hasEmptyNote = this.notes.some(n => {
-                    // An empty note has no text in any fields and is not completed
-                    return !n.completed && 
-                           n.elements.failingIssues.value.trim() === '' &&
-                           n.elements.nonFailingIssues.value.trim() === '' &&
-                           n.elements.discussion.value.trim() === '' &&
-                           n.elements.projectID.value.trim() === '' &&
-                           n.elements.attemptID.value.trim() === '';
-                });
-                
-                // Check if this note was previously marked as being edited
-                const wasBeingEdited = this.editingNotes[this.currentDate] && 
-                                     this.editingNotes[this.currentDate][number];
-                
-                // Special handling for our edge case test
-                // If this note was specifically flagged for date-change editing, force create a new note
-                const forceCreateNew = localStorage.getItem('forceCreateNewOnEdit') === 'true';
-                
-                // Create a new note only if:
-                // 1. There's no empty note already AND
-                // 2. There's no note in progress AND
-                // 3. Either it's a force create situation OR this wasn't a note being edited
-                if ((!hasEmptyNote && !hasInProgressNote) || forceCreateNew) {
+                const hasInProgressNote = this.notes.some(n => !n.completed && (n.elements.failingIssues.value.trim() !== '' || n.elements.nonFailingIssues.value.trim() !== '' || n.elements.discussion.value.trim() !== '' || n.elements.projectID.value.trim() !== '' || n.elements.attemptID.value.trim() !== ''));
+                const hasEmptyNote = this.notes.some(n => !n.completed && n.elements.failingIssues.value.trim() === '' && n.elements.nonFailingIssues.value.trim() === '' && n.elements.discussion.value.trim() === '' && n.elements.projectID.value.trim() === '' && n.elements.attemptID.value.trim() === '');
+                if (!hasEmptyNote && !hasInProgressNote) { 
                     this.createNewNote(this.getNextNoteNumber());
                 }
             }
             
-            // Clear editing flag since the editing is now complete
+            // Clear editing flag
             if (this.editingNotes[this.currentDate] && this.editingNotes[this.currentDate][number]) {
                 delete this.editingNotes[this.currentDate][number];
             }
+        } else {
+            // Note not found in savedNotes
         }
     }
 
@@ -1027,7 +992,7 @@ export class NoteApp {
             
             // Update styling (will be changed once we reload)
             note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
-            note.container.classList.add('bg-gray-50');
+            note.container.classList.add('bg-white');
             
             // Update note object property
             note.completed = false;
@@ -2174,7 +2139,7 @@ export class NoteApp {
     // Refactored method to show cancel confirmation inline within the note
     showCancelConfirmation(number) {
         const note = this.notes.find(n => n.container.dataset.noteId == number);
-        if (!note || note.completed) return;
+        if (!note) return; // Keep this check
         // Initialize pendingCancellations map for current date
         if (!this.pendingCancellations) {
             this.pendingCancellations = {};
@@ -2223,7 +2188,6 @@ export class NoteApp {
         confirmBtn.addEventListener('click', () => {
             delete this.pendingCancellations[this.currentDate][number];
             // Save and complete cancellation
-            this.saveNote(number, note.timer.startTimestamp, note.timer.endTimestamp, false, true);
             this.completeNoteEditing(number, true);
             container.removeChild(confirmationDiv);
             delete note.confirmationDiv;

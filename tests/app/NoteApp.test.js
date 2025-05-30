@@ -1899,7 +1899,7 @@ describe('NoteApp', () => {
     
     // Verify note is now in editing mode
     expect(failingIssuesTextarea.disabled).toBe(false);
-    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    expect(note.classList.contains('bg-white')).toBe(true);
     expect(note.classList.contains('bg-red-50')).toBe(false);
     
     // Verify timer color changed
@@ -2178,6 +2178,108 @@ describe('NoteApp', () => {
     
     // Clean up spy
     showCancelConfirmationSpy.mockRestore();
+  });
+
+  test('should show cancel confirmation dialog when F1 is pressed on a loaded, completed note', () => {
+    // 1. Save a completed note to localStorage to simulate a loaded note
+    const today = new Date().toISOString().split('T')[0];
+    const noteData = {
+      failingIssues: 'Loaded note content',
+      nonFailingIssues: '',
+      discussion: '',
+      startTimestamp: Date.now() - 10000, // 10 seconds ago
+      endTimestamp: Date.now() - 5000,    // 5 seconds ago
+      completed: true,
+      projectID: 'LOADED-PROJ',
+      attemptID: 'LOADED-ATT',
+      operationID: 'LOADED-OP',
+      additionalTime: 0,
+      hasStarted: true,
+      canceled: false
+    };
+    localStorage.setItem(today, JSON.stringify({ '1': noteData }));
+
+    // 2. Re-initialize NoteApp to load the note from storage
+    noteApp.container.innerHTML = ''; // Clear existing notes
+    noteApp = new NoteApp(); // This will call loadNotes
+
+    // 3. Get the loaded note (it should be the first and only one)
+    const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(loadedNoteElement).not.toBeNull();
+    
+    // Verify it's marked as completed visually (e.g., bg-gray-50)
+    expect(loadedNoteElement.classList.contains('bg-gray-50')).toBe(true);
+
+    // 4. Spy on showCancelConfirmation
+    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+
+    // 5. Trigger F1 event on the loaded note container
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    loadedNoteElement.dispatchEvent(F1Event);
+
+    // 6. Verify showCancelConfirmation was called for the loaded note
+    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+
+    // 7. Verify the confirmation dialog is visible
+    const confirmationDiv = loadedNoteElement.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDiv).not.toBeNull();
+    expect(confirmationDiv.innerHTML).toContain('Yes, Cancel Note');
+
+    showCancelConfirmationSpy.mockRestore();
+  });
+
+  test('should correctly cancel a loaded note when cancellation is confirmed', () => {
+    // 1. Save a completed note to localStorage
+    const today = new Date().toISOString().split('T')[0];
+    const noteData = {
+      failingIssues: 'Content of a loaded note to be canceled',
+      startTimestamp: Date.now() - 20000,
+      endTimestamp: Date.now() - 10000,
+      completed: true,
+      canceled: false,
+      projectID: 'PROJ-CANCEL-LOADED',
+      hasStarted: true // Add this line for consistency
+    };
+    localStorage.setItem(today, JSON.stringify({ '1': noteData }));
+
+    // 2. Re-initialize NoteApp
+    noteApp.container.innerHTML = '';
+    noteApp = new NoteApp();
+
+    // 3. Get the loaded note
+    const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(loadedNoteElement).not.toBeNull();
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteObj).toBeDefined();
+
+    // 4. Trigger F1 to show confirmation (or directly call showCancelConfirmation if preferred for robustness)
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    loadedNoteElement.dispatchEvent(F1Event);
+    
+    // 5. Find and click the "Yes, Cancel Note" button in the confirmation dialog
+    const confirmButton = Array.from(loadedNoteElement.querySelectorAll('button')).find(btn => btn.textContent === 'Yes, Cancel Note');
+    expect(confirmButton).not.toBeNull();
+    confirmButton.click();
+
+    // 6. Verify the note is marked as canceled in memory and visually
+    const updatedNoteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1'); // Re-fetch the note object
+    expect(updatedNoteObj.canceled).toBe(true);
+    expect(updatedNoteObj.completed).toBe(true); // It's completed *and* canceled
+    expect(loadedNoteElement.classList.contains('bg-red-50')).toBe(true);
+    
+    const timerDisplay = loadedNoteElement.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+
+    // 7. Verify textareas and ID fields are disabled
+    const textarea = loadedNoteElement.querySelector('textarea');
+    expect(textarea.disabled).toBe(true);
+    const projectIDInput = loadedNoteElement.querySelector('input[placeholder="Enter ID"]');
+    expect(projectIDInput.disabled).toBe(true);
+
+    // 8. Verify the state is saved to localStorage
+    const savedData = JSON.parse(localStorage.getItem(today) || '{}');
+    expect(savedData['1'].canceled).toBe(true);
+    expect(savedData['1'].completed).toBe(true);
   });
 
 }); 
