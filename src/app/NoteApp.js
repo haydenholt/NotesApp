@@ -964,8 +964,6 @@ export class NoteApp {
             }
             this.editingNotes[this.currentDate][number] = true;
             
-            // Store the canceled state for when we save the note later
-            const wasCanceled = note.canceled;
             
             // Enable all textareas
             Object.values(note.elements).forEach(element => {
@@ -990,7 +988,6 @@ export class NoteApp {
             note.elements.operationID.classList.remove('text-gray-500', 'bg-gray-100');
             note.elements.operationID.classList.add('text-black');
             
-            // Update styling (will be changed once we reload)
             note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
             note.container.classList.add('bg-white');
             
@@ -1004,7 +1001,6 @@ export class NoteApp {
             // Make sure hasStarted is true when editing a completed note
             note.timer.hasStarted = true;
             
-            // FIX: Update timer color back to gray when editing
             const timerDisplay = note.timer.displayElement;
             timerDisplay.classList.remove('text-green-600', 'text-red-600');
             timerDisplay.classList.add('text-gray-600');
@@ -1017,7 +1013,6 @@ export class NoteApp {
             if (savedNotes[number]) {
                 savedNotes[number].completed = false;
                 savedNotes[number].hasStarted = true; // Ensure hasStarted is saved as true
-                // Important: Ensure canceled state is preserved in localStorage
                 // This will be used when the note is completed again
                 localStorage.setItem(this.currentDate, JSON.stringify(savedNotes));
             }
@@ -2140,6 +2135,12 @@ export class NoteApp {
     showCancelConfirmation(number) {
         const note = this.notes.find(n => n.container.dataset.noteId == number);
         if (!note) return; // Keep this check
+
+        // Prevent canceling if the timer hasn't started
+        if (!note.timer.hasStarted) {
+            return; 
+        }
+
         // Initialize pendingCancellations map for current date
         if (!this.pendingCancellations) {
             this.pendingCancellations = {};

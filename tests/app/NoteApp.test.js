@@ -2282,4 +2282,35 @@ describe('NoteApp', () => {
     expect(savedData['1'].completed).toBe(true);
   });
 
+  test('should not allow canceling a note if the timer has not started', () => {
+    // Get the initial note (timer should not have started)
+    const noteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(noteElement).not.toBeNull();
+
+    const noteInstance = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteInstance.timer.hasStarted).toBe(false); // Ensure timer hasn't started
+
+    // Spy on showCancelConfirmation and completeNoteEditing
+    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+    const completeNoteEditingSpy = jest.spyOn(noteApp, 'completeNoteEditing');
+
+    // Simulate pressing F1 to attempt to cancel
+    const f1Event = new KeyboardEvent('keydown', { key: 'F1', bubbles: true });
+    noteElement.dispatchEvent(f1Event);
+
+    // Verify showCancelConfirmation was called
+    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+
+    // Verify that the confirmation dialog was NOT shown
+    const confirmationDialog = noteElement.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDialog).toBeNull();
+
+    // Verify that completeNoteEditing was NOT called
+    expect(completeNoteEditingSpy).not.toHaveBeenCalled();
+
+    // Clean up spies
+    showCancelConfirmationSpy.mockRestore();
+    completeNoteEditingSpy.mockRestore();
+  });
+
 }); 
