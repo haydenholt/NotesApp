@@ -12,7 +12,6 @@ export class NoteApp {
         this.searchInput = document.getElementById('searchInput');
         this.clearSearchButton = document.getElementById('clearSearchButton');
         this.editingNotes = {}; // Track which notes are being edited (vs. new notes), per date
-        this.exportButton = document.getElementById('exportCsvButton'); // Initialize export button
         
         // Initialize date
         const today = new Date().toISOString().split('T')[0];
@@ -96,11 +95,7 @@ export class NoteApp {
         setTimeout(() => {
             this.createOffPlatformSection();
         }, 0);
-        
-        // Add event listener for the export button
-        if (this.exportButton) {
-            this.exportButton.addEventListener('click', () => this.exportToCSV());
-        }
+
     }
     
     // New method to add date navigation buttons
@@ -403,6 +398,8 @@ export class NoteApp {
                     // Append a new note and scroll it into view
                     const newNote = this.createNewNote(this.getNextNoteNumber());
                     newNote.container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Focus the first textarea of the newly created note
+                    newNote.elements.failingIssues.focus();
                 }
             }
             

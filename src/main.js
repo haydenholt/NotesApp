@@ -4,8 +4,6 @@
 import NoteApp from './app/NoteApp.js';
 import DiffTool from './components/DiffTool.js';
 import ViewManager from './components/ViewManager.js';
-import PayAnalysis from './app/PayAnalysis.js';
-
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize app components
@@ -17,8 +15,4 @@ document.addEventListener('DOMContentLoaded', () => {
     window.noteApp = app;
     window.diffTool = diffTool;
     window.viewManager = viewManager;
-
-    // Initialize pay analysis component
-    const payAnalysis = new PayAnalysis();
-    window.payAnalysis = payAnalysis;
 });
