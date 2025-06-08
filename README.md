@@ -1,6 +1,6 @@
 # Timer Notes
 
-A web-based note-taking application with time tracking and text comparison features.
+A web-based note-taking application with time tracking, text comparison, and system prompt generation features.
 
 
 ## Features
@@ -8,9 +8,10 @@ A web-based note-taking application with time tracking and text comparison featu
 - **Time Tracking**: Track total time spent on task. The time starts once an ID or text is entered into a note.
 - **Off-Platform Time Tracking**: Track time spent on activities outside the platform (training, sheetwork, blocked time)
 - **Feedback**: Auto-format feedback with Ctrl-X
-- **Writing Tool Integration**: Works seamlessly with Quillbot and Grammarly for enhanced writing and editing
+- **Writing Tool Integration**: Works with Quillbot and Grammarly for checking grammar and spelling
 - **Text Diff Tool**: Compare two versions of text with a built-in diff viewer
 - **Note Cancellation**: Press `F1` on any non-completed note mark the note as a canceled task and copy the cancellation message to the clipboard
+- **System Prompt Generators**: Generate specialized prompts for code setup instructions and AI response evaluation
 
 
 ## Installation
@@ -55,11 +56,22 @@ python -m http.server 8000
    - Paste original and modified text
    - Compare differences between texts
 
+4. **System Prompt View** (Ctrl+P):
+   - LLM prompt template formatter
+   - Use Ctrl+X in the to copy the generated prompt
+   - **Code Setup Prompt Generator**: 
+     - Gives instructions on how to setup environment
+     - Works with either the prompt or response with the code you want to run
+   - **Prompt/Response Evaluation Generator**:
+     - Evaluates a prompt and response pair
+     - Covers code correctness, instruction following, efficiency, documentation, design, and explanation accuracy
+
 ## Keyboard Controls
 
 - **Ctrl+Enter**: Finish current note and stop the timer
-- **Ctrl+X**: Copy formatted feedback to clipboard
+- **Ctrl+X**: Copy formatted feedback to clipboard (Notes view) or copy generated prompt (System Prompt view)
 - **Ctrl+D**: Switch between Notes view and Diff view
+- **Ctrl+P**: Switch between Notes view and System Prompt view
 - **F1**: Cancel the current active note and copy cancellation message to clipboard.
 
 ## Writing Tool Integration

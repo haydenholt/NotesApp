@@ -4,7 +4,6 @@
 import NoteApp from './app/NoteApp.js';
 import DiffTool from './components/DiffTool.js';
 import ViewManager from './components/ViewManager.js';
-
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize app components

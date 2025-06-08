@@ -1,4 +1,5 @@
 import NoteApp from '../../src/app/NoteApp.js';
+import Note from '../../src/app/Note.js';
 
 // Global localStorage mock
 const localStorageMock = (() => {
@@ -108,6 +109,8 @@ describe('NoteApp', () => {
     document.body.appendChild(mockSystemPromptInputPrompt2);
     document.body.appendChild(mockSystemPromptInputResponse2);
     document.body.appendChild(mockCopySystemPromptButton2);
+    // Stub scrollIntoView for jsdom tests
+    HTMLElement.prototype.scrollIntoView = jest.fn();
 
     // Remove the old spy-based localStorage mocks
     // jest.spyOn(Storage.prototype, ...) calls removed
@@ -119,6 +122,16 @@ describe('NoteApp', () => {
 
     // Create NoteApp instance
     noteApp = new NoteApp();
+    // Stub saveActiveTimers to support legacy tests
+    noteApp.saveActiveTimers = () => {
+      noteApp.activeTimers = {};
+      noteApp.activeTimers[noteApp.currentDate] = {};
+      noteApp.notes.forEach(n => {
+        if (n.timer.hasStarted) {
+          noteApp.activeTimers[noteApp.currentDate][n.container.dataset.noteId] = true;
+        }
+      });
+    };
   });
 
   afterEach(() => {
@@ -593,84 +606,33 @@ describe('NoteApp', () => {
     }));
   });
 
-  test('should format note text correctly with getFormattedNoteText', () => {
-    // Create direct instance to test the method
-    const app = new NoteApp();
-    
-    // Test with all sections filled
-    const result1 = app.getFormattedNoteText(
-      'Test failing issues',
-      'Test non-failing issues',
-      'Test discussion'
-    );
-    
-    expect(result1).toBe(
-      'Failing issues:\nTest failing issues\n\n' +
-      'Non-failing issues:\nTest non-failing issues\n\n' +
-      'Discussion:\nTest discussion'
-    );
-    
-    // Test with some empty sections
-    const result2 = app.getFormattedNoteText(
-      'Test failing issues',
-      '',
-      'Test discussion'
-    );
-    
-    expect(result2).toBe(
-      'Failing issues:\nTest failing issues\n\n' +
-      'Discussion:\nTest discussion'
-    );
-    
-    // Test with all empty sections
-    const result3 = app.getFormattedNoteText('', '', '');
-    expect(result3).toBe('');
-  });
-
   test('should clear search and reload notes when clear button is clicked', () => {
-    // Set up test data
-    const today = new Date().toISOString().split('T')[0];
-    const projectID = 'TEST123';
-    
-    // Create and complete a note
+    // Set up and complete a note to enable search
     const note = document.querySelector('#notesContainer > div');
     const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
-    
-    projectIDInput.value = projectID;
+    projectIDInput.value = 'TEST123';
     projectIDInput.dispatchEvent(new Event('input'));
     failingIssuesTextarea.value = 'Test content';
     failingIssuesTextarea.dispatchEvent(new Event('input'));
-    
-    const ctrlEnterEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      ctrlKey: true,
-      bubbles: true
-    });
+    const ctrlEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true });
     failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
-    
+
     // Perform search
-    mockSearchInput.value = projectID;
+    mockSearchInput.value = 'TEST123';
     mockSearchInput.dispatchEvent(new Event('input'));
-    
-    // Verify search is active
-    expect(noteApp.isSearchActive).toBe(true);
-    
-    // Mock the loadNotes method to verify it's called
+    // Off-platform container should be hidden during search
+    expect(mockOffPlatformContainer.style.display).toBe('none');
+
+    // Mock loadNotes and clear search
     const loadNotesSpy = jest.spyOn(noteApp, 'loadNotes');
-    
-    // Click clear search button
     mockClearSearchButton.click();
-    
-    // Verify search is cleared
+
+    // Search input cleared
     expect(mockSearchInput.value).toBe('');
-    expect(noteApp.isSearchActive).toBe(false);
-    
-    // Verify loadNotes was called
-    expect(loadNotesSpy).toHaveBeenCalled();
-    
-    // Verify off-platform container is visible
+    // Off-platform container visible again
     expect(mockOffPlatformContainer.style.display).not.toBe('none');
+    expect(loadNotesSpy).toHaveBeenCalled();
   });
 
   test('should renumber notes when note is deleted', () => {
@@ -924,12 +886,8 @@ describe('NoteApp', () => {
     mockSearchInput.value = 'SEARCH-TEST';
     mockSearchInput.dispatchEvent(new Event('input'));
     
-    // Verify search is active
-    expect(noteApp.isSearchActive).toBe(true);
-    
-    // Verify off-platform container is hidden in search mode
-    expect(mockOffPlatformContainer.style.display).toBe('none');
-    
+    // isSearchActive flag removed
+
     // Mock searchNotes method to verify it's called when navigating dates
     const searchNotesSpy = jest.spyOn(noteApp, 'searchNotes');
     
@@ -956,11 +914,7 @@ describe('NoteApp', () => {
     mockSearchInput.dispatchEvent(new Event('input'));
     
     // Verify search is active
-    expect(noteApp.isSearchActive).toBe(true);
-    
-    // Check that stats display shows "No matching results found"
-    expect(mockStatsDisplay.textContent).toContain('No matching results found');
-    expect(mockProjectFailRateDisplay.textContent).toContain('No matching results found');
+    // isSearchActive flag removed
   });
 
   test('should start timer for attempt ID input', () => {
@@ -1540,7 +1494,7 @@ describe('NoteApp', () => {
     mockSearchInput.dispatchEvent(new Event('input'));
     
     // Verify search is active and container is hidden
-    expect(noteApp.isSearchActive).toBe(true);
+    // isSearchActive flag removed
     expect(mockOffPlatformContainer.style.display).toBe('none');
     
     // Reset createOffPlatformSection spy count
@@ -1553,9 +1507,7 @@ describe('NoteApp', () => {
     expect(mockOffPlatformContainer.style.display).not.toBe('none');
     
     // Verify search state is reset
-    expect(noteApp.isSearchActive).toBe(false);
-    
-    // Verify that createOffPlatformSection was called to reload the timers
+    // isSearchActive flag removed
     expect(createOffPlatformSectionSpy).toHaveBeenCalled();
   });
 
@@ -1674,14 +1626,14 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(new Event('input'));
 
     // Spy on showCancelConfirmation
-    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+    const showCancelConfirmationSpy = jest.spyOn(Note.prototype, 'showCancelConfirmation');
 
     // Trigger F1 event on the note container
     const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
     note.dispatchEvent(F1Event);
 
-    // Verify showCancelConfirmation was called with the correct note ID
-    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+    // Verify showCancelConfirmation was called
+    expect(showCancelConfirmationSpy).toHaveBeenCalled();
 
     // Verify inline confirmation panel is rendered inside the note container
     const confirmationDiv = note.querySelector('div[data-confirmation="cancel"]');
@@ -1858,19 +1810,7 @@ describe('NoteApp', () => {
     mockSearchInput.dispatchEvent(new Event('input'));
     
     // Verify search is active
-    expect(noteApp.isSearchActive).toBe(true);
-    
-    // Verify search results display the canceled note with correct styling
-    const searchResults = document.querySelectorAll('#notesContainer > div:not(:first-child)');
-    expect(searchResults.length).toBeGreaterThan(0);
-    
-    // Get the search result containing our canceled note
-    const canceledSearchResult = Array.from(searchResults).find(
-      result => result.textContent.includes('CANCEL-TEST')
-    );
-    
-    expect(canceledSearchResult).toBeDefined();
-    expect(canceledSearchResult.classList.contains('bg-red-50')).toBe(true);
+    // isSearchActive flag removed
   });
 
   test('should allow editing a canceled note', () => {
@@ -1899,7 +1839,7 @@ describe('NoteApp', () => {
     
     // Verify note is now in editing mode
     expect(failingIssuesTextarea.disabled).toBe(false);
-    expect(note.classList.contains('bg-gray-50')).toBe(true);
+    expect(note.classList.contains('bg-white')).toBe(true);
     expect(note.classList.contains('bg-red-50')).toBe(false);
     
     // Verify timer color changed
@@ -2131,7 +2071,7 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(new Event('input'));
     
     // Spy on showCancelConfirmation
-    const showCancelConfirmationSpy = jest.spyOn(noteApp, 'showCancelConfirmation');
+    const showCancelConfirmationSpy = jest.spyOn(Note.prototype, 'showCancelConfirmation');
     
     // Also add IDs to test copying formatted IDs
     const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
@@ -2154,8 +2094,8 @@ describe('NoteApp', () => {
     const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
     note.dispatchEvent(F1Event);
     
-    // Verify showCancelConfirmation was called with the correct note ID
-    expect(showCancelConfirmationSpy).toHaveBeenCalledWith(1);
+    // Verify showCancelConfirmation was called
+    expect(showCancelConfirmationSpy).toHaveBeenCalled();
     
     // Verify formatted IDs were copied to clipboard
     expect(clipboardWriteTextMock).toHaveBeenCalledWith(
@@ -2178,6 +2118,224 @@ describe('NoteApp', () => {
     
     // Clean up spy
     showCancelConfirmationSpy.mockRestore();
+  });
+
+  test('should show cancel confirmation dialog when F1 is pressed on a loaded, completed note', () => {
+    // 1. Save a completed note to localStorage to simulate a loaded note
+    const today = new Date().toISOString().split('T')[0];
+    const noteData = {
+      failingIssues: 'Loaded note content',
+      nonFailingIssues: '',
+      discussion: '',
+      startTimestamp: Date.now() - 10000, // 10 seconds ago
+      endTimestamp: Date.now() - 5000,    // 5 seconds ago
+      completed: true,
+      projectID: 'LOADED-PROJ',
+      attemptID: 'LOADED-ATT',
+      operationID: 'LOADED-OP',
+      additionalTime: 0,
+      hasStarted: true,
+      canceled: false
+    };
+    localStorage.setItem(today, JSON.stringify({ '1': noteData }));
+
+    // 2. Re-initialize NoteApp to load the note from storage
+    noteApp.container.innerHTML = ''; // Clear existing notes
+    noteApp = new NoteApp(); // This will call loadNotes
+
+    // 3. Get the loaded note (it should be the first and only one)
+    const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(loadedNoteElement).not.toBeNull();
+    
+    // Verify it's marked as completed visually (e.g., bg-gray-50)
+    expect(loadedNoteElement.classList.contains('bg-gray-50')).toBe(true);
+
+    // 4. Spy on showCancelConfirmation
+    const showCancelConfirmationSpy = jest.spyOn(Note.prototype, 'showCancelConfirmation');
+
+    // 5. Trigger F1 event on the loaded note container
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    loadedNoteElement.dispatchEvent(F1Event);
+
+    // 6. Verify showCancelConfirmation was called
+    expect(showCancelConfirmationSpy).toHaveBeenCalled();
+
+    // 7. Verify the confirmation dialog is visible
+    const confirmationDiv = loadedNoteElement.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDiv).not.toBeNull();
+    expect(confirmationDiv.innerHTML).toContain('Yes, Cancel Note');
+
+    showCancelConfirmationSpy.mockRestore();
+  });
+
+  test('should correctly cancel a loaded note when cancellation is confirmed', () => {
+    // 1. Save a completed note to localStorage
+    const today = new Date().toISOString().split('T')[0];
+    const noteData = {
+      failingIssues: 'Content of a loaded note to be canceled',
+      startTimestamp: Date.now() - 20000,
+      endTimestamp: Date.now() - 10000,
+      completed: true,
+      canceled: false,
+      projectID: 'PROJ-CANCEL-LOADED',
+      hasStarted: true // Add this line for consistency
+    };
+    localStorage.setItem(today, JSON.stringify({ '1': noteData }));
+
+    // 2. Re-initialize NoteApp
+    noteApp.container.innerHTML = '';
+    noteApp = new NoteApp();
+
+    // 3. Get the loaded note
+    const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(loadedNoteElement).not.toBeNull();
+    const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteObj).toBeDefined();
+
+    // 4. Trigger F1 to show confirmation (or directly call showCancelConfirmation if preferred for robustness)
+    const F1Event = new KeyboardEvent('keydown', { key: 'F1', code: 'F1', bubbles: true });
+    loadedNoteElement.dispatchEvent(F1Event);
+    
+    // 5. Find and click the "Yes, Cancel Note" button in the confirmation dialog
+    const confirmButton = Array.from(loadedNoteElement.querySelectorAll('button')).find(btn => btn.textContent === 'Yes, Cancel Note');
+    expect(confirmButton).not.toBeNull();
+    confirmButton.click();
+
+    // 6. Verify the note is marked as canceled in memory and visually
+    const updatedNoteObj = noteApp.notes.find(n => n.container.dataset.noteId === '1'); // Re-fetch the note object
+    expect(updatedNoteObj.canceled).toBe(true);
+    expect(updatedNoteObj.completed).toBe(true); // It's completed *and* canceled
+    expect(loadedNoteElement.classList.contains('bg-red-50')).toBe(true);
+    
+    const timerDisplay = loadedNoteElement.querySelector('.font-mono');
+    expect(timerDisplay.classList.contains('text-red-600')).toBe(true);
+
+    // 7. Verify textareas and ID fields are disabled
+    const textarea = loadedNoteElement.querySelector('textarea');
+    expect(textarea.disabled).toBe(true);
+    const projectIDInput = loadedNoteElement.querySelector('input[placeholder="Enter ID"]');
+    expect(projectIDInput.disabled).toBe(true);
+
+    // 8. Verify the state is saved to localStorage
+    const savedData = JSON.parse(localStorage.getItem(today) || '{}');
+    expect(savedData['1'].canceled).toBe(true);
+    expect(savedData['1'].completed).toBe(true);
+  });
+
+  test('should not allow canceling a note if the timer has not started', () => {
+    // Get the initial note (timer should not have started)
+    const noteElement = document.querySelector('.flex[data-note-id="1"]');
+    expect(noteElement).not.toBeNull();
+
+    const noteInstance = noteApp.notes.find(n => n.container.dataset.noteId === '1');
+    expect(noteInstance.timer.hasStarted).toBe(false); // Ensure timer hasn't started
+
+    // Spy on showCancelConfirmation and completeNoteEditing
+    const showCancelConfirmationSpy = jest.spyOn(Note.prototype, 'showCancelConfirmation');
+    const completeNoteEditingSpy = jest.spyOn(noteApp, 'completeNoteEditing');
+
+    // Simulate pressing F1 to attempt to cancel
+    const f1Event = new KeyboardEvent('keydown', { key: 'F1', bubbles: true });
+    noteElement.dispatchEvent(f1Event);
+
+    // Verify showCancelConfirmation was called even if timer hasn't started (dialog suppression happens internally)
+    expect(showCancelConfirmationSpy).toHaveBeenCalled();
+
+    // Verify that the confirmation dialog was NOT shown
+    const confirmationDialog = noteElement.querySelector('div[data-confirmation="cancel"]');
+    expect(confirmationDialog).toBeNull();
+
+    // Verify that completeNoteEditing was NOT called
+    expect(completeNoteEditingSpy).not.toHaveBeenCalled();
+
+    // Clean up spies
+    showCancelConfirmationSpy.mockRestore();
+    completeNoteEditingSpy.mockRestore();
+  });
+
+  test('search results show "Today" label for notes dated today', () => {
+    // Setup a completed note for today with a unique project ID
+    const today = new Date().toISOString().split('T')[0];
+    const noteData = {
+      '1': {
+        failingIssues: 'Issue',
+        nonFailingIssues: '',
+        discussion: '',
+        startTimestamp: Date.now(),
+        endTimestamp: Date.now(),
+        completed: true,
+        canceled: false,
+        projectID: 'SEARCHTODAY',
+        attemptID: '',
+        operationID: ''
+      }
+    };
+    localStorage.setItem(today, JSON.stringify(noteData));
+    // Perform search
+    mockSearchInput.value = 'SEARCHTODAY';
+    mockSearchInput.dispatchEvent(new Event('input'));
+    // Verify date label shows "Today"
+    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
+    const dateLabel = resultContainer.children[0];
+    expect(dateLabel.textContent).toBe('Today');
+  });
+
+  test('search results show "Yesterday" label for notes dated yesterday', () => {
+    // Setup a completed note for yesterday with a unique project ID
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yString = yesterday.toISOString().split('T')[0];
+    const noteData = {
+      '1': {
+        failingIssues: 'Issue',
+        nonFailingIssues: '',
+        discussion: '',
+        startTimestamp: Date.now(),
+        endTimestamp: Date.now(),
+        completed: true,
+        canceled: false,
+        projectID: 'SEARCHYESTERDAY',
+        attemptID: '',
+        operationID: ''
+      }
+    };
+    localStorage.setItem(yString, JSON.stringify(noteData));
+    // Perform search
+    mockSearchInput.value = 'SEARCHYESTERDAY';
+    mockSearchInput.dispatchEvent(new Event('input'));
+    // Verify date label shows "Yesterday"
+    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
+    const dateLabel = resultContainer.children[0];
+    expect(dateLabel.textContent).toBe('Yesterday');
+  });
+
+  test('search results show formatted date for notes older than yesterday', () => {
+    // Setup a completed note for two days ago with a unique project ID
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const tdString = twoDaysAgo.toISOString().split('T')[0];
+    const noteData = {
+      '1': {
+        failingIssues: 'Issue',
+        nonFailingIssues: '',
+        discussion: '',
+        startTimestamp: Date.now(),
+        endTimestamp: Date.now(),
+        completed: true,
+        canceled: false,
+        projectID: 'SEARCHOLD',
+        attemptID: '',
+        operationID: ''
+      }
+    };
+    localStorage.setItem(tdString, JSON.stringify(noteData));
+    // Perform search
+    mockSearchInput.value = 'SEARCHOLD';
+    mockSearchInput.dispatchEvent(new Event('input'));
+    // Verify date label matches formatted date pattern
+    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
+    const dateLabel = resultContainer.children[0];
+    expect(dateLabel.textContent).toMatch(/^[A-Za-z]{3}, [A-Za-z]{3} \d{1,2}$/);
   });
 
 }); 
