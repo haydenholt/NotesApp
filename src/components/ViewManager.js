@@ -10,12 +10,15 @@ export class ViewManager {
         // Get the container for the SystemPromptView
         this.systemPromptViewContainer = document.getElementById('systemPromptView'); 
         this.systemPromptViewInstance = null; // To hold the instance
+        // Get the container for the Pay Analysis view
+        this.payAnalysisView = document.getElementById('payAnalysisView');
 
         // Store view containers for easy toggling
         this.viewElements = {
             notes: this.notesView,
             diff: this.diffView,
-            systemPrompt: this.systemPromptViewContainer
+            systemPrompt: this.systemPromptViewContainer,
+            payAnalysis: this.payAnalysisView
         };
         this.currentView = 'notes'; // 'notes', 'diff', or 'systemPrompt'
         
@@ -73,6 +76,10 @@ export class ViewManager {
                 }
                 viewToShow = this.viewElements.systemPrompt;
                 this.currentView = 'systemPrompt';
+                break;
+            case 'payAnalysis':
+                viewToShow = this.viewElements.payAnalysis;
+                this.currentView = 'payAnalysis';
                 break;
             default:
                 viewToShow = this.viewElements.notes;
