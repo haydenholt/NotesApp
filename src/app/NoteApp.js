@@ -281,6 +281,16 @@ export class NoteApp {
     }
 
     /**
+     * Mark a note as being edited (prevents auto-creating a new note when completed via ctrl+Enter)
+     */
+    markNoteAsEditing(number) {
+        if (!this.editingNotes[this.currentDate]) {
+            this.editingNotes[this.currentDate] = {};
+        }
+        this.editingNotes[this.currentDate][number] = true;
+    }
+
+    /**
      * Creates a new note using the Note class wrapper.
      */
     createNewNote(number) {
@@ -290,7 +300,7 @@ export class NoteApp {
             enableEditing: this.enableNoteEditing.bind(this),
             completeEditing: this.completeNoteEditing.bind(this),
             deleteNote: this.deleteNote.bind(this),
-           
+            markEditing: this.markNoteAsEditing.bind(this)
         });
         // Append to DOM and track in app
         this.container.appendChild(note.container);

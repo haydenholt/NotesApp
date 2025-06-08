@@ -1,15 +1,15 @@
 import Timer from '../components/Timer.js';
-import OffPlatformTimer from './OffPlatformTimer.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
-    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote}) {
+    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote, markEditing}) {
         // Minimal context for this Note
         this.number = number;
         this.date = date;
         this._enableNoteEditing = enableEditing;
         this._completeNoteEditing = completeEditing;
         this._deleteNote = deleteNote;
+        this._markEditing = markEditing;
 
 
         // Load saved note data for this date and ID
@@ -234,24 +234,6 @@ export class Note {
                 this.save(timer.startTimestamp, timer.endTimestamp, completed);
             });
 
-            // Add Ctrl+Enter handler to each textarea
-            textarea.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'Enter') {
-                    // Always allow Ctrl+Enter for notes with content
-                    if (timer.hasStarted) {
-                        e.preventDefault();
-
-                        // Mark as being edited to prevent creating a new note
-                        if (!app.editingNotes[app.currentDate]) {
-                            app.editingNotes[app.currentDate] = {};
-                        }
-                        app.editingNotes[app.currentDate][number] = true;
-                        
-                        // Complete the note
-                        app.completeNoteEditing(number);
-                    }
-                }
-            });
 
             sectionDiv.appendChild(label);
             sectionDiv.appendChild(textarea);
@@ -327,15 +309,11 @@ export class Note {
         contentContainer.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
                 // Always allow Ctrl+Enter for notes with content, regardless of completed state
-                if (timer.hasStarted) { 
+                if (timer.hasStarted) {
                     e.preventDefault();
 
                     // Mark as being edited to prevent creating a new note
-                    if (!app.editingNotes[app.currentDate]) {
-                        app.editingNotes[app.currentDate] = {};
-                    }
-                    app.editingNotes[app.currentDate][number] = true;
-                    
+                    this._markEditing(number);
                     // Call completeNoteEditing without changing the local completed flag
                     this._completeNoteEditing(number);
                 }
@@ -361,7 +339,6 @@ export class Note {
 
         noteContainer.appendChild(leftSidebar);
         noteContainer.appendChild(contentContainer);
-        // NoteApp will append noteContainer to its container
 
         // Attach instance properties to mirror old note object
         this.timer = timer;
@@ -374,8 +351,6 @@ export class Note {
 
         // Focus first textarea if new
         if (!completed) sectionElements.failingIssues.focus();
-
-        // (NoteApp will handle stats updates and DOM append)
     }
 
     /**
