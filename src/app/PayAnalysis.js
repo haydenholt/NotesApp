@@ -221,22 +221,22 @@ export class PayAnalysis {
         this.currentYear = today.getFullYear();
         this.calendarContainer.innerHTML = '';
 
-        // --- Import/Export controls ---
-        const controlsContainer = document.createElement('div');
-        controlsContainer.className = 'flex gap-2 mb-4';
-        // Export button
-        const exportBtn = document.createElement('button');
-        exportBtn.textContent = 'Export JSON';
-        exportBtn.className = 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded';
-        exportBtn.addEventListener('click', this.exportAllData.bind(this));
-        controlsContainer.appendChild(exportBtn);
-        // Import button
-        const importBtn = document.createElement('button');
-        importBtn.textContent = 'Import JSON';
-        importBtn.className = 'px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded';
-        importBtn.addEventListener('click', this.showImportDialog.bind(this));
-        controlsContainer.appendChild(importBtn);
-        this.calendarContainer.appendChild(controlsContainer);
+        // // --- Import/Export controls ---
+        // const controlsContainer = document.createElement('div');
+        // controlsContainer.className = 'flex gap-2 mb-4';
+        // // Export button
+        // const exportBtn = document.createElement('button');
+        // exportBtn.textContent = 'Export JSON';
+        // exportBtn.className = 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded';
+        // exportBtn.addEventListener('click', this.exportAllData.bind(this));
+        // controlsContainer.appendChild(exportBtn);
+        // // Import button
+        // const importBtn = document.createElement('button');
+        // importBtn.textContent = 'Import JSON';
+        // importBtn.className = 'px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded';
+        // importBtn.addEventListener('click', this.showImportDialog.bind(this));
+        // controlsContainer.appendChild(importBtn);
+        // this.calendarContainer.appendChild(controlsContainer);
         // --- End controls ---
 
         // Calendar container with balanced styling
