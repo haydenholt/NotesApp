@@ -33,6 +33,13 @@ export class ViewManager {
                 } else {
                     this.showView('systemPrompt');
                 }
+            } else if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                if (this.currentView === 'payAnalysis') {
+                    this.showView('notes');
+                } else {
+                    this.showView('payAnalysis');
+                }
             }
         });
 
@@ -87,6 +94,10 @@ export class ViewManager {
         }
         if (viewToShow) {
             viewToShow.classList.remove('hidden');
+            // Refresh pay analysis report when view is shown
+            if (this.currentView === 'payAnalysis' && window.payAnalysis) {
+                window.payAnalysis.generateReport();
+            }
         } else {
             console.error(`[ViewManager] No view element found to show for: ${viewName}`);
         }
