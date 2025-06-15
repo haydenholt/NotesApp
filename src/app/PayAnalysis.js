@@ -331,8 +331,7 @@ export class PayAnalysis {
             this.selectDate(localDate);
         });
         
-        this.calendarContainer.appendChild(todayBtn);
-        
+       
         this.updateCalendar();
     }
 
@@ -348,6 +347,7 @@ export class PayAnalysis {
         }
         this.updateCalendar();
     }
+
 
     // Update calendar grid with balanced styling
     updateCalendar() {
