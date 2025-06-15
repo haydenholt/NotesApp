@@ -291,7 +291,7 @@ describe('PayAnalysis', () => {
     expect(mockReportContainer.innerHTML).not.toBe('');
     
     // Verify report contains expected data
-    expect(mockReportContainer.innerHTML).toContain('Week of June 11, 2023');
+    expect(mockReportContainer.innerHTML).toContain('Week of June 12, 2023');
     
     // 7 days × (1 hour on-platform + 1 hour off-platform) = 14 hours
     expect(mockReportContainer.innerHTML).toContain('14.0');

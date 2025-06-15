@@ -19,7 +19,8 @@ export class PayAnalysis {
 
     generateReport() {
         if (!this.selectedMonday) return;
-        const monday = new Date(this.selectedMonday);
+        const [year, month, day] = this.selectedMonday.split('-').map(Number);
+        const monday = new Date(year, month - 1, day);
         const reportRows = [];
         let totalOnSeconds = 0;
         let totalOffSeconds = 0;
@@ -375,10 +376,7 @@ export class PayAnalysis {
         
         const monday = new Date(workDate);
         monday.setDate(workDate.getDate() - daysToSubtract);
-        
-        // Normalize to midnight to avoid any time-related issues
-        monday.setHours(0, 0, 0, 0);
-        
+
         this.selectedMonday = monday.toISOString().slice(0, 10);
         this.updateCalendar();
         this.generateReport();
