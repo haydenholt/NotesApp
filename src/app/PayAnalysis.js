@@ -13,20 +13,8 @@ export class PayAnalysis {
         if (this.calendarContainer) {
             this.renderCalendar();
         }
-        
-
-        // Force date to be based on local time to avoid any timezone issues
-        const today = new Date();
-        
-        // Ensure it's properly set to the local timezone's current date
-        const localDate = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            12, 0, 0, 0 // Set to noon to avoid any edge cases with DST
-        );
-        
-        this.selectDate(localDate);
+        // Select the current week on load
+        this.selectDate(new Date());
     }
 
     generateReport() {
@@ -62,7 +50,8 @@ export class PayAnalysis {
         const grandTotalSeconds = totalOnSeconds + totalOffSeconds;
         const totalHours = grandTotalSeconds / 3600;
         const payAmount = (totalHours * this.ratePerHour).toFixed(2);
-        
+    
+
         // Balanced summary cards with subtle color accents
         let html = `<div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-blue-300">
@@ -235,24 +224,6 @@ export class PayAnalysis {
         this.currentYear = today.getFullYear();
         this.calendarContainer.innerHTML = '';
 
-        // // --- Import/Export controls ---
-        // const controlsContainer = document.createElement('div');
-        // controlsContainer.className = 'flex gap-2 mb-4';
-        // // Export button
-        // const exportBtn = document.createElement('button');
-        // exportBtn.textContent = 'Export JSON';
-        // exportBtn.className = 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded';
-        // exportBtn.addEventListener('click', this.exportAllData.bind(this));
-        // controlsContainer.appendChild(exportBtn);
-        // // Import button
-        // const importBtn = document.createElement('button');
-        // importBtn.textContent = 'Import JSON';
-        // importBtn.className = 'px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded';
-        // importBtn.addEventListener('click', this.showImportDialog.bind(this));
-        // controlsContainer.appendChild(importBtn);
-        // this.calendarContainer.appendChild(controlsContainer);
-        // --- End controls ---
-
         // Calendar container with balanced styling
         const calendarWrapper = document.createElement('div');
         calendarWrapper.className = 'border border-gray-200 rounded-md bg-white shadow-sm';
@@ -310,28 +281,6 @@ export class PayAnalysis {
         this.datesGrid.className = 'grid grid-cols-7';
         calendarWrapper.appendChild(this.datesGrid);
         
-        // Today button - balanced styling
-        const todayBtn = document.createElement('button');
-        todayBtn.textContent = 'Today';
-        todayBtn.className = 'mt-3 px-3 py-1.5 border border-gray-300 hover:bg-blue-50 text-blue-600 rounded-md text-xs font-medium transition-colors';
-        todayBtn.addEventListener('click', () => {
-            const today = new Date();
-            
-            // Use a consistent timezone-safe date creation
-            const localDate = new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                today.getDate(),
-                12, 0, 0, 0 // Set to noon to avoid any edge cases with DST
-            );
-            
-            this.currentMonth = today.getMonth();
-            this.currentYear = today.getFullYear();
-            this.updateCalendar();
-            this.selectDate(localDate);
-        });
-        
-       
         this.updateCalendar();
     }
 
@@ -348,16 +297,10 @@ export class PayAnalysis {
         this.updateCalendar();
     }
 
-
     // Update calendar grid with balanced styling
     updateCalendar() {
         this.monthLabelElement.textContent = `${this.getMonthName(this.currentMonth)} ${this.currentYear}`;
         this.datesGrid.innerHTML = '';
-        
-        const today = new Date();
-        const todayDate = today.getDate();
-        const todayMonth = today.getMonth();
-        const todayYear = today.getFullYear();
         
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
         const startIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
@@ -377,29 +320,20 @@ export class PayAnalysis {
             cell.className = 'relative border-b border-gray-50';
             
             const dateObj = new Date(this.currentYear, this.currentMonth, day);
-            const isToday = day === todayDate && this.currentMonth === todayMonth && this.currentYear === todayYear;
-            
             // Determine if this date is in the selected week
             let isInSelectedWeek = false;
             if (this.selectedMonday) {
                 const mondayDate = new Date(this.selectedMonday);
                 const weekDates = [];
-                
-                // Generate all dates for the selected week, normalized to midnight
                 for (let j = 0; j < 7; j++) {
                     const d = new Date(mondayDate);
                     d.setDate(mondayDate.getDate() + j);
-                    // Use YYYY-MM-DD comparison for consistency
                     weekDates.push(d.toISOString().slice(0, 10));
                 }
-                
-                // Compare using YYYY-MM-DD format for consistency
                 const currentDateStr = dateObj.toISOString().slice(0, 10);
                 isInSelectedWeek = weekDates.includes(currentDateStr);
             }
             
-            // Check if this is a Monday (start of week)
-            const isMonday = dateObj.getDay() === 1;
             const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
             
             // Create the inner content of the date cell - balanced styling
@@ -408,14 +342,9 @@ export class PayAnalysis {
                                       ${isInSelectedWeek ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'} 
                                       transition-colors`;
             
-            // Date number with today indicator - balanced styling
+            // Date number without any "today" highlighting
             const dateNumber = document.createElement('div');
-            if (isToday) {
-                dateNumber.className = 'w-6 h-6 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs';
-            } else {
-                dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-medium' : 'font-light'} 
-                                      ${isWeekend ? 'text-gray-400' : 'text-gray-700'}`;
-            }
+            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-medium' : 'font-light'} ${isWeekend ? 'text-gray-400' : 'text-gray-700'}`;
             dateNumber.textContent = day;
             innerContent.appendChild(dateNumber);
             
