@@ -13,6 +13,20 @@ export class PayAnalysis {
         if (this.calendarContainer) {
             this.renderCalendar();
         }
+        
+
+        // Force date to be based on local time to avoid any timezone issues
+        const today = new Date();
+        
+        // Ensure it's properly set to the local timezone's current date
+        const localDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            12, 0, 0, 0 // Set to noon to avoid any edge cases with DST
+        );
+        
+        this.selectDate(localDate);
     }
 
     generateReport() {
@@ -301,10 +315,20 @@ export class PayAnalysis {
         todayBtn.textContent = 'Today';
         todayBtn.className = 'mt-3 px-3 py-1.5 border border-gray-300 hover:bg-blue-50 text-blue-600 rounded-md text-xs font-medium transition-colors';
         todayBtn.addEventListener('click', () => {
+            const today = new Date();
+            
+            // Use a consistent timezone-safe date creation
+            const localDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                12, 0, 0, 0 // Set to noon to avoid any edge cases with DST
+            );
+            
             this.currentMonth = today.getMonth();
             this.currentYear = today.getFullYear();
             this.updateCalendar();
-            this.selectDate(today);
+            this.selectDate(localDate);
         });
         
         this.calendarContainer.appendChild(todayBtn);
@@ -336,7 +360,7 @@ export class PayAnalysis {
         const todayYear = today.getFullYear();
         
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-        const startIndex = (firstDay.getDay() + 6) % 7; // Monday is 0
+        const startIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
         const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
         const totalCells = Math.ceil((startIndex + daysInMonth) / 7) * 7;
         
@@ -360,12 +384,18 @@ export class PayAnalysis {
             if (this.selectedMonday) {
                 const mondayDate = new Date(this.selectedMonday);
                 const weekDates = [];
+                
+                // Generate all dates for the selected week, normalized to midnight
                 for (let j = 0; j < 7; j++) {
                     const d = new Date(mondayDate);
                     d.setDate(mondayDate.getDate() + j);
+                    // Use YYYY-MM-DD comparison for consistency
                     weekDates.push(d.toISOString().slice(0, 10));
                 }
-                isInSelectedWeek = weekDates.includes(dateObj.toISOString().slice(0, 10));
+                
+                // Compare using YYYY-MM-DD format for consistency
+                const currentDateStr = dateObj.toISOString().slice(0, 10);
+                isInSelectedWeek = weekDates.includes(currentDateStr);
             }
             
             // Check if this is a Monday (start of week)
@@ -405,9 +435,21 @@ export class PayAnalysis {
 
     // Handle selection of a date to set week
     selectDate(date) {
-        const diff = (date.getDay() + 6) % 7;
-        const monday = new Date(date);
-        monday.setDate(date.getDate() - diff);
+        // Ensure we're working with a fresh Date object to avoid mutation issues
+        const workDate = new Date(date.getTime());
+        
+        // Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
+        const dayOfWeek = workDate.getDay();
+        
+        // Calculate days to subtract to get to Monday
+        const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        
+        const monday = new Date(workDate);
+        monday.setDate(workDate.getDate() - daysToSubtract);
+        
+        // Normalize to midnight to avoid any time-related issues
+        monday.setHours(0, 0, 0, 0);
+        
         this.selectedMonday = monday.toISOString().slice(0, 10);
         this.updateCalendar();
         this.generateReport();
