@@ -9,6 +9,7 @@
 const mockNoteApp = jest.fn();
 const mockDiffTool = jest.fn();
 const mockViewManager = jest.fn();
+const mockPayAnalysis = jest.fn();
 
 // Mock the components at the module system level
 jest.mock('../src/app/NoteApp.js', () => {
@@ -23,6 +24,9 @@ jest.mock('../src/components/ViewManager.js', () => {
   return mockViewManager;
 });
 
+jest.mock('../src/app/PayAnalysis.js', () => {
+  return mockPayAnalysis;
+});
 
 
 describe('Main Module', () => {
@@ -37,6 +41,7 @@ describe('Main Module', () => {
     delete window.noteApp;
     delete window.diffTool;
     delete window.viewManager;
+    delete window.payAnalysis;
     
     // Mock document.addEventListener to capture the callback
     realAddEventListener = document.addEventListener;
@@ -52,6 +57,7 @@ describe('Main Module', () => {
     mockNoteApp.mockReturnValue({ name: 'mockNoteApp' });
     mockDiffTool.mockReturnValue({ name: 'mockDiffTool' });
     mockViewManager.mockReturnValue({ name: 'mockViewManager' });
+    mockPayAnalysis.mockReturnValue({ name: 'mockPayAnalysis' });
   });
   
   afterEach(() => {
@@ -85,6 +91,7 @@ describe('Main Module', () => {
     expect(mockNoteApp).toHaveBeenCalledTimes(1);
     expect(mockDiffTool).toHaveBeenCalledTimes(1);
     expect(mockViewManager).toHaveBeenCalledTimes(1);
+    expect(mockPayAnalysis).toHaveBeenCalledTimes(1);
   });
   
   test('should expose components on window object for debugging', () => {
@@ -99,5 +106,6 @@ describe('Main Module', () => {
     expect(window.noteApp).toEqual({ name: 'mockNoteApp' });
     expect(window.diffTool).toEqual({ name: 'mockDiffTool' });
     expect(window.viewManager).toEqual({ name: 'mockViewManager' });
+    expect(window.payAnalysis).toEqual({ name: 'mockPayAnalysis' });
   });
 }); 
