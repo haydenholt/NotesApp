@@ -711,21 +711,23 @@ export class NoteApp {
             dateKeys.forEach(dateKey => {
                 const notesForDate = JSON.parse(localStorage.getItem(dateKey) || '{}');
                 
-                Object.entries(notesForDate).forEach(([id, note]) => {
-                    const projectID = (note.projectID || '').toLowerCase();
-                    const attemptID = (note.attemptID || '').toLowerCase();
-                    const operationID = (note.operationID || '').toLowerCase();
-                    
-                    if (projectID.includes(query) || operationID.includes(query) || attemptID.includes(query)) {
-                        allNotes.push({
-                            dateKey,
-                            id,
-                            note,
-                            formattedDate: this.formatDate(dateKey),
-                            matchesProjectID: projectID.includes(query)
-                        });
-                    }
-                });
+                Object.entries(notesForDate)
+                    .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
+                    .forEach(([id, note]) => {
+                        const projectID = (note.projectID || '').toLowerCase();
+                        const attemptID = (note.attemptID || '').toLowerCase();
+                        const operationID = (note.operationID || '').toLowerCase();
+                        
+                        if (projectID.includes(query) || operationID.includes(query) || attemptID.includes(query)) {
+                            allNotes.push({
+                                dateKey,
+                                id,
+                                note,
+                                formattedDate: this.formatDate(dateKey),
+                                matchesProjectID: projectID.includes(query)
+                            });
+                        }
+                    });
             });
             
             // Render all search results at once without pagination
@@ -934,90 +936,131 @@ export class NoteApp {
     
     // Render an individual search result
     renderSearchResult(dateKey, id, note, formattedDate) {
-        // Create result container
+        // Create result container with styling similar to regular notes
         const resultContainer = document.createElement('div');
         
-        // Set background color based on note state
-        let bgColorClass = 'bg-white';
+        // Set background color based on note state - matching Note.js styling
+        let bgColorClass = 'bg-white border-gray-100';
         if (note.completed) {
-            bgColorClass = note.canceled ? 'bg-red-50' : 'bg-gray-50';
+            bgColorClass = note.canceled ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-200';
         }
         
-        // Use the original class string for tests compatibility
-        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow bg-white relative';
+        // Use consistent card styling matching Note.js
+        resultContainer.className = `flex flex-col mb-4 p-5 rounded-lg shadow-sm border transition-shadow hover:shadow-md relative group ${bgColorClass}`;
+        resultContainer.dataset.noteId = id;
         
-        // Apply the correct background color override
-        if (bgColorClass !== 'bg-white') {
-            resultContainer.classList.remove('bg-white');
-            resultContainer.classList.add(bgColorClass);
-        }
+        // Create top header similar to regular notes
+        const topHeader = document.createElement('div');
+        topHeader.className = 'flex flex-wrap items-center justify-between gap-4 mb-3 pb-3 border-b-2 border-gray-400 bg-gray-200 -mx-5 -mt-5 px-5 pt-4 rounded-t-lg shadow-sm';
         
-        // Date label
-        const dateLabel = document.createElement('div');
-        dateLabel.className = 'absolute top-2 right-2 text-xs bg-gray-200 px-2 py-1 rounded text-gray-700';
-        dateLabel.textContent = formattedDate;
-        resultContainer.appendChild(dateLabel);
-        
-        // Left sidebar with ID fields
-        const leftSidebar = document.createElement('div');
-        leftSidebar.className = 'flex flex-col mr-6 min-w-40 flex-shrink-0'; // Wider sidebar with flex-shrink-0
-        
-        // Note ID (number) - show "Cancelled" for cancelled notes
-        const numberLabel = document.createElement('div');
-        numberLabel.className = 'text-gray-600 font-bold mb-2';
+        // Note number display (exclude cancelled notes from numbering)
+        const numberDisplay = document.createElement('div');
         if (note.canceled) {
-            numberLabel.textContent = 'Cancelled';
-            numberLabel.className = 'text-red-600 font-bold mb-2';
+            numberDisplay.textContent = 'Cancelled';
+            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-red-600';
         } else {
-            numberLabel.textContent = `Note #${id}`;
+            // Compute display index for non-canceled notes
+            const saved = JSON.parse(localStorage.getItem(dateKey) || '{}');
+            const nonCanceledIds = Object.entries(saved)
+                .filter(([, data]) => !data.canceled)
+                .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+                .map(([nid]) => nid);
+            const idx = nonCanceledIds.indexOf(String(id));
+            const displayIndex = idx !== -1 ? idx + 1 : nonCanceledIds.length + 1;
+            numberDisplay.textContent = `Note #${displayIndex}`;
+            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-gray-700';
         }
-        leftSidebar.appendChild(numberLabel);
+        topHeader.appendChild(numberDisplay);
         
-        // Project ID
-        if (note.projectID) {
-            const projectIDLabel = document.createElement('div');
-            projectIDLabel.className = 'text-xs text-gray-500';
-            projectIDLabel.textContent = 'Project ID:';
-            
-            const projectIDValue = document.createElement('div');
-            projectIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            projectIDValue.textContent = note.projectID;
-            
-            leftSidebar.appendChild(projectIDLabel);
-            leftSidebar.appendChild(projectIDValue);
-        }
+        // Timer display
+        const timerDisplay = document.createElement('div');
+        timerDisplay.className = 'font-mono text-lg font-semibold flex-shrink-0 ' +
+            (note.completed ?
+                (note.canceled ? 'text-red-600' : 'text-green-600') :
+                'text-gray-600');
+        timerDisplay.textContent = '00:00:00';
+        topHeader.appendChild(timerDisplay);
+        const timer = new Timer(note.startTimestamp, note.endTimestamp);
+        timer.displayElement = timerDisplay;
+        timer.additionalTime = note.additionalTime || 0;
+        timer.updateDisplay();
         
+        // Date label in header
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'font-mono text-sm font-semibold flex-shrink-0 text-gray-600 bg-gray-100 px-2 py-1 rounded';
+        dateLabel.textContent = formattedDate;
+        topHeader.appendChild(dateLabel);
         
-        // Attempt ID
-        if (note.attemptID) {
-            const attemptIDLabel = document.createElement('div');
-            attemptIDLabel.className = 'text-xs text-gray-500';
-            attemptIDLabel.textContent = 'Attempt ID:';
-            
-            const attemptIDValue = document.createElement('div');
-            attemptIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            attemptIDValue.textContent = note.attemptID;
-            
-            leftSidebar.appendChild(attemptIDLabel);
-            leftSidebar.appendChild(attemptIDValue);
-        }
+        // ID fields container - horizontal layout matching Note.js
+        const idFieldsContainer = document.createElement('div');
+        idFieldsContainer.className = 'flex gap-4 flex-grow';
         
-        // Operation ID
-        if (note.operationID) {
-            const operationIDLabel = document.createElement('div');
-            operationIDLabel.className = 'text-xs text-gray-500';
-            operationIDLabel.textContent = 'Operation ID:';
-            
-            const operationIDValue = document.createElement('div');
-            operationIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            operationIDValue.textContent = note.operationID;
-            
-            leftSidebar.appendChild(operationIDLabel);
-            leftSidebar.appendChild(operationIDValue);
-        }
-        // View full note button
+        // Create ID field showing last 5 chars with a copy button
+        const createIDField = (value, label) => {
+            if (!value) return null;
+
+            const group = document.createElement('div');
+            group.className = 'flex items-center gap-2';
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'text-xs font-medium text-gray-600';
+            labelEl.textContent = label;
+
+            const displayEl = document.createElement('div');
+            displayEl.className = 'text-sm font-mono search-id-value';
+            const displayText = value.length > 5 ? value.slice(-5) : value;
+            displayEl.textContent = displayText;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-id-btn p-1 text-gray-800 hover:text-gray-600';
+            copyBtn.title = `Copy ${label}`;
+            copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg><span class="sr-only">Copy</span>';
+            // Capture original icon HTML for revert
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.addEventListener('click', () => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(value).catch(err => console.error('Copy failed', err));
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = value;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                // Show green check feedback
+                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg><span class="sr-only">Copied</span>';
+                // Clear any existing timeout
+                if (copyBtn._copyTimeout) clearTimeout(copyBtn._copyTimeout);
+                // Revert back after 2s
+                copyBtn._copyTimeout = setTimeout(() => {
+                    copyBtn.innerHTML = originalIcon;
+                }, 2000);
+            });
+
+            group.appendChild(labelEl);
+            group.appendChild(displayEl);
+            group.appendChild(copyBtn);
+
+            return group;
+        };
+        
+        // Add ID fields
+        const projectField = createIDField(note.projectID, 'Project ID');
+        const attemptField = createIDField(note.attemptID, 'Attempt ID');
+        const operationField = createIDField(note.operationID, 'Operation ID');
+        
+        if (projectField) idFieldsContainer.appendChild(projectField);
+        if (attemptField) idFieldsContainer.appendChild(attemptField);
+        if (operationField) idFieldsContainer.appendChild(operationField);
+        
+        topHeader.appendChild(idFieldsContainer);
+        
+        // View full note button in header
         const viewButton = document.createElement('button');
-        viewButton.className = 'mt-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded w-full'; // Make button full width
+        viewButton.className = 'px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded flex-shrink-0';
         viewButton.textContent = 'View Full Note';
         viewButton.addEventListener('click', () => {
             // Change to the date of this note and load all notes for that date
@@ -1039,13 +1082,13 @@ export class NoteApp {
                 }
             }, 100);
         });
-        leftSidebar.appendChild(viewButton);
+        topHeader.appendChild(viewButton);
         
-        // Content preview
+        // Content container - matching Note.js layout
         const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex-grow overflow-hidden'; // Add overflow-hidden
+        contentContainer.className = 'flex flex-col gap-3 min-w-0';
         
-        // Add note content preview
+        // Add note content sections - NO TRUNCATION
         const sections = [
             { label: 'Failing issues:', value: note.failingIssues, key: 'failingIssues' },
             { label: 'Non-failing issues:', value: note.nonFailingIssues, key: 'nonFailingIssues' },
@@ -1053,28 +1096,24 @@ export class NoteApp {
         ];
         
         sections.forEach(section => {
-            if (section.value && section.value.trim()) {
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'mb-2';
-                
-                const label = document.createElement('div');
-                label.className = 'font-bold text-sm text-gray-700';
-                label.textContent = section.label;
-                
-                const content = document.createElement('div');
-                content.className = 'text-sm text-gray-600 whitespace-pre-wrap break-words'; // Add break-words
-                // Truncate long content
-                content.textContent = section.value.length > 150 
-                    ? section.value.substring(0, 150) + '...' 
-                    : section.value;
-                
-                sectionDiv.appendChild(label);
-                sectionDiv.appendChild(content);
-                contentContainer.appendChild(sectionDiv);
-            }
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'flex flex-col';
+
+            const label = document.createElement('div');
+            label.className = 'font-bold mb-1 text-gray-700';
+            label.textContent = section.label;
+
+            const content = document.createElement('div');
+            content.className = 'w-full p-2 border border-gray-300 rounded text-base text-gray-500 bg-gray-100 whitespace-pre-wrap break-words';
+            content.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
+            content.textContent = section.value || '';
+
+            sectionDiv.appendChild(label);
+            sectionDiv.appendChild(content);
+            contentContainer.appendChild(sectionDiv);
         });
         
-        resultContainer.appendChild(leftSidebar);
+        resultContainer.appendChild(topHeader);
         resultContainer.appendChild(contentContainer);
         this.container.appendChild(resultContainer);
     }

@@ -361,13 +361,21 @@ describe('NoteApp', () => {
 
     // Verify search results
     const notesContainer = document.querySelector('#notesContainer');
-    const searchResultElements = notesContainer.querySelectorAll('.flex.mb-4.p-4.rounded-lg.shadow.relative');
+    // Match search result cards with updated padding and class names
+    const searchResultElements = notesContainer.querySelectorAll('.flex.mb-4.p-5.rounded-lg.relative');
     expect(searchResultElements.length).toBeGreaterThan(0);
-    expect(notesContainer.textContent).toContain(projectID);
+    // The displayed ID should be the last 5 characters
+    const expectedDisplay = projectID.length > 5 ? projectID.slice(-5) : projectID;
+    expect(notesContainer.textContent).toContain(expectedDisplay);
 
-    const projectIDElementInResult = notesContainer.querySelector('.font-mono.text-sm.mb-2.break-all');
+    // Find the project ID display element
+    const projectIDElementInResult = notesContainer.querySelector('.search-id-value');
     expect(projectIDElementInResult).not.toBeNull();
-    expect(projectIDElementInResult.textContent).toBe(projectID);
+    expect(projectIDElementInResult.textContent).toBe(expectedDisplay);
+    // There should be a copy button next to the ID
+    const copyBtn = notesContainer.querySelector('.copy-id-btn');
+    expect(copyBtn).not.toBeNull();
+    expect(copyBtn.textContent).toBe('Copy');
   });
 
   test('should restart timer and allow re-completing an edited note', () => {

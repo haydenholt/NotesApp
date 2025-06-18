@@ -80,16 +80,15 @@ export default class HelpOverlay {
             {
                 category: 'Note Management',
                 shortcuts: [
-                    { key: 'Ctrl+Enter', description: 'Complete/save the current note' },
-                    { key: 'Ctrl+X', description: 'Copy formatted note content to clipboard' },
-                    { key: 'F1', description: 'Copy note IDs in template format and show cancel dialog' }
+                    { key: 'Ctrl+Enter', description: 'Complete the current note' },
+                    { key: 'Ctrl+X', description: 'Copy formatted feedback to clipboard' },
+                    { key: 'F1', description: 'Copy cancel message to clipboard and show cancel dialog' }
                 ]
             },
             {
                 category: 'System Prompt View',
                 shortcuts: [
-                    { key: 'Ctrl+X', description: 'Generate and copy setup prompt (in Code Setup area)' },
-                    { key: 'Ctrl+X', description: 'Generate evaluation prompt (in Response areas)' }
+                    { key: 'Ctrl+X', description: 'Copy prompt to clipboard' },
                 ]
             },
             {

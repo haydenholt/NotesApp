@@ -90,7 +90,7 @@ export class Note {
 
         // Top header with note number, timer, and ID fields in horizontal layout
         const topHeader = document.createElement('div');
-        topHeader.className = 'flex items-center gap-4 mb-3 pb-2 border-b-2 border-gray-300 bg-gray-50 -mx-5 -mt-5 px-5 pt-3 rounded-t-lg';
+        topHeader.className = 'flex items-center gap-4 mb-3 pb-3 border-b-2 border-gray-400 bg-gray-200 -mx-5 -mt-5 px-5 pt-4 rounded-t-lg shadow-sm';
 
         // Note number display
         const numberDisplay = document.createElement('div');
