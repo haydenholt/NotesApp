@@ -63,9 +63,9 @@ describe('SystemPromptView Component', () => {
             expect(headings[1].textContent).toBe('Prompt/Response Evaluation Prompt');
         });
 
-        test('copySystemPromptButton1 should have indigo background', () => {
+        test('copySystemPromptButton1 should have blue background', () => {
             const copyButton1 = container.querySelector('#copySystemPromptButton1');
-            expect(copyButton1.classList.contains('bg-indigo-500')).toBe(true);
+            expect(copyButton1.classList.contains('bg-blue-500')).toBe(true);
         });
     });
 

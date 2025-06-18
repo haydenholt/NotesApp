@@ -120,22 +120,17 @@ describe('DiffTool', () => {
     expect(createdSelect.options[3].value).toBe('token');
   });
   
-  // Test for myersDiff algorithm
-  test('should correctly compute diff using myersDiff algorithm', () => {
-    const original = ['a', 'b', 'c'];
-    const modified = ['a', 'd', 'c'];
+  // Test jsdiff integration
+  test('should correctly use jsdiff for text comparison', () => {
+    const original = 'a\nb\nc';
+    const modified = 'a\nd\nc';
     
-    const result = diffTool.myersDiff(original, modified);
+    const result = diffTool.generateLineDiffJS(original, modified);
     
-    expect(result.length).toBeGreaterThan(0);
-    // Find if there's an operation that indicates b->d change
-    const hasChange = result.some(edit => {
-      if (edit.operation === 'replace') return true;
-      if (edit.operation === 'delete' && original[edit.originalIndex] === 'b') return true;
-      if (edit.operation === 'insert' && modified[edit.modifiedIndex] === 'd') return true;
-      return false;
-    });
-    expect(hasChange).toBeTruthy();
+    expect(result).toContain('a');
+    expect(result).toContain('c');
+    expect(result).toContain('bg-red-200'); // deletion
+    expect(result).toContain('bg-green-200'); // addition
   });
   
   // Test for escapeHtml method
@@ -150,7 +145,7 @@ describe('DiffTool', () => {
   
   // Tests for different diff modes
   test('should generate line diff correctly', () => {
-    const result = diffTool.generateLineDiff(
+    const result = diffTool.generateLineDiffJS(
       'line 1\nline 2\nline 3',
       'line 1\nchanged line\nline 3'
     );
@@ -158,27 +153,24 @@ describe('DiffTool', () => {
     expect(result).toContain('line 1');
     expect(result).toContain('line 3');
     // Check for class names that indicate changes
-    expect(result).toContain('bg-yellow-100');
-    // Look for parts of "changed" split into spans
     expect(result).toContain('bg-green-200');
     expect(result).toContain('bg-red-200');
   });
   
   test('should generate word diff correctly', () => {
-    const result = diffTool.generateWordDiff(
+    const result = diffTool.generateWordDiffJS(
       'This is a test',
       'This is another test'
     );
     
     expect(result).toContain('This is');
     expect(result).toContain('test');
-    // Check for the "n" which is part of "another"
-    expect(result).toContain('<span class="bg-green-200 font-bold">');
     expect(result).toContain('bg-green-200');
+    expect(result).toContain('bg-red-200');
   });
   
   test('should generate character diff correctly', () => {
-    const result = diffTool.generateCharacterDiff(
+    const result = diffTool.generateCharacterDiffJS(
       'test',
       'tent'
     );
@@ -190,7 +182,7 @@ describe('DiffTool', () => {
   });
   
   test('should generate token diff correctly for code', () => {
-    const result = diffTool.generateTokenDiff(
+    const result = diffTool.generateTokenDiffJS(
       'function test() { return true; }',
       'function test() { return false; }'
     );
@@ -201,17 +193,6 @@ describe('DiffTool', () => {
     // Look for parts of true/false with highlighting classes
     expect(result).toContain('bg-red-200');
     expect(result).toContain('bg-green-200');
-  });
-  
-  // Test for tokenizeText method
-  test('should tokenize text correctly in word mode', () => {
-    const text = 'Hello, world!';
-    const tokens = diffTool.tokenizeText(text, 'word');
-    
-    // Check that the tokens array contains parts of the input text
-    expect(tokens.length).toBeGreaterThan(0);
-    expect(tokens.some(token => token.includes('Hello'))).toBeTruthy();
-    expect(tokens.some(token => token.includes('world'))).toBeTruthy();
   });
   
   // Test for tokenizeCode method
@@ -225,21 +206,6 @@ describe('DiffTool', () => {
     expect(tokens.some(token => token.includes('test'))).toBeTruthy();
     expect(tokens.some(token => token.includes('return'))).toBeTruthy();
     expect(tokens.some(token => token.includes('true'))).toBeTruthy();
-  });
-  
-  // Test for compareWords method
-  test('should compare words correctly', () => {
-    const originalLine = 'This is a test';
-    const modifiedLine = 'This is an example';
-    
-    const result = diffTool.compareWords(originalLine, modifiedLine);
-    
-    expect(result.hasAdditions).toBeTruthy();
-    expect(result.hasRemovals).toBeTruthy();
-    expect(result.html).toContain('This is');
-    // Check for highlighting classes which indicate differences
-    expect(result.html).toContain('bg-red-200');
-    expect(result.html).toContain('bg-green-200');
   });
   
   // Test diffMode select change
@@ -275,4 +241,121 @@ describe('DiffTool', () => {
     expect(diffResultElement.innerHTML).not.toContain('bg-green-200'); // No additions
     expect(diffResultElement.innerHTML).not.toContain('bg-red-200');   // No deletions
   });
-}); 
+  
+  // Tests for git diff style summary functionality
+  describe('Git Diff Style Summary', () => {
+    test('should generate diff summary for line mode with changes', () => {
+      const original = 'line1\nline2\nline3\nline4';
+      const modified = 'line1\nchanged line\nline3\nline4';
+      
+      const summary = diffTool.generateDiffSummary(original, modified, 'line');
+      
+      expect(summary).toContain('Diff Summary:');
+      expect(summary).toContain('@@');
+      expect(summary).toContain('-');
+      expect(summary).toContain('+');
+      expect(summary).toContain('bg-blue-50');
+    });
+    
+    test('should generate "No differences found" for identical texts', () => {
+      const text = 'same text';
+      const summary = diffTool.generateDiffSummary(text, text, 'line');
+      
+      expect(summary).toContain('No differences found');
+      expect(summary).toContain('bg-gray-100');
+    });
+    
+    test('should generate simple summary for word mode', () => {
+      const original = 'This is a test';
+      const modified = 'This is another test';
+      
+      const summary = diffTool.generateDiffSummary(original, modified, 'word');
+      
+      expect(summary).toContain('Word mode:');
+      expect(summary).toContain('+1 -1 changes');
+      expect(summary).toContain('bg-blue-50');
+    });
+    
+    test('should generate simple summary for character mode', () => {
+      const original = 'test';
+      const modified = 'testing';
+      
+      const summary = diffTool.generateDiffSummary(original, modified, 'character');
+      
+      expect(summary).toContain('Character mode:');
+      expect(summary).toContain('+3 -0 changes');
+      expect(summary).toContain('bg-blue-50');
+    });
+    
+    test('should generate simple summary for token mode', () => {
+      const original = 'function test() {}';
+      const modified = 'function test(param) {}';
+      
+      const summary = diffTool.generateDiffSummary(original, modified, 'token');
+      
+      expect(summary).toContain('Token mode:');
+      expect(summary).toContain('changes');
+      expect(summary).toContain('bg-blue-50');
+    });
+  });
+  
+  test('should include diff summary in compareTexts output', () => {
+    originalTextArea.value = 'line1\nline2\nline3';
+    modifiedTextArea.value = 'line1\nchanged\nline3';
+    
+    diffTool.compareTexts();
+    
+    // Should contain both summary and diff content
+    expect(diffResultElement.innerHTML).toContain('Diff Summary:');
+    expect(diffResultElement.innerHTML).toContain('@@');
+    expect(diffResultElement.innerHTML).toContain('line1');
+    // Check for individual characters that are part of "changed"
+    expect(diffResultElement.innerHTML).toContain('c');
+    expect(diffResultElement.innerHTML).toContain('h');
+    expect(diffResultElement.innerHTML).toContain('a');
+  });
+  
+  test('should show correct summary for word mode changes', () => {
+    diffModeSelect.value = 'word';
+    originalTextArea.value = 'Hello world';
+    modifiedTextArea.value = 'Hello beautiful world';
+    
+    diffTool.compareTexts();
+    
+    expect(diffResultElement.innerHTML).toContain('Word mode:');
+    expect(diffResultElement.innerHTML).toContain('changes');
+  });
+  
+  test('should show correct summary for character mode changes', () => {
+    diffModeSelect.value = 'character';
+    originalTextArea.value = 'test';
+    modifiedTextArea.value = 'testing';
+    
+    diffTool.compareTexts();
+    
+    expect(diffResultElement.innerHTML).toContain('Character mode:');
+    expect(diffResultElement.innerHTML).toContain('changes');
+  });
+  
+  // Edge cases for diff summary
+  test('should handle empty to non-empty text changes', () => {
+    originalTextArea.value = '';
+    modifiedTextArea.value = 'new content';
+    
+    diffTool.compareTexts();
+    
+    expect(diffResultElement.innerHTML).toContain('Diff Summary:');
+    // Check for parts of the content since it might be split across spans
+    expect(diffResultElement.innerHTML).toContain('new');
+    expect(diffResultElement.innerHTML).toContain('content');
+  });
+  
+  test('should handle non-empty to empty text changes', () => {
+    originalTextArea.value = 'removed content';
+    modifiedTextArea.value = '';
+    
+    diffTool.compareTexts();
+    
+    expect(diffResultElement.innerHTML).toContain('Diff Summary:');
+  });
+});
