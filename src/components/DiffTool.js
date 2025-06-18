@@ -8,7 +8,7 @@ export class DiffTool {
         this.modifiedTextArea = document.getElementById('modifiedText');
         this.clearButton = document.getElementById('clearDiffButton');
         this.resultContainer = document.getElementById('diffResult');
-        this.diffModeSelect = document.getElementById('diffMode') || this.createDiffModeSelect();
+        this.diffModeSelect = document.getElementById('diffMode');
         
         // Set up event listeners
         this.clearButton.addEventListener('click', () => this.clearTexts());
@@ -29,32 +29,6 @@ export class DiffTool {
         }
     }
     
-    /**
-     * Creates a select element for choosing diff mode if it doesn't exist
-     */
-    createDiffModeSelect() {
-        const select = document.createElement('select');
-        select.id = 'diffMode';
-        select.className = 'border border-gray-300 rounded-md p-2 mb-4 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm';
-        
-        const options = [
-            { value: 'line', text: 'Line Mode' },
-            { value: 'word', text: 'Word Mode' },
-            { value: 'character', text: 'Character Mode' },
-            { value: 'token', text: 'Code Token Mode' }
-        ];
-        
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt.value;
-            option.textContent = opt.text;
-            select.appendChild(option);
-        });
-        
-        // Add to DOM before the clear button
-        this.clearButton.parentNode.insertBefore(select, this.clearButton);
-        return select;
-    }
     
     clearTexts() {
         this.originalTextArea.value = '';
