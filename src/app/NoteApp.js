@@ -103,12 +103,12 @@ export class NoteApp {
     addDateNavigationButtons() {
         // Create wrapper for the date picker and buttons
         const dateNavContainer = document.createElement('div');
-        dateNavContainer.className = 'flex items-center';
+        dateNavContainer.className = 'flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm';
         
         // Previous day button
         const prevDayButton = document.createElement('button');
-        prevDayButton.innerHTML = '&larr;'; // Left arrow
-        prevDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-l';
+        prevDayButton.innerHTML = '‹'; // Left chevron
+        prevDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-r border-gray-200 transition-colors';
         prevDayButton.title = 'Previous day';
         prevDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -144,8 +144,8 @@ export class NoteApp {
         
         // Next day button
         const nextDayButton = document.createElement('button');
-        nextDayButton.innerHTML = '&rarr;'; // Right arrow
-        nextDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-r';
+        nextDayButton.innerHTML = '›'; // Right chevron
+        nextDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-l border-gray-200 transition-colors';
         nextDayButton.title = 'Next day';
         nextDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -187,7 +187,7 @@ export class NoteApp {
         parent.removeChild(originalDateSelector);
         
         // Style the date selector to remove default browser border
-        originalDateSelector.className = 'px-2 py-1 border-y border-gray-200 focus:outline-none';
+        originalDateSelector.className = 'px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset text-gray-700 min-w-32';
         
         // Add elements to the container
         dateNavContainer.appendChild(prevDayButton);
@@ -329,18 +329,18 @@ export class NoteApp {
             }
         });
         note.elements.attemptID.disabled = true;
-        note.elements.attemptID.classList.remove('text-black');
+        note.elements.attemptID.classList.remove('text-black', 'bg-white');
         note.elements.attemptID.classList.add('text-gray-500', 'bg-gray-100');
         note.elements.projectID.disabled = true;
-        note.elements.projectID.classList.remove('text-black');
+        note.elements.projectID.classList.remove('text-black', 'bg-white');
         note.elements.projectID.classList.add('text-gray-500', 'bg-gray-100');
         note.elements.operationID.disabled = true;
-        note.elements.operationID.classList.remove('text-black');
+        note.elements.operationID.classList.remove('text-black', 'bg-white');
         note.elements.operationID.classList.add('text-gray-500', 'bg-gray-100');
         
         // UI styling for note container and number display based on isCanceled
         note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
-        const numberDisplay = note.container.querySelector('.font-bold.mb-2');
+        const numberDisplay = note.container.querySelector('.text-lg.font-bold.flex-shrink-0');
         if (isCanceled) {
             note.container.classList.add('bg-red-50');
             if (numberDisplay) {
@@ -449,15 +449,15 @@ export class NoteApp {
             // Enable ID fields
             note.elements.attemptID.disabled = false;
             note.elements.attemptID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.attemptID.classList.add('text-black');
+            note.elements.attemptID.classList.add('text-black', 'bg-white');
             
             note.elements.projectID.disabled = false;
             note.elements.projectID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.projectID.classList.add('text-black');
+            note.elements.projectID.classList.add('text-black', 'bg-white');
             
             note.elements.operationID.disabled = false;
             note.elements.operationID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.operationID.classList.add('text-black');
+            note.elements.operationID.classList.add('text-black', 'bg-white');
             
             note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
             note.container.classList.add('bg-white');
@@ -528,8 +528,20 @@ export class NoteApp {
 
     updateTotalTime() {
         const updateDisplay = () => {
-            const totalSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
-            this.totalTimeDisplay.textContent = `On-platform Time: ${new Timer().formatTime(totalSeconds)}`;
+            const onPlatformSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
+            const offPlatformSeconds = this.offPlatformTimer ? this.offPlatformTimer.getTotalSeconds() : 0;
+            const totalSeconds = onPlatformSeconds + offPlatformSeconds;
+            
+            const onPlatformTime = new Timer().formatTime(onPlatformSeconds);
+            const offPlatformTime = new Timer().formatTime(offPlatformSeconds);
+            const totalTime = new Timer().formatTime(totalSeconds);
+            
+            this.totalTimeDisplay.innerHTML = `
+                <div class="text-sm text-gray-600 mb-1">
+                    On-platform: ${onPlatformTime} • Off-platform: ${offPlatformTime}
+                </div>
+                <div class="text-xl font-semibold">Total: ${totalTime}</div>
+            `;
         };
         
         setInterval(updateDisplay, 1000);
@@ -1113,25 +1125,6 @@ export class NoteApp {
         });
         
         offPlatformSection.appendChild(timerGrid);
-        
-        // Create total time display
-        const totalSection = document.createElement('div');
-        totalSection.className = 'bg-gray-50 p-3 rounded flex justify-between items-center';
-        
-        const totalLabel = document.createElement('span');
-        totalLabel.className = 'font-semibold text-gray-700';
-        totalLabel.textContent = 'Total off-platform time:';
-        
-        const totalTime = document.createElement('span');
-        totalTime.className = 'text-xl font-mono font-semibold text-gray-800';
-        totalTime.textContent = '00:00:00';
-        
-        // Store reference to the total time display
-        this.offPlatformTimer.displayElements.total = totalTime;
-        
-        totalSection.appendChild(totalLabel);
-        totalSection.appendChild(totalTime);
-        offPlatformSection.appendChild(totalSection);
         
         // Add the off-platform section to its dedicated container
         offPlatformContainer.appendChild(offPlatformSection);

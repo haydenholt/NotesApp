@@ -194,7 +194,7 @@ describe('NoteApp', () => {
 
   test('should start timer when project ID is entered', () => {
     const note = document.querySelector('#notesContainer > div');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     
     projectIDInput.value = 'TEST123';
     projectIDInput.dispatchEvent(new Event('input'));
@@ -245,7 +245,7 @@ describe('NoteApp', () => {
   test('should save note data to localStorage', () => {
     const note = document.querySelector('#notesContainer > div');
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     
     // Enter data
     failingIssuesTextarea.value = 'Test issue';
@@ -328,7 +328,7 @@ describe('NoteApp', () => {
     const projectID = 'TEST123';
 
     const note1Container = document.querySelector('.flex[data-note-id="1"]');
-    const projectInput = note1Container.querySelector('input[placeholder="Enter ID"]');
+    const projectInput = note1Container.querySelector('input[placeholder="Enter project ID"]');
     projectInput.value = projectID;
     projectInput.dispatchEvent(new Event('input'));
 
@@ -441,7 +441,7 @@ describe('NoteApp', () => {
     // Create and fill a note
     const noteContainer = document.querySelector('#notesContainer > div');
     const failingIssuesTextarea = noteContainer.querySelector('textarea[placeholder="Type failing issues..."]');
-    const projectIDInput = noteContainer.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = noteContainer.querySelector('input[placeholder="Enter project ID"]');
     
     // Fill in note details
     failingIssuesTextarea.value = 'Initial issue';
@@ -609,7 +609,7 @@ describe('NoteApp', () => {
   test('should clear search and reload notes when clear button is clicked', () => {
     // Set up and complete a note to enable search
     const note = document.querySelector('#notesContainer > div');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
     projectIDInput.value = 'TEST123';
     projectIDInput.dispatchEvent(new Event('input'));
@@ -695,8 +695,8 @@ describe('NoteApp', () => {
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
     const nonFailingIssuesTextarea = note.querySelector('textarea[placeholder="Type non-failing issues..."]');
     const discussionTextarea = note.querySelector('textarea[placeholder="Type discussion..."]');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
-    const attemptIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[1];
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
+    const attemptIDInput = note.querySelector('input[placeholder="Enter attempt ID"]');
     
     // Fill in all fields
     failingIssuesTextarea.value = 'Test failing issues';
@@ -748,7 +748,7 @@ describe('NoteApp', () => {
     // Create a note with non-failing issues
     const note = document.querySelector('#notesContainer > div');
     const nonFailingIssuesTextarea = note.querySelector('textarea[placeholder="Type non-failing issues..."]');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     
     projectIDInput.value = 'PROJ-999';
     projectIDInput.dispatchEvent(new Event('input'));
@@ -841,7 +841,7 @@ describe('NoteApp', () => {
   test('should navigate dates while in search mode', () => {
     // Add a note and complete it
     const note = document.querySelector('#notesContainer > div');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
     
     projectIDInput.value = 'SEARCH-TEST';
@@ -891,7 +891,7 @@ describe('NoteApp', () => {
 
   test('should start timer for attempt ID input', () => {
     const note = document.querySelector('#notesContainer > div');
-    const attemptIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[1];
+    const attemptIDInput = note.querySelector('input[placeholder="Enter attempt ID"]');
     
     // Verify timer display initial state
     const timerDisplay = note.querySelector('.font-mono');
@@ -1018,13 +1018,13 @@ describe('NoteApp', () => {
     jest.advanceTimersByTime(1000);
     
     // Total time should be updated
-    expect(mockTotalTimeDisplay.textContent).toContain('On-platform Time:');
+    expect(mockTotalTimeDisplay.textContent).toContain('On-platform:');
     
     // Advance timer more
     jest.advanceTimersByTime(2000);
     
     // Total time should reflect updated time
-    expect(mockTotalTimeDisplay.textContent).toContain('On-platform Time: 00:00:03');
+    expect(mockTotalTimeDisplay.textContent).toContain('On-platform: 00:00:03');
   });
 
   test('should save active timers when switching dates', () => {
@@ -1767,7 +1767,7 @@ describe('NoteApp', () => {
     // Create and cancel a note with a unique project ID
     const note = document.querySelector('#notesContainer > div');
     const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
     
     failingIssuesTextarea.value = 'Content for canceled search test';
     failingIssuesTextarea.dispatchEvent(new Event('input'));
@@ -1995,7 +1995,7 @@ describe('NoteApp', () => {
       // Cancel the note
       noteApp.completeNoteEditing(1, true);
       // Number display should show "Cancelled"
-      const numberLabel = firstNote.querySelector('.font-bold.mb-2');
+      const numberLabel = firstNote.querySelector('.text-lg.font-bold.flex-shrink-0');
       expect(numberLabel.textContent).toBe('Cancelled');
       expect(numberLabel.classList.contains('text-red-600')).toBe(true);
     });
@@ -2014,9 +2014,9 @@ describe('NoteApp', () => {
       // Dataset noteId should skip to '2'
       expect(newNote.dataset.noteId).toBe('2');
       // Display label should reflect it is the first active note
-      const numberLabel = newNote.querySelector('.font-bold.mb-2');
-      expect(numberLabel.textContent).toBe('1');
-      expect(numberLabel.classList.contains('text-gray-600')).toBe(true);
+      const numberLabel = newNote.querySelector('.text-lg.font-bold.flex-shrink-0');
+      expect(numberLabel.textContent).toBe('#1');
+      expect(numberLabel.classList.contains('text-gray-700')).toBe(true);
     });
 
     test('should exclude cancelled notes from statistics counts', () => {
@@ -2046,9 +2046,9 @@ describe('NoteApp', () => {
     const showCancelConfirmationSpy = jest.spyOn(Note.prototype, 'showCancelConfirmation');
     
     // Also add IDs to test copying formatted IDs
-    const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
-    const attemptIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[1];
-    const operationIDInput = note.querySelectorAll('input[placeholder="Enter ID"]')[2];
+    const projectIDInput = note.querySelector('input[placeholder="Enter project ID"]');
+    const attemptIDInput = note.querySelector('input[placeholder="Enter attempt ID"]');
+    const operationIDInput = note.querySelector('input[placeholder="Enter op ID"]');
     
     projectIDInput.value = 'TEST-123';
     attemptIDInput.value = 'ATT-456';
@@ -2185,7 +2185,7 @@ describe('NoteApp', () => {
     // 7. Verify textareas and ID fields are disabled
     const textarea = loadedNoteElement.querySelector('textarea');
     expect(textarea.disabled).toBe(true);
-    const projectIDInput = loadedNoteElement.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = loadedNoteElement.querySelector('input[placeholder="Enter project ID"]');
     expect(projectIDInput.disabled).toBe(true);
 
     // 8. Verify the state is saved to localStorage
