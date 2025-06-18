@@ -30,7 +30,7 @@ export class PayAnalysis {
         for (let i = 0; i < 7; i++) {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
-            const dateKey = date.toISOString().slice(0, 10);
+            const dateKey = date.toLocaleDateString('sv-SE');
 
             const onSeconds = this.getOnSecondsForDate(dateKey, now);
             const offSeconds = this.getOffSecondsForDate(dateKey);
@@ -44,7 +44,7 @@ export class PayAnalysis {
                 date: dateKey, 
                 onSeconds, 
                 offSeconds,
-                dayName: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][i]
+                dayName: date.toLocaleDateString('en-US', { weekday: 'long' })
             });
         }
 
@@ -106,7 +106,7 @@ export class PayAnalysis {
             
             html += `<tr class="border-b border-gray-100 ${isWeekend ? 'text-gray-400' : ''}">
                 <td class="py-3 px-4 font-medium">${row.dayName}</td>
-                <td class="py-3 px-4">${new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                <td class="py-3 px-4">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                 <td class="py-3 px-4 font-mono">${onTime}</td>
                 <td class="py-3 px-4 font-mono">${offTime}</td>
                 <td class="py-3 px-4 font-mono">${totalTime}</td>
@@ -329,9 +329,9 @@ export class PayAnalysis {
                 for (let j = 0; j < 7; j++) {
                     const d = new Date(mondayDate);
                     d.setDate(mondayDate.getDate() + j);
-                    weekDates.push(d.toISOString().slice(0, 10));
+                    weekDates.push(d.toLocaleDateString('sv-SE'));
                 }
-                const currentDateStr = dateObj.toISOString().slice(0, 10);
+                const currentDateStr = dateObj.toLocaleDateString('sv-SE');
                 isInSelectedWeek = weekDates.includes(currentDateStr);
             }
             
@@ -377,7 +377,7 @@ export class PayAnalysis {
         const monday = new Date(workDate);
         monday.setDate(workDate.getDate() - daysToSubtract);
 
-        this.selectedMonday = monday.toISOString().slice(0, 10);
+        this.selectedMonday = monday.toLocaleDateString('sv-SE');
         this.updateCalendar();
         this.generateReport();
     }

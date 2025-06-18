@@ -138,6 +138,111 @@ describe('PayAnalysis', () => {
     expect(payAnalysis.selectedMonday).toBe('2023-06-12');
   });
 
+  test('date formatting uses correct timezone and avoids off-by-one errors', () => {
+    // Test specific dates that were problematic (June 16 showing as June 15)
+    const june16 = new Date(2025, 5, 16); // Monday, June 16, 2025
+    payAnalysis.selectDate(june16);
+    
+    // Should be exactly June 16, not June 15
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Test edge cases around month boundaries
+    const july1 = new Date(2025, 6, 1); // Tuesday, July 1, 2025
+    payAnalysis.selectDate(july1);
+    
+    // Monday should be June 30, 2025
+    expect(payAnalysis.selectedMonday).toBe('2025-06-30');
+    
+    // Test edge cases around year boundaries
+    const jan1 = new Date(2025, 0, 1); // Wednesday, January 1, 2025
+    payAnalysis.selectDate(jan1);
+    
+    // Monday should be December 30, 2024
+    expect(payAnalysis.selectedMonday).toBe('2024-12-30');
+  });
+
+  test('report generation uses consistent date formatting without timezone shifts', () => {
+    // Set up a specific Monday
+    const monday = new Date(2025, 5, 16); // Monday, June 16, 2025
+    payAnalysis.selectDate(monday);
+    
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Mock localStorage data for testing
+    const testNotes = {
+      note1: { 
+        startTimestamp: monday.getTime(),
+        endTimestamp: monday.getTime() + 3600000, // 1 hour
+        additionalTime: 0,
+        completed: true,
+        canceled: false
+      }
+    };
+    
+    // Store data for the exact date we expect
+    mockLocalStorage.store['2025-06-16'] = JSON.stringify(testNotes);
+    
+    // Generate report and verify it contains the correct date
+    payAnalysis.generateReport();
+    
+    // Should show "Week of June 16, 2025", not "Week of June 15, 2025"
+    expect(mockLocalStorage.getItem).toHaveBeenCalledWith('2025-06-16');
+    expect(payAnalysis.reportContainer.innerHTML).toContain('Week of June 16, 2025');
+  });
+
+  test('day names match their corresponding dates correctly', () => {
+    // Test current week June 16-22, 2025 (Monday-Sunday)
+    const monday = new Date(2025, 5, 16); // Monday, June 16, 2025
+    payAnalysis.selectDate(monday);
+    
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Mock some data for the week
+    const weekDates = [
+      '2025-06-16', '2025-06-17', '2025-06-18', '2025-06-19', 
+      '2025-06-20', '2025-06-21', '2025-06-22'
+    ];
+    
+    weekDates.forEach(date => {
+      mockLocalStorage.store[date] = JSON.stringify({
+        note1: { startTimestamp: 0, endTimestamp: 3600000, additionalTime: 0, completed: true, canceled: false }
+      });
+    });
+    
+    // Generate report
+    payAnalysis.generateReport();
+    
+    const reportHTML = payAnalysis.reportContainer.innerHTML;
+    
+    // Verify day names match correct dates
+    expect(reportHTML).toContain('>Monday</td>');
+    expect(reportHTML).toContain('>Jun 16</td>');
+    expect(reportHTML).toContain('>Tuesday</td>');
+    expect(reportHTML).toContain('>Jun 17</td>');
+    expect(reportHTML).toContain('>Wednesday</td>');
+    expect(reportHTML).toContain('>Jun 18</td>');
+    expect(reportHTML).toContain('>Thursday</td>');
+    expect(reportHTML).toContain('>Jun 19</td>');
+    expect(reportHTML).toContain('>Friday</td>');
+    expect(reportHTML).toContain('>Jun 20</td>');
+    expect(reportHTML).toContain('>Saturday</td>');
+    expect(reportHTML).toContain('>Jun 21</td>');
+    expect(reportHTML).toContain('>Sunday</td>');
+    expect(reportHTML).toContain('>Jun 22</td>');
+    
+    // Most importantly, verify Monday is Jun 16, not Jun 15
+    const mondayIndex = reportHTML.indexOf('>Monday</td>');
+    const jun16Index = reportHTML.indexOf('>Jun 16</td>');
+    const jun15Index = reportHTML.indexOf('>Jun 15</td>');
+    
+    expect(mondayIndex).toBeGreaterThan(-1);
+    expect(jun16Index).toBeGreaterThan(-1);
+    expect(jun15Index).toBe(-1); // Should not find Jun 15 in the report
+    
+    // Monday should come before Jun 16 in the HTML
+    expect(mondayIndex).toBeLessThan(jun16Index);
+  });
+
   test('calendar weeks always start on Monday regardless of clicked date', () => {
     // Test every day of a week to ensure they all map to the same Monday
     const testWeek = {

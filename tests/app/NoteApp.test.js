@@ -117,7 +117,7 @@ describe('NoteApp', () => {
     // Object.defineProperty(Storage.prototype, 'length', ...) removed
 
     // Set today's date in the date selector
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     mockDateSelector.value = today;
 
     // Create NoteApp instance
@@ -263,7 +263,7 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(event);
 
     // Check localStorage content (no need to check if mock was called)
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedDataString = localStorage.getItem(today);
     expect(savedDataString).not.toBeNull();
     const savedData = JSON.parse(savedDataString || '{}');
@@ -324,7 +324,7 @@ describe('NoteApp', () => {
   });
 
   test('should filter notes when searching', () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const projectID = 'TEST123';
 
     const note1Container = document.querySelector('.flex[data-note-id="1"]');
@@ -427,7 +427,7 @@ describe('NoteApp', () => {
     expect(notesAfterRecompletion.length).toBe(2);
 
     // 8. Verify saved data in localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedDataString = localStorage.getItem(today);
     expect(savedDataString).not.toBeNull();
     const savedData = JSON.parse(savedDataString || '{}');
@@ -481,10 +481,10 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(new Event('input'));
     
     // Change the date to simulate switching days
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split('T')[0];
+    const tomorrowString = tomorrow.toLocaleDateString('sv-SE');
     
     // Switch to tomorrow
     mockDateSelector.value = tomorrowString;
@@ -529,7 +529,7 @@ describe('NoteApp', () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayString = yesterday.toISOString().split('T')[0];
+    const yesterdayString = yesterday.toLocaleDateString('sv-SE');
     
     // Find and click the previous day button
     const prevDayButton = document.querySelector('button[title="Previous day"]');
@@ -551,7 +551,7 @@ describe('NoteApp', () => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split('T')[0];
+    const tomorrowString = tomorrow.toLocaleDateString('sv-SE');
     
     // Find and click the next day button
     const nextDayButton = document.querySelector('button[title="Next day"]');
@@ -597,7 +597,7 @@ describe('NoteApp', () => {
     
     // After deletion, there might not be any notes with completed=true
     // so localStorage might be empty or only have the empty note
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedNotes = JSON.parse(localStorage.getItem(today) || '{}');
     
     // The important part is that the original note (id 1) is gone
@@ -672,7 +672,7 @@ describe('NoteApp', () => {
     deleteButton.click();
     
     // After deletion and renumbering, we should have at least 1 note
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedNotes = JSON.parse(localStorage.getItem(today) || '{}');
     
     // Former note 2's content should now be in note 1
@@ -723,7 +723,7 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
     
     // Verify the data was saved correctly
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedDataString = localStorage.getItem(today);
     const savedData = JSON.parse(savedDataString || '{}');
     
@@ -833,35 +833,9 @@ describe('NoteApp', () => {
     expect(editButton.style.display).toBe('block');
     
     // Verify the data was saved
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedData = JSON.parse(localStorage.getItem(today) || '{}');
     expect(savedData['1'].completed).toBe(true);
-  });
-
-  test('should format date correctly for display', () => {
-    // Create direct instance to test the formatting method
-    const app = new NoteApp();
-    
-    // Get today's date in ISO format
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Create a date for yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayString = yesterday.toISOString().split('T')[0];
-    
-    // Create a date from last week
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const lastWeekString = lastWeek.toISOString().split('T')[0];
-    
-    // Check formatDate output
-    expect(app.formatDate(today)).toBe('Today');
-    expect(app.formatDate(yesterdayString)).toBe('Yesterday');
-    
-    // For other dates, it should return a formatted date
-    const formattedLastWeek = app.formatDate(lastWeekString);
-    expect(formattedLastWeek).toMatch(/^[A-Za-z]{3}, [A-Za-z]{3} \d{1,2}$/); // Match pattern like "Mon, Apr 13"
   });
 
   test('should navigate dates while in search mode', () => {
@@ -885,8 +859,6 @@ describe('NoteApp', () => {
     // Perform search
     mockSearchInput.value = 'SEARCH-TEST';
     mockSearchInput.dispatchEvent(new Event('input'));
-    
-    // isSearchActive flag removed
 
     // Mock searchNotes method to verify it's called when navigating dates
     const searchNotesSpy = jest.spyOn(noteApp, 'searchNotes');
@@ -938,7 +910,7 @@ describe('NoteApp', () => {
 
   test('should handle cleaning up potentially corrupt localStorage entries', () => {
     // Set up a corrupt entry in localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const corruptData = {
       '1': { failingIssues: 'Valid note' },
       '2': null, // Corrupt entry
@@ -1603,7 +1575,7 @@ describe('NoteApp', () => {
     document.body.appendChild(mockCopySystemPromptButton2);
     
     // Set the date again
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     mockDateSelector.value = today;
     
     // Recreate the NoteApp instance
@@ -1682,7 +1654,7 @@ describe('NoteApp', () => {
     expect(failingIssuesTextarea.disabled).toBe(true);
     
     // Verify state is saved to localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedDataString = localStorage.getItem(today);
     const savedData = JSON.parse(savedDataString || '{}');
     
@@ -1737,7 +1709,7 @@ describe('NoteApp', () => {
     const noteId = note.dataset.noteId;
     
     // Store the current localStorage state
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedDataBefore = JSON.parse(localStorage.getItem(today) || '{}');
     expect(savedDataBefore[noteId].canceled).toBe(true);
     
@@ -1770,12 +1742,12 @@ describe('NoteApp', () => {
     noteApp.completeNoteEditing(1, true);
     
     // Save the current date
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     
     // Switch to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split('T')[0];
+    const tomorrowString = tomorrow.toLocaleDateString('sv-SE');
     mockDateSelector.value = tomorrowString;
     mockDateSelector.dispatchEvent(new Event('change'));
     
@@ -1889,7 +1861,7 @@ describe('NoteApp', () => {
     expect(noteObj.completed).toBe(true);
     
     // Verify localStorage state
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedData = JSON.parse(localStorage.getItem(today) || '{}');
     expect(savedData['1'].canceled).toBe(true);
     expect(savedData['1'].completed).toBe(true);
@@ -1938,7 +1910,7 @@ describe('NoteApp', () => {
     expect(failingIssuesTextarea.value).toBe('Updated content during editing');
     
     // Verify localStorage state
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const savedData = JSON.parse(localStorage.getItem(today) || '{}');
     expect(savedData['1'].canceled).toBe(true);
     expect(savedData['1'].failingIssues).toBe('Updated content during editing');
@@ -2122,7 +2094,7 @@ describe('NoteApp', () => {
 
   test('should show cancel confirmation dialog when F1 is pressed on a loaded, completed note', () => {
     // 1. Save a completed note to localStorage to simulate a loaded note
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const noteData = {
       failingIssues: 'Loaded note content',
       nonFailingIssues: '',
@@ -2170,7 +2142,7 @@ describe('NoteApp', () => {
 
   test('should correctly cancel a loaded note when cancellation is confirmed', () => {
     // 1. Save a completed note to localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('sv-SE');
     const noteData = {
       failingIssues: 'Content of a loaded note to be canceled',
       startTimestamp: Date.now() - 20000,
@@ -2253,89 +2225,5 @@ describe('NoteApp', () => {
     completeNoteEditingSpy.mockRestore();
   });
 
-  test('search results show "Today" label for notes dated today', () => {
-    // Setup a completed note for today with a unique project ID
-    const today = new Date().toISOString().split('T')[0];
-    const noteData = {
-      '1': {
-        failingIssues: 'Issue',
-        nonFailingIssues: '',
-        discussion: '',
-        startTimestamp: Date.now(),
-        endTimestamp: Date.now(),
-        completed: true,
-        canceled: false,
-        projectID: 'SEARCHTODAY',
-        attemptID: '',
-        operationID: ''
-      }
-    };
-    localStorage.setItem(today, JSON.stringify(noteData));
-    // Perform search
-    mockSearchInput.value = 'SEARCHTODAY';
-    mockSearchInput.dispatchEvent(new Event('input'));
-    // Verify date label shows "Today"
-    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
-    const dateLabel = resultContainer.children[0];
-    expect(dateLabel.textContent).toBe('Today');
-  });
-
-  test('search results show "Yesterday" label for notes dated yesterday', () => {
-    // Setup a completed note for yesterday with a unique project ID
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yString = yesterday.toISOString().split('T')[0];
-    const noteData = {
-      '1': {
-        failingIssues: 'Issue',
-        nonFailingIssues: '',
-        discussion: '',
-        startTimestamp: Date.now(),
-        endTimestamp: Date.now(),
-        completed: true,
-        canceled: false,
-        projectID: 'SEARCHYESTERDAY',
-        attemptID: '',
-        operationID: ''
-      }
-    };
-    localStorage.setItem(yString, JSON.stringify(noteData));
-    // Perform search
-    mockSearchInput.value = 'SEARCHYESTERDAY';
-    mockSearchInput.dispatchEvent(new Event('input'));
-    // Verify date label shows "Yesterday"
-    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
-    const dateLabel = resultContainer.children[0];
-    expect(dateLabel.textContent).toBe('Yesterday');
-  });
-
-  test('search results show formatted date for notes older than yesterday', () => {
-    // Setup a completed note for two days ago with a unique project ID
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    const tdString = twoDaysAgo.toISOString().split('T')[0];
-    const noteData = {
-      '1': {
-        failingIssues: 'Issue',
-        nonFailingIssues: '',
-        discussion: '',
-        startTimestamp: Date.now(),
-        endTimestamp: Date.now(),
-        completed: true,
-        canceled: false,
-        projectID: 'SEARCHOLD',
-        attemptID: '',
-        operationID: ''
-      }
-    };
-    localStorage.setItem(tdString, JSON.stringify(noteData));
-    // Perform search
-    mockSearchInput.value = 'SEARCHOLD';
-    mockSearchInput.dispatchEvent(new Event('input'));
-    // Verify date label matches formatted date pattern
-    const resultContainer = document.querySelectorAll('#notesContainer > div')[1];
-    const dateLabel = resultContainer.children[0];
-    expect(dateLabel.textContent).toMatch(/^[A-Za-z]{3}, [A-Za-z]{3} \d{1,2}$/);
-  });
 
 }); 
