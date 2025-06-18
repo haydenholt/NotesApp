@@ -9,6 +9,7 @@
 const mockNoteApp = jest.fn();
 const mockDiffTool = jest.fn();
 const mockViewManager = jest.fn();
+const mockNavigationManager = jest.fn();
 const mockPayAnalysis = jest.fn();
 
 // Mock the components at the module system level
@@ -22,6 +23,10 @@ jest.mock('../src/components/DiffTool.js', () => {
 
 jest.mock('../src/components/ViewManager.js', () => {
   return mockViewManager;
+});
+
+jest.mock('../src/components/NavigationManager.js', () => {
+  return mockNavigationManager;
 });
 
 jest.mock('../src/app/PayAnalysis.js', () => {
@@ -41,6 +46,7 @@ describe('Main Module', () => {
     delete window.noteApp;
     delete window.diffTool;
     delete window.viewManager;
+    delete window.navigationManager;
     delete window.payAnalysis;
     
     // Mock document.addEventListener to capture the callback
@@ -57,6 +63,7 @@ describe('Main Module', () => {
     mockNoteApp.mockReturnValue({ name: 'mockNoteApp' });
     mockDiffTool.mockReturnValue({ name: 'mockDiffTool' });
     mockViewManager.mockReturnValue({ name: 'mockViewManager' });
+    mockNavigationManager.mockReturnValue({ name: 'mockNavigationManager' });
     mockPayAnalysis.mockReturnValue({ name: 'mockPayAnalysis' });
   });
   
@@ -91,6 +98,7 @@ describe('Main Module', () => {
     expect(mockNoteApp).toHaveBeenCalledTimes(1);
     expect(mockDiffTool).toHaveBeenCalledTimes(1);
     expect(mockViewManager).toHaveBeenCalledTimes(1);
+    expect(mockNavigationManager).toHaveBeenCalledTimes(1);
     expect(mockPayAnalysis).toHaveBeenCalledTimes(1);
   });
   
@@ -106,6 +114,7 @@ describe('Main Module', () => {
     expect(window.noteApp).toEqual({ name: 'mockNoteApp' });
     expect(window.diffTool).toEqual({ name: 'mockDiffTool' });
     expect(window.viewManager).toEqual({ name: 'mockViewManager' });
+    expect(window.navigationManager).toEqual({ name: 'mockNavigationManager' });
     expect(window.payAnalysis).toEqual({ name: 'mockPayAnalysis' });
   });
 }); 

@@ -5,6 +5,7 @@ import SystemPromptView from './SystemPromptView.js';
  */
 export class ViewManager {
     constructor() {
+        this.navigationManager = null; // Will be set by NavigationManager
         this.views = {
             notes: { element: document.getElementById('notesView') },
             diff: { element: document.getElementById('diffView') },
@@ -24,13 +25,13 @@ export class ViewManager {
             const key = e.key.toLowerCase();
             if (key === 'd') {
                 e.preventDefault();
-                this.toggleView('diff', 'notes');
+                this.toggleView('diff', 'notes', true);
             } else if (key === 'p') {
                 e.preventDefault();
-                this.toggleView('systemPrompt', 'notes');
+                this.toggleView('systemPrompt', 'notes', true);
             } else if (key === 'y') {
                 e.preventDefault();
-                this.toggleView('payAnalysis', 'notes');
+                this.toggleView('payAnalysis', 'notes', true);
             }
         });
 
@@ -63,6 +64,12 @@ export class ViewManager {
         }
         view.element.classList.remove('hidden');
         this.currentView = viewName;
+        
+        // Notify navigation manager of view change
+        if (this.navigationManager) {
+            this.navigationManager.syncWithView(viewName);
+        }
+        
         if (view.onShow) {
             try {
                 view.onShow();
@@ -72,8 +79,15 @@ export class ViewManager {
         }
     }
 
-    toggleView(viewName, fallback) {
-        this.showView(this.currentView === viewName ? fallback : viewName);
+    toggleView(viewName, fallback, isKeyboardShortcut = false) {
+        const targetView = this.currentView === viewName ? fallback : viewName;
+        
+        // Save scroll position for keyboard shortcuts
+        if (isKeyboardShortcut && this.navigationManager) {
+            this.navigationManager.saveCurrentScrollPosition();
+        }
+        
+        this.showView(targetView);
     }
 }
 

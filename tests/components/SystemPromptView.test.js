@@ -36,7 +36,6 @@ describe('SystemPromptView Component', () => {
     describe('Initialization and Rendering', () => {
         test('should render correctly when container element exists', () => {
             expect(container.innerHTML).not.toBe('');
-            expect(container.querySelector('h1').textContent).toBe('System Prompt Generators');
             expect(container.querySelector('#systemPromptInputCode')).not.toBeNull();
             expect(container.querySelector('#copySystemPromptButton1')).not.toBeNull();
             expect(container.querySelector('#clearSystemPromptButton1')).not.toBeNull();

@@ -12,10 +12,6 @@ export class SystemPromptView {
     render() {
         this.container.innerHTML = `
             <div class="max-w-4xl mx-auto">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-lg font-bold text-gray-800">System Prompt Generators</h1>
-                    <button class="helpButton text-gray-500 hover:text-gray-700 text-xl font-bold bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors" title="Show keyboard shortcuts">?</button>
-                </div>
 
                 <!-- System Prompt for Code Setup -->
                 <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
