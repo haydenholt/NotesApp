@@ -324,7 +324,9 @@ export class PayAnalysis {
             // Determine if this date is in the selected week
             let isInSelectedWeek = false;
             if (this.selectedMonday) {
-                const mondayDate = new Date(this.selectedMonday);
+                // Parse the selectedMonday string (YYYY-MM-DD) to avoid timezone issues
+                const [year, month, day] = this.selectedMonday.split('-').map(Number);
+                const mondayDate = new Date(year, month - 1, day);
                 const weekDates = [];
                 for (let j = 0; j < 7; j++) {
                     const d = new Date(mondayDate);

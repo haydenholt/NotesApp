@@ -449,6 +449,45 @@ describe('PayAnalysis', () => {
     document.createElement = originalCreateElement;
   });
 
+  test('calendar highlighting matches pay week correctly', () => {
+    // Set up a specific Monday: June 16, 2025
+    const monday = new Date(2025, 5, 16); // Monday, June 16, 2025
+    payAnalysis.selectDate(monday);
+    
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Mock the calendar rendering components
+    const mockCalendarContainer = document.createElement('div');
+    payAnalysis.calendarContainer = mockCalendarContainer;
+    
+    // Set the calendar to show June 2025
+    payAnalysis.currentMonth = 5; // June (0-indexed)
+    payAnalysis.currentYear = 2025;
+    
+    // Render the calendar
+    payAnalysis.renderCalendar();
+    
+    // The calendar should have the correct week highlighted
+    // We can't easily test the visual highlighting in Jest, but we can verify
+    // the logic by checking the internal state matches what we expect
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Test that the week calculation is consistent
+    // If we select any day in the same week, it should return the same Monday
+    const tuesday = new Date(2025, 5, 17); // Tuesday, June 17, 2025
+    payAnalysis.selectDate(tuesday);
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    const sunday = new Date(2025, 5, 22); // Sunday, June 22, 2025
+    payAnalysis.selectDate(sunday);
+    expect(payAnalysis.selectedMonday).toBe('2025-06-16');
+    
+    // Test that selecting a different week changes the Monday
+    const nextWeekMonday = new Date(2025, 5, 23); // Monday, June 23, 2025
+    payAnalysis.selectDate(nextWeekMonday);
+    expect(payAnalysis.selectedMonday).toBe('2025-06-23');
+  });
+
   test('should show import dialog and handle file import', async () => {
     // Mock file input
     const mockFileInput = {
