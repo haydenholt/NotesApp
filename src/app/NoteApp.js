@@ -14,7 +14,8 @@ export class NoteApp {
         this.editingNotes = {}; // Track which notes are being edited (vs. new notes), per date
         
         // Initialize date
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('sv-SE');
+        
         this.dateSelector.value = today;
         this.currentDate = today;
         
@@ -905,16 +906,7 @@ export class NoteApp {
     
     // Helper method to format date for display
     formatDate(dateString) {
-        // Use UTC date strings to avoid timezone mismatches
-        const todayString = new Date().toISOString().split('T')[0];
-        if (dateString === todayString) {
-            return "Today";
-        }
-        const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const yesterdayString = yesterdayDate.toISOString().split('T')[0];
-        if (dateString === yesterdayString) {
-            return "Yesterday";
-        }
+
         // Fallback: parse and render in local format
         const [yearStr, monthStr, dayStr] = dateString.split('-');
         const year = parseInt(yearStr, 10);

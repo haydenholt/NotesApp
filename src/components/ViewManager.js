@@ -5,101 +5,75 @@ import SystemPromptView from './SystemPromptView.js';
  */
 export class ViewManager {
     constructor() {
-        this.notesView = document.getElementById('notesView');
-        this.diffView = document.getElementById('diffView');
-        // Get the container for the SystemPromptView
-        this.systemPromptViewContainer = document.getElementById('systemPromptView'); 
-        this.systemPromptViewInstance = null; // To hold the instance
-        // Get the container for the Pay Analysis view
-        this.payAnalysisView = document.getElementById('payAnalysisView');
-
-        // Store view containers for easy toggling
-        this.viewElements = {
-            notes: this.notesView,
-            diff: this.diffView,
-            systemPrompt: this.systemPromptViewContainer,
-            payAnalysis: this.payAnalysisView
+        this.views = {
+            notes: { element: document.getElementById('notesView') },
+            diff: { element: document.getElementById('diffView') },
+            systemPrompt: {
+                element: document.getElementById('systemPromptView'),
+                init: () => this.systemPromptViewInstance = new SystemPromptView('systemPromptView')
+            },
+            payAnalysis: {
+                element: document.getElementById('payAnalysisView'),
+                onShow: () => window.payAnalysis.generateReport()
+            }
         };
-        this.currentView = 'notes'; // 'notes', 'diff', or 'systemPrompt'
-        
+        this.currentView = 'notes';
+
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'd') {
+            if (!e.ctrlKey) return;
+            const key = e.key.toLowerCase();
+            if (key === 'd') {
                 e.preventDefault();
-                this.toggleBetweenNotesAndDiff();
-            } else if (e.ctrlKey && e.key === 'p') {
+                this.toggleView('diff', 'notes');
+            } else if (key === 'p') {
                 e.preventDefault();
-                if (this.currentView === 'systemPrompt') {
-                    this.showView('notes');
-                } else {
-                    this.showView('systemPrompt');
-                }
+                this.toggleView('systemPrompt', 'notes');
+            } else if (key === 'y') {
+                e.preventDefault();
+                this.toggleView('payAnalysis', 'notes');
             }
         });
 
-        if (!this.systemPromptViewContainer) {
+        if (!this.views.systemPrompt.element) {
             console.error("[ViewManager] System Prompt View container element NOT FOUND!");
         }
     }
 
     hideAllViews() {
-        Object.values(this.viewElements).forEach(view => {
-            if (view) {
-                view.classList.add('hidden');
-            }
+        Object.values(this.views).forEach(v => {
+            if (v.element) v.element.classList.add('hidden');
         });
     }
 
     showView(viewName) {
-        this.hideAllViews();
-        let viewToShow;
-        switch (viewName) {
-            case 'notes':
-                viewToShow = this.viewElements.notes;
-                this.currentView = 'notes';
-                break;
-            case 'diff':
-                viewToShow = this.viewElements.diff;
-                this.currentView = 'diff';
-                break;
-            case 'systemPrompt':
-                if (!this.systemPromptViewContainer) {
-                    console.error('[ViewManager] CRITICAL: systemPromptViewContainer is null when trying to show systemPrompt view!');
-                    return; 
-                }
-                if (!this.systemPromptViewInstance) {
-                    try {
-                        this.systemPromptViewInstance = new SystemPromptView('systemPromptView');
-                    } catch (error) {
-                        console.error('[ViewManager] ERROR creating SystemPromptView instance:', error);
-                        return; // Stop if instance creation fails
-                    }
-                }
-                viewToShow = this.viewElements.systemPrompt;
-                this.currentView = 'systemPrompt';
-                break;
-            case 'payAnalysis':
-                viewToShow = this.viewElements.payAnalysis;
-                this.currentView = 'payAnalysis';
-                break;
-            default:
-                viewToShow = this.viewElements.notes;
-                this.currentView = 'notes';
+        const view = this.views[viewName] || this.views.notes;
+        if (!view.element) {
+            console.error(`[ViewManager] No view element found for: ${viewName}`);
+            return;
         }
-        if (viewToShow) {
-            viewToShow.classList.remove('hidden');
-        } else {
-            console.error(`[ViewManager] No view element found to show for: ${viewName}`);
+        this.hideAllViews();
+        if (view.init && !view.initialized) {
+            try {
+                view.init();
+                view.initialized = true;
+            } catch (error) {
+                console.error(`[ViewManager] ERROR initializing view ${viewName}:`, error);
+                return;
+            }
+        }
+        view.element.classList.remove('hidden');
+        this.currentView = viewName;
+        if (view.onShow) {
+            try {
+                view.onShow();
+            } catch (error) {
+                console.error(`[ViewManager] ERROR onShow for view: ${viewName}`, error);
+            }
         }
     }
-    
-    toggleBetweenNotesAndDiff() {
-        if (this.currentView === 'notes') {
-            this.showView('diff');
-        } else if (this.currentView === 'diff') {
-            this.showView('notes');
-        } else {
-            this.showView('notes');
-        }
+
+    toggleView(viewName, fallback) {
+        this.showView(this.currentView === viewName ? fallback : viewName);
     }
 }
 

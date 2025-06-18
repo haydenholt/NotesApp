@@ -7,6 +7,7 @@ A web-based note-taking application with time tracking, text comparison, and sys
 
 - **Time Tracking**: Track total time spent on task. The time starts once an ID or text is entered into a note.
 - **Off-Platform Time Tracking**: Track time spent on activities outside the platform (training, sheetwork, blocked time)
+- **Pay Analysis**: Weekly earnings report with detailed breakdowns of on-platform and off-platform time
 - **Feedback**: Auto-format feedback with Ctrl-X
 - **Writing Tool Integration**: Works with Quillbot and Grammarly for checking grammar and spelling
 - **Text Diff Tool**: Compare two versions of text with a built-in diff viewer
@@ -56,7 +57,12 @@ python -m http.server 8000
    - Paste original and modified text
    - Compare differences between texts
 
-4. **System Prompt View** (Ctrl+P):
+4. **Pay Analysis View** (Ctrl+Y):
+   - Weekly earnings report with calendar selection
+   - Detailed breakdown of time tracked
+   - Summary statistics of time worked for the week
+
+5. **System Prompt View** (Ctrl+P):
    - LLM prompt template formatter
    - Use Ctrl+X in the to copy the generated prompt
    - **Code Setup Prompt Generator**: 
@@ -68,11 +74,15 @@ python -m http.server 8000
 
 ## Keyboard Controls
 
+### View Controls
+- **Ctrl+D**: Switch to Diff view
+- **Ctrl+P**: Switch to System Prompt view
+- **Ctrl+Y**: Switch to Pay Analysis view
+
+### Note Controls
 - **Ctrl+Enter**: Finish current note and stop the timer
 - **Ctrl+X**: Copy formatted feedback to clipboard (Notes view) or copy generated prompt (System Prompt view)
-- **Ctrl+D**: Switch between Notes view and Diff view
-- **Ctrl+P**: Switch between Notes view and System Prompt view
-- **F1**: Cancel the current active note and copy cancellation message to clipboard.
+- **F1**: Cancel the current active note and copy cancellation message to clipboard
 
 ## Writing Tool Integration
 
