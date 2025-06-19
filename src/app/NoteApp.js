@@ -25,12 +25,11 @@ export class NoteApp {
     
         // Set up event listeners
         this.dateSelector.addEventListener('change', () => {
-            // Update current date
+            // Update current date immediately
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -51,15 +50,28 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Add date navigation buttons
         this.addDateNavigationButtons();
         
-        // Set up search functionality
+        // Set up search functionality with debounce
+        let searchDebounceTimer;
+        const searchDebounceDelay = 300; // ms
+        
         this.searchInput.addEventListener('input', () => {
             const query = this.searchInput.value.trim();
+            
+            // Clear existing timer
+            clearTimeout(searchDebounceTimer);
+            
             if (query === '') {
+                // For empty query, reset immediately (no debounce needed)
                 // Show the off-platform container again
                 const offPlatformContainer = document.getElementById('offPlatformContainer');
                 if (offPlatformContainer) {
@@ -75,7 +87,10 @@ export class NoteApp {
                 this.loadNotes();
                 this.createOffPlatformSection();
             } else if (query !== '') {
-                this.searchNotes(query);
+                // For non-empty query, debounce the expensive search operation
+                searchDebounceTimer = setTimeout(() => {
+                    this.searchNotes(query);
+                }, searchDebounceDelay);
             }
         });
         
@@ -130,9 +145,8 @@ export class NoteApp {
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -153,6 +167,11 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Next day button
@@ -167,9 +186,8 @@ export class NoteApp {
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -190,6 +208,11 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Replace the date selector with our new container
@@ -1099,7 +1122,21 @@ export class NoteApp {
             this.currentDate = dateKey;
             this.searchInput.value = '';
             this.isSearchActive = false;
+            
+            // Restore the calendar bar visibility
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
+            }
+            
+            // Ensure off-platform container is visible
+            const offPlatformContainer = document.getElementById('offPlatformContainer');
+            if (offPlatformContainer) {
+                offPlatformContainer.style.display = '';
+            }
+            
             this.loadNotes();
+            this.createOffPlatformSection();
             
             // Highlight the specific note
             setTimeout(() => {

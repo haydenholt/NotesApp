@@ -324,6 +324,8 @@ describe('NoteApp', () => {
   });
 
   test('should filter notes when searching', () => {
+    jest.useFakeTimers();
+    
     const today = new Date().toLocaleDateString('sv-SE');
     const projectID = 'TEST123';
 
@@ -359,6 +361,9 @@ describe('NoteApp', () => {
     searchInput.value = projectID;
     searchInput.dispatchEvent(new Event('input'));
 
+    // Wait for debounced search to complete
+    jest.advanceTimersByTime(300);
+
     // Verify search results
     const notesContainer = document.querySelector('#notesContainer');
     // Match search result cards with updated padding and class names (now matches regular notes)
@@ -372,6 +377,8 @@ describe('NoteApp', () => {
     const projectIDElementInResult = notesContainer.querySelector('span.font-mono');
     expect(projectIDElementInResult).not.toBeNull();
     expect(projectIDElementInResult.textContent).toBe(expectedDisplay);
+    
+    jest.useRealTimers();
     // There should be a copy button (SVG icon) next to the ID
     const copyBtn = notesContainer.querySelector('button svg');
     expect(copyBtn).not.toBeNull();
@@ -614,6 +621,8 @@ describe('NoteApp', () => {
   });
 
   test('should clear search and reload notes when clear button is clicked', () => {
+    jest.useFakeTimers();
+    
     // Set up and complete a note to enable search
     const note = document.querySelector('#notesContainer > div');
     const projectIDInput = note.querySelector('input[placeholder="Enter ID"]');
@@ -628,6 +637,10 @@ describe('NoteApp', () => {
     // Perform search
     mockSearchInput.value = 'TEST123';
     mockSearchInput.dispatchEvent(new Event('input'));
+    
+    // Wait for debounced search to complete
+    jest.advanceTimersByTime(300);
+    
     // Off-platform container should be hidden during search
     expect(mockOffPlatformContainer.style.display).toBe('none');
 
@@ -640,6 +653,8 @@ describe('NoteApp', () => {
     // Off-platform container visible again
     expect(mockOffPlatformContainer.style.display).not.toBe('none');
     expect(loadNotesSpy).toHaveBeenCalled();
+    
+    jest.useRealTimers();
   });
 
   test('should renumber notes when note is deleted', () => {
@@ -1459,6 +1474,8 @@ describe('NoteApp', () => {
   });
 
   test('should show off-platform timers when clearing search with a running timer', () => {
+    jest.useFakeTimers();
+    
     // Setup - create a mock for the off-platform timer section
     mockOffPlatformContainer.innerHTML = '<div class="off-platform-section"></div>';
     
@@ -1471,6 +1488,9 @@ describe('NoteApp', () => {
     // Perform a search which hides the off-platform container
     mockSearchInput.value = 'test';
     mockSearchInput.dispatchEvent(new Event('input'));
+    
+    // Wait for debounced search to complete
+    jest.advanceTimersByTime(300);
     
     // Verify search is active and container is hidden
     // isSearchActive flag removed
@@ -1488,6 +1508,8 @@ describe('NoteApp', () => {
     // Verify search state is reset
     // isSearchActive flag removed
     expect(createOffPlatformSectionSpy).toHaveBeenCalled();
+    
+    jest.useRealTimers();
   });
 
   test('should preserve timer state after editing and page reload', () => {
