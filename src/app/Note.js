@@ -43,12 +43,12 @@ export class Note {
         completed = noteData.completed || false;
         additionalTime = noteData.additionalTime || 0;
         canceled = noteData.canceled || false;
-        // Create the note container with improved styling - changed to flex-col for horizontal layout
+        // Create the note container with Tailwind classes
         const noteContainer = document.createElement('div');
-        noteContainer.className = 'flex flex-col mb-4 p-5 rounded-lg shadow-sm border border-gray-100 relative group transition-shadow hover:shadow-md ' +
+        noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' +
             (completed ?
-                (canceled ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-200') :
-                'bg-white border-gray-100');
+                (canceled ? 'bg-red-50' : 'bg-gray-50') :
+                'bg-white');
         noteContainer.dataset.noteId = number;
 
         // Create action buttons
@@ -88,76 +88,87 @@ export class Note {
         actionsDiv.append(editButton, saveButton, deleteButton);
         noteContainer.appendChild(actionsDiv);
 
-        // Top header with note number, timer, and ID fields in horizontal layout
-        const topHeader = document.createElement('div');
-        topHeader.className = 'flex items-center gap-4 mb-3 pb-3 border-b-2 border-gray-400 bg-gray-200 -mx-5 -mt-5 px-5 pt-4 rounded-t-lg shadow-sm';
+        // Left sidebar with number, timer and ID fields
+        const leftSidebar = document.createElement('div');
+        leftSidebar.className = 'flex flex-col mr-4 min-w-32';
 
-        // Note number display
+        // Number display - hide for cancelled notes, use provided displayIndex for non-cancelled notes
         const numberDisplay = document.createElement('div');
-        numberDisplay.className = 'text-lg font-bold flex-shrink-0';
+        numberDisplay.className = 'text-gray-600 font-bold mb-2';
+        // If note is completed and cancelled, show "Cancelled"; otherwise, show its position among non-cancelled notes
         if (completed && canceled) {
             numberDisplay.textContent = "Cancelled";
-            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-red-600';
+            numberDisplay.className = 'text-red-600 font-bold mb-2';
         } else {
-            numberDisplay.textContent = `#${displayIndex}`;
-            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-gray-700';
+            // Use provided displayIndex
+            numberDisplay.textContent = String(displayIndex);
         }
-        topHeader.appendChild(numberDisplay);
+        leftSidebar.appendChild(numberDisplay);
 
-        // Timer display
+        // Timer display - FIX: Use the same class for all completed notes
         const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'font-mono text-lg font-semibold flex-shrink-0 ' + 
+        timerDisplay.className = 'font-mono text-base mb-3 ' + 
             (completed ? 
                 (canceled ? 'text-red-600' : 'text-green-600') : 
                 'text-gray-600');
         timerDisplay.textContent = '00:00:00';
-        topHeader.appendChild(timerDisplay);
+        leftSidebar.appendChild(timerDisplay);
 
-        // ID fields container - horizontal layout with improved styling
+        // Create ID fields container
         const idFieldsContainer = document.createElement('div');
-        idFieldsContainer.className = 'flex gap-4 flex-grow';
+        idFieldsContainer.className = 'flex flex-col gap-1';
         
-        // Create ID field function for both active and completed notes
-        const createIDField = (value, placeholder, label) => {
-            const group = document.createElement('div');
-            group.className = 'flex flex-col';
-            
-            const labelEl = document.createElement('label');
-            labelEl.className = 'text-xs font-medium text-gray-600 mb-1';
-            labelEl.textContent = label;
-            
-            const input = document.createElement('input');
-            input.className = 'w-40 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ' + 
-                              (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
-            input.style.direction = 'rtl';
-            input.placeholder = placeholder;
-            input.value = value;
-            input.disabled = completed;
-            
-            group.appendChild(labelEl);
-            group.appendChild(input);
-            
-            return { group, input };
-        };
+        // Attempt ID field
+        const attemptIDLabel = document.createElement('label');
+        attemptIDLabel.className = 'text-xs text-gray-500';
+        attemptIDLabel.textContent = 'Attempt ID:';
+        
+        const attemptIDInput = document.createElement('input');
+        attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
+        (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        attemptIDInput.style.direction = 'rtl';
+        attemptIDInput.placeholder = 'Enter ID';
+        attemptIDInput.value = attemptID;
+        attemptIDInput.disabled = completed;
         
         // Project ID field
-        const projectField = createIDField(projectID, 'Enter project ID', 'Project ID');
-        const attemptField = createIDField(attemptID, 'Enter attempt ID', 'Attempt ID');
-        const operationField = createIDField(operationID, 'Enter op ID', 'Operation ID');
+        const projectIDLabel = document.createElement('label');
+        projectIDLabel.className = 'text-xs text-gray-500 mt-1';
+        projectIDLabel.textContent = 'Project ID:';
         
-        idFieldsContainer.appendChild(projectField.group);
-        idFieldsContainer.appendChild(attemptField.group);
-        idFieldsContainer.appendChild(operationField.group);
+        const projectIDInput = document.createElement('input');
+        projectIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
+                                  (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        projectIDInput.style.direction = 'rtl';
+        projectIDInput.placeholder = 'Enter ID';
+        projectIDInput.value = projectID;
+        projectIDInput.disabled = completed;
         
-        const projectIDInput = projectField.input;
-        const attemptIDInput = attemptField.input;
-        const operationIDInput = operationField.input;
+        // Operation ID field
+        const operationIDLabel = document.createElement('label');
+        operationIDLabel.className = 'text-xs text-gray-500 mt-1';
+        operationIDLabel.textContent = 'Operation ID:';
         
-        topHeader.appendChild(idFieldsContainer);
+        const operationIDInput = document.createElement('input');
+        operationIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
+                                  (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        operationIDInput.style.direction = 'rtl';
+        operationIDInput.placeholder = 'Enter ID';
+        operationIDInput.value = operationID;
+        operationIDInput.disabled = completed;
+        
+        idFieldsContainer.appendChild(projectIDLabel);
+        idFieldsContainer.appendChild(projectIDInput);
+        idFieldsContainer.appendChild(attemptIDLabel);
+        idFieldsContainer.appendChild(attemptIDInput);
+        idFieldsContainer.appendChild(operationIDLabel);
+        idFieldsContainer.appendChild(operationIDInput);
+        
+        leftSidebar.appendChild(idFieldsContainer);
 
-        // Content container - now full width below the header
+        // Content container
         const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex flex-col gap-3 min-w-0';
+        contentContainer.className = 'flex-grow flex flex-col gap-3';
 
         // Create the three sections
         const sections = [
@@ -326,7 +337,7 @@ export class Note {
             timer.startDisplay();
         }
 
-        noteContainer.appendChild(topHeader);
+        noteContainer.appendChild(leftSidebar);
         noteContainer.appendChild(contentContainer);
 
         // Attach instance properties to mirror old note object

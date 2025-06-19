@@ -329,18 +329,18 @@ export class NoteApp {
             }
         });
         note.elements.attemptID.disabled = true;
-        note.elements.attemptID.classList.remove('text-black', 'bg-white');
+        note.elements.attemptID.classList.remove('text-black');
         note.elements.attemptID.classList.add('text-gray-500', 'bg-gray-100');
         note.elements.projectID.disabled = true;
-        note.elements.projectID.classList.remove('text-black', 'bg-white');
+        note.elements.projectID.classList.remove('text-black');
         note.elements.projectID.classList.add('text-gray-500', 'bg-gray-100');
         note.elements.operationID.disabled = true;
-        note.elements.operationID.classList.remove('text-black', 'bg-white');
+        note.elements.operationID.classList.remove('text-black');
         note.elements.operationID.classList.add('text-gray-500', 'bg-gray-100');
         
         // UI styling for note container and number display based on isCanceled
         note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
-        const numberDisplay = note.container.querySelector('.text-lg.font-bold.flex-shrink-0');
+        const numberDisplay = note.container.querySelector('.font-bold.mb-2');
         if (isCanceled) {
             note.container.classList.add('bg-red-50');
             if (numberDisplay) {
@@ -449,15 +449,15 @@ export class NoteApp {
             // Enable ID fields
             note.elements.attemptID.disabled = false;
             note.elements.attemptID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.attemptID.classList.add('text-black', 'bg-white');
+            note.elements.attemptID.classList.add('text-black');
             
             note.elements.projectID.disabled = false;
             note.elements.projectID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.projectID.classList.add('text-black', 'bg-white');
+            note.elements.projectID.classList.add('text-black');
             
             note.elements.operationID.disabled = false;
             note.elements.operationID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.operationID.classList.add('text-black', 'bg-white');
+            note.elements.operationID.classList.add('text-black');
             
             note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
             note.container.classList.add('bg-white');
@@ -528,20 +528,8 @@ export class NoteApp {
 
     updateTotalTime() {
         const updateDisplay = () => {
-            const onPlatformSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
-            const offPlatformSeconds = this.offPlatformTimer ? this.offPlatformTimer.getTotalSeconds() : 0;
-            const totalSeconds = onPlatformSeconds + offPlatformSeconds;
-            
-            const onPlatformTime = new Timer().formatTime(onPlatformSeconds);
-            const offPlatformTime = new Timer().formatTime(offPlatformSeconds);
-            const totalTime = new Timer().formatTime(totalSeconds);
-            
-            this.totalTimeDisplay.innerHTML = `
-                <div class="text-sm text-gray-600 mb-1">
-                    On-platform: ${onPlatformTime} • Off-platform: ${offPlatformTime}
-                </div>
-                <div class="text-xl font-semibold">Total: ${totalTime}</div>
-            `;
+            const totalSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
+            this.totalTimeDisplay.textContent = `On-platform Time: ${new Timer().formatTime(totalSeconds)}`;
         };
         
         setInterval(updateDisplay, 1000);
