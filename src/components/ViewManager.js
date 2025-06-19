@@ -7,7 +7,25 @@ export class ViewManager {
     constructor() {
         this.navigationManager = null; // Will be set by NavigationManager
         this.views = {
-            notes: { element: document.getElementById('notesView') },
+            notes: { 
+                element: document.getElementById('notesView'),
+                onShow: () => {
+                    // Refresh notes view layout when returning from other views
+                    if (window.noteApp) {
+                        // Force a layout refresh by recreating the off-platform section
+                        window.noteApp.createOffPlatformSection();
+                        
+                        // Ensure proper textarea heights by triggering resize
+                        const textareas = document.querySelectorAll('#notesView textarea');
+                        textareas.forEach(textarea => {
+                            if (textarea.style.height) {
+                                textarea.style.height = 'auto';
+                                textarea.style.height = textarea.scrollHeight + 'px';
+                            }
+                        });
+                    }
+                }
+            },
             diff: { element: document.getElementById('diffView') },
             systemPrompt: {
                 element: document.getElementById('systemPromptView'),
