@@ -65,6 +65,9 @@ export class ViewManager {
         view.element.classList.remove('hidden');
         this.currentView = viewName;
         
+        // Show/hide search bar based on view
+        this.updateSearchBarVisibility(viewName);
+        
         // Notify navigation manager of view change
         if (this.navigationManager) {
             this.navigationManager.syncWithView(viewName);
@@ -88,6 +91,25 @@ export class ViewManager {
         }
         
         this.showView(targetView);
+    }
+
+    updateSearchBarVisibility(viewName) {
+        const searchContainer = document.getElementById('searchInput')?.parentElement;
+        const searchInput = document.getElementById('searchInput');
+        
+        if (searchContainer) {
+            if (viewName === 'notes') {
+                searchContainer.style.display = '';
+            } else {
+                searchContainer.style.display = 'none';
+                // Clear search when leaving notes view
+                if (searchInput && searchInput.value.trim() !== '') {
+                    searchInput.value = '';
+                    // Trigger input event to clear search results
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+        }
     }
 }
 

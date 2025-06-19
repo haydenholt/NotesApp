@@ -66,6 +66,12 @@ export class NoteApp {
                     offPlatformContainer.style.display = '';
                 }
                 
+                // Show the date and total time bar again
+                const dateTimeBar = document.getElementById('totalTime').parentElement;
+                if (dateTimeBar) {
+                    dateTimeBar.style.display = '';
+                }
+                
                 this.loadNotes();
                 this.createOffPlatformSection();
             } else if (query !== '') {
@@ -81,6 +87,13 @@ export class NoteApp {
             if (offPlatformContainer) {
                 offPlatformContainer.style.display = '';
             }
+            
+            // Show the date and total time bar again
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
+            }
+            
             this.loadNotes();
             this.createOffPlatformSection();
         });
@@ -683,6 +696,12 @@ export class NoteApp {
             offPlatformContainer.style.display = 'none';
         }
         
+        // Hide the date and total time bar during search
+        const dateTimeBar = document.getElementById('totalTime').parentElement;
+        if (dateTimeBar) {
+            dateTimeBar.style.display = 'none';
+        }
+        
         // Clear the current container and update originalNotes
         if (query !== '') {
             this.container.innerHTML = '';
@@ -762,6 +781,12 @@ export class NoteApp {
             // Show the off-platform container again
             if (offPlatformContainer) {
                 offPlatformContainer.style.display = '';
+            }
+            
+            // Show the date and total time bar again
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
             }
             
             this.loadNotes();
