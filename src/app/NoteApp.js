@@ -924,28 +924,23 @@ export class NoteApp {
     
     // Render an individual search result
     renderSearchResult(dateKey, id, note, formattedDate) {
-        // Create result container with styling similar to regular notes
+        // Create result container with styling matching regular notes
         const resultContainer = document.createElement('div');
-        
-        // Set background color based on note state - matching Note.js styling
-        let bgColorClass = 'bg-white border-gray-100';
-        if (note.completed) {
-            bgColorClass = note.canceled ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-200';
-        }
-        
-        // Use consistent card styling matching Note.js
-        resultContainer.className = `flex flex-col mb-4 p-5 rounded-lg shadow-sm border transition-shadow hover:shadow-md relative group ${bgColorClass}`;
+        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' +
+            (note.completed ?
+                (note.canceled ? 'bg-red-50' : 'bg-gray-50') :
+                'bg-white');
         resultContainer.dataset.noteId = id;
-        
-        // Create top header similar to regular notes
-        const topHeader = document.createElement('div');
-        topHeader.className = 'flex flex-wrap items-center justify-between gap-4 mb-3 pb-3 border-b-2 border-gray-400 bg-gray-200 -mx-5 -mt-5 px-5 pt-4 rounded-t-lg shadow-sm';
-        
-        // Note number display (exclude cancelled notes from numbering)
+
+        // Left sidebar with number, timer and ID fields (matching regular notes)
+        const leftSidebar = document.createElement('div');
+        leftSidebar.className = 'flex flex-col mr-4 min-w-32';
+
+        // Note number display
         const numberDisplay = document.createElement('div');
         if (note.canceled) {
-            numberDisplay.textContent = 'Cancelled';
-            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-red-600';
+            numberDisplay.textContent = "Cancelled";
+            numberDisplay.className = 'text-red-600 font-bold mb-2';
         } else {
             // Compute display index for non-canceled notes
             const saved = JSON.parse(localStorage.getItem(dateKey) || '{}');
@@ -955,56 +950,56 @@ export class NoteApp {
                 .map(([nid]) => nid);
             const idx = nonCanceledIds.indexOf(String(id));
             const displayIndex = idx !== -1 ? idx + 1 : nonCanceledIds.length + 1;
-            numberDisplay.textContent = `Note #${displayIndex}`;
-            numberDisplay.className = 'text-lg font-bold flex-shrink-0 text-gray-700';
+            numberDisplay.textContent = String(displayIndex);
+            numberDisplay.className = 'text-gray-600 font-bold mb-2';
         }
-        topHeader.appendChild(numberDisplay);
-        
+        leftSidebar.appendChild(numberDisplay);
+
         // Timer display
         const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'font-mono text-lg font-semibold flex-shrink-0 ' +
-            (note.completed ?
-                (note.canceled ? 'text-red-600' : 'text-green-600') :
+        timerDisplay.className = 'font-mono text-base mb-3 ' + 
+            (note.completed ? 
+                (note.canceled ? 'text-red-600' : 'text-green-600') : 
                 'text-gray-600');
         timerDisplay.textContent = '00:00:00';
-        topHeader.appendChild(timerDisplay);
+        leftSidebar.appendChild(timerDisplay);
         const timer = new Timer(note.startTimestamp, note.endTimestamp);
         timer.displayElement = timerDisplay;
         timer.additionalTime = note.additionalTime || 0;
         timer.updateDisplay();
-        
-        // Date label in header
+
+        // Date label (placed after timer)
         const dateLabel = document.createElement('div');
-        dateLabel.className = 'font-mono text-sm font-semibold flex-shrink-0 text-gray-600 bg-gray-100 px-2 py-1 rounded';
+        dateLabel.className = 'font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded mb-3';
         dateLabel.textContent = formattedDate;
-        topHeader.appendChild(dateLabel);
-        
-        // ID fields container - horizontal layout matching Note.js
+        leftSidebar.appendChild(dateLabel);
+
+        // Create ID fields container (vertical layout like regular notes)
         const idFieldsContainer = document.createElement('div');
-        idFieldsContainer.className = 'flex gap-4 flex-grow';
+        idFieldsContainer.className = 'flex flex-col gap-1';
         
-        // Create ID field showing last 5 chars with a copy button
-        const createIDField = (value, label) => {
+        // Create ID field with copy functionality
+        const createIDField = (value, labelText) => {
             if (!value) return null;
 
-            const group = document.createElement('div');
-            group.className = 'flex items-center gap-2';
-
-            const labelEl = document.createElement('div');
-            labelEl.className = 'text-xs font-medium text-gray-600';
-            labelEl.textContent = label;
-
-            const displayEl = document.createElement('div');
-            displayEl.className = 'text-sm font-mono search-id-value';
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500';
+            label.textContent = labelText;
+            
+            const fieldContainer = document.createElement('div');
+            fieldContainer.className = 'flex items-center gap-2';
+            
             const displayText = value.length > 5 ? value.slice(-5) : value;
-            displayEl.textContent = displayText;
-
+            const textSpan = document.createElement('span');
+            textSpan.className = 'font-mono text-sm text-gray-700';
+            textSpan.textContent = displayText;
+            
             const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-id-btn p-1 text-gray-800 hover:text-gray-600';
-            copyBtn.title = `Copy ${label}`;
-            copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg><span class="sr-only">Copy</span>';
-            // Capture original icon HTML for revert
+            copyBtn.className = 'text-gray-600 hover:text-gray-800 transition-colors';
+            copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg>';
+            copyBtn.title = `Copy ${labelText}`;
             const originalIcon = copyBtn.innerHTML;
+            
             copyBtn.addEventListener('click', () => {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(value).catch(err => console.error('Copy failed', err));
@@ -1018,38 +1013,50 @@ export class NoteApp {
                     document.execCommand('copy');
                     document.body.removeChild(textarea);
                 }
-                // Show green check feedback
-                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg><span class="sr-only">Copied</span>';
-                // Clear any existing timeout
-                if (copyBtn._copyTimeout) clearTimeout(copyBtn._copyTimeout);
-                // Revert back after 2s
-                copyBtn._copyTimeout = setTimeout(() => {
+                // Show feedback with checkmark
+                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                setTimeout(() => {
                     copyBtn.innerHTML = originalIcon;
-                }, 2000);
+                }, 1000);
             });
-
-            group.appendChild(labelEl);
-            group.appendChild(displayEl);
-            group.appendChild(copyBtn);
-
-            return group;
+            
+            fieldContainer.appendChild(textSpan);
+            fieldContainer.appendChild(copyBtn);
+            
+            return { label, input: fieldContainer };
         };
         
-        // Add ID fields
-        const projectField = createIDField(note.projectID, 'Project ID');
-        const attemptField = createIDField(note.attemptID, 'Attempt ID');
-        const operationField = createIDField(note.operationID, 'Operation ID');
+        // Add ID fields in order like regular notes
+        const projectField = createIDField(note.projectID, 'Project ID:');
+        if (projectField) {
+            idFieldsContainer.appendChild(projectField.label);
+            idFieldsContainer.appendChild(projectField.input);
+        }
         
-        if (projectField) idFieldsContainer.appendChild(projectField);
-        if (attemptField) idFieldsContainer.appendChild(attemptField);
-        if (operationField) idFieldsContainer.appendChild(operationField);
+        const attemptField = createIDField(note.attemptID, 'Attempt ID:');
+        if (attemptField) {
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500 mt-1';
+            label.textContent = 'Attempt ID:';
+            idFieldsContainer.appendChild(label);
+            idFieldsContainer.appendChild(attemptField.input);
+        }
         
-        topHeader.appendChild(idFieldsContainer);
+        const operationField = createIDField(note.operationID, 'Operation ID:');
+        if (operationField) {
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500 mt-1';
+            label.textContent = 'Operation ID:';
+            idFieldsContainer.appendChild(label);
+            idFieldsContainer.appendChild(operationField.input);
+        }
         
-        // View full note button in header
+        leftSidebar.appendChild(idFieldsContainer);
+
+        // View full note button at bottom of sidebar
         const viewButton = document.createElement('button');
-        viewButton.className = 'px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded flex-shrink-0';
-        viewButton.textContent = 'View Full Note';
+        viewButton.className = 'mt-3 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded';
+        viewButton.textContent = 'View Full';
         viewButton.addEventListener('click', () => {
             // Change to the date of this note and load all notes for that date
             this.dateSelector.value = dateKey;
@@ -1070,19 +1077,18 @@ export class NoteApp {
                 }
             }, 100);
         });
-        topHeader.appendChild(viewButton);
-        
-        // Content container - matching Note.js layout
+        leftSidebar.appendChild(viewButton);
+        // Content container (matching regular notes layout)
         const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex flex-col gap-3 min-w-0';
-        
-        // Add note content sections - NO TRUNCATION
+        contentContainer.className = 'flex-grow flex flex-col gap-3';
+
+        // Create the three sections (matching regular notes)
         const sections = [
             { label: 'Failing issues:', value: note.failingIssues, key: 'failingIssues' },
             { label: 'Non-failing issues:', value: note.nonFailingIssues, key: 'nonFailingIssues' },
             { label: 'Discussion:', value: note.discussion, key: 'discussion' }
         ];
-        
+
         sections.forEach(section => {
             const sectionDiv = document.createElement('div');
             sectionDiv.className = 'flex flex-col';
@@ -1091,17 +1097,24 @@ export class NoteApp {
             label.className = 'font-bold mb-1 text-gray-700';
             label.textContent = section.label;
 
-            const content = document.createElement('div');
-            content.className = 'w-full p-2 border border-gray-300 rounded text-base text-gray-500 bg-gray-100 whitespace-pre-wrap break-words';
-            content.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
-            content.textContent = section.value || '';
+            const textarea = document.createElement('textarea');
+            textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
+            textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden text-gray-500';
+            textarea.value = section.value || '';
+            textarea.disabled = true;
+            
+            // Auto-resize textarea based on content
+            setTimeout(() => {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }, 0);
 
             sectionDiv.appendChild(label);
-            sectionDiv.appendChild(content);
+            sectionDiv.appendChild(textarea);
             contentContainer.appendChild(sectionDiv);
         });
-        
-        resultContainer.appendChild(topHeader);
+
+        resultContainer.appendChild(leftSidebar);
         resultContainer.appendChild(contentContainer);
         this.container.appendChild(resultContainer);
     }

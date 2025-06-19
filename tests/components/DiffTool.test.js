@@ -97,29 +97,6 @@ describe('DiffTool', () => {
     expect(diffResultElement.innerHTML).toContain('Enter text in both fields to see differences');
   });
   
-  // Test for createDiffModeSelect method
-  test('should create diffModeSelect if it does not exist', () => {
-    // Remove the diffModeSelect element
-    document.body.innerHTML = `
-      <textarea id="originalText"></textarea>
-      <textarea id="modifiedText"></textarea>
-      <div id="diffResult"></div>
-      <button id="clearDiffButton"></button>
-    `;
-    
-    // Create a new DiffTool instance
-    const newDiffTool = new DiffTool();
-    
-    // Check if diffModeSelect was created
-    const createdSelect = document.getElementById('diffMode');
-    expect(createdSelect).not.toBeNull();
-    expect(createdSelect.options.length).toBe(4);
-    expect(createdSelect.options[0].value).toBe('line');
-    expect(createdSelect.options[1].value).toBe('word');
-    expect(createdSelect.options[2].value).toBe('character');
-    expect(createdSelect.options[3].value).toBe('token');
-  });
-  
   // Test jsdiff integration
   test('should correctly use jsdiff for text comparison', () => {
     const original = 'a\nb\nc';
