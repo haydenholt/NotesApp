@@ -528,8 +528,19 @@ export class NoteApp {
 
     updateTotalTime() {
         const updateDisplay = () => {
-            const totalSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
-            this.totalTimeDisplay.textContent = `On-platform Time: ${new Timer().formatTime(totalSeconds)}`;
+            const onPlatformSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
+            const offPlatformSeconds = this.offPlatformTimer ? this.offPlatformTimer.getTotalSeconds() : 0;
+            const totalSeconds = onPlatformSeconds + offPlatformSeconds;
+            
+            this.totalTimeDisplay.innerHTML = `
+                <div class="flex items-center justify-between gap-4">
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <div>On-platform: ${new Timer().formatTime(onPlatformSeconds)}</div>
+                        <div>Off-platform: ${new Timer().formatTime(offPlatformSeconds)}</div>
+                    </div>
+                    <div class="font-semibold text-lg">Total: ${new Timer().formatTime(totalSeconds)}</div>
+                </div>
+            `;
         };
         
         setInterval(updateDisplay, 1000);

@@ -1025,13 +1025,13 @@ describe('NoteApp', () => {
     jest.advanceTimersByTime(1000);
     
     // Total time should be updated
-    expect(mockTotalTimeDisplay.textContent).toContain('On-platform Time:');
+    expect(mockTotalTimeDisplay.textContent).toContain('On-platform:');
     
     // Advance timer more
     jest.advanceTimersByTime(2000);
     
     // Total time should reflect updated time
-    expect(mockTotalTimeDisplay.textContent).toContain('On-platform Time: 00:00:03');
+    expect(mockTotalTimeDisplay.textContent).toContain('On-platform: 00:00:03');
   });
 
   test('should save active timers when switching dates', () => {
