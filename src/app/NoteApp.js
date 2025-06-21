@@ -641,8 +641,8 @@ export class NoteApp {
             const projectID = note.elements.projectID.value.trim();
             if (!projectID) return; // Skip notes without project ID
             
-            // Skip cancelled notes for project statistics
-            if (note.canceled) return;
+            // Skip cancelled notes and incomplete notes for project statistics
+            if (note.canceled || !note.completed) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
@@ -873,8 +873,8 @@ export class NoteApp {
             const projectID = note.projectID ? note.projectID.trim() : '';
             if (!projectID) return; // Skip notes without project ID
             
-            // Skip cancelled notes for project statistics
-            if (note.canceled) return;
+            // Skip cancelled notes and incomplete notes for project statistics
+            if (note.canceled || !note.completed) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
