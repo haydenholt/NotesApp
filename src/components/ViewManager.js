@@ -5,8 +5,27 @@ import SystemPromptView from './SystemPromptView.js';
  */
 export class ViewManager {
     constructor() {
+        this.navigationManager = null; // Will be set by NavigationManager
         this.views = {
-            notes: { element: document.getElementById('notesView') },
+            notes: { 
+                element: document.getElementById('notesView'),
+                onShow: () => {
+                    // Refresh notes view layout when returning from other views
+                    if (window.noteApp) {
+                        // Force a layout refresh by recreating the off-platform section
+                        window.noteApp.createOffPlatformSection();
+                        
+                        // Ensure proper textarea heights by triggering resize
+                        const textareas = document.querySelectorAll('#notesView textarea');
+                        textareas.forEach(textarea => {
+                            if (textarea.style.height) {
+                                textarea.style.height = 'auto';
+                                textarea.style.height = textarea.scrollHeight + 'px';
+                            }
+                        });
+                    }
+                }
+            },
             diff: { element: document.getElementById('diffView') },
             systemPrompt: {
                 element: document.getElementById('systemPromptView'),
@@ -24,13 +43,13 @@ export class ViewManager {
             const key = e.key.toLowerCase();
             if (key === 'd') {
                 e.preventDefault();
-                this.toggleView('diff', 'notes');
+                this.toggleView('diff', 'notes', true);
             } else if (key === 'p') {
                 e.preventDefault();
-                this.toggleView('systemPrompt', 'notes');
+                this.toggleView('systemPrompt', 'notes', true);
             } else if (key === 'y') {
                 e.preventDefault();
-                this.toggleView('payAnalysis', 'notes');
+                this.toggleView('payAnalysis', 'notes', true);
             }
         });
 
@@ -63,6 +82,15 @@ export class ViewManager {
         }
         view.element.classList.remove('hidden');
         this.currentView = viewName;
+        
+        // Show/hide search bar based on view
+        this.updateSearchBarVisibility(viewName);
+        
+        // Notify navigation manager of view change
+        if (this.navigationManager) {
+            this.navigationManager.syncWithView(viewName);
+        }
+        
         if (view.onShow) {
             try {
                 view.onShow();
@@ -72,8 +100,34 @@ export class ViewManager {
         }
     }
 
-    toggleView(viewName, fallback) {
-        this.showView(this.currentView === viewName ? fallback : viewName);
+    toggleView(viewName, fallback, isKeyboardShortcut = false) {
+        const targetView = this.currentView === viewName ? fallback : viewName;
+        
+        // Save scroll position for keyboard shortcuts
+        if (isKeyboardShortcut && this.navigationManager) {
+            this.navigationManager.saveCurrentScrollPosition();
+        }
+        
+        this.showView(targetView);
+    }
+
+    updateSearchBarVisibility(viewName) {
+        const searchContainer = document.getElementById('searchInput')?.parentElement;
+        const searchInput = document.getElementById('searchInput');
+        
+        if (searchContainer) {
+            if (viewName === 'notes') {
+                searchContainer.style.display = '';
+            } else {
+                searchContainer.style.display = 'none';
+                // Clear search when leaving notes view
+                if (searchInput && searchInput.value.trim() !== '') {
+                    searchInput.value = '';
+                    // Trigger input event to clear search results
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+        }
     }
 }
 

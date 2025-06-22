@@ -409,6 +409,7 @@ export class Note {
         confirmBtn.focus();
     }
 
+    
     /** Format this note's IDs for copying */
     getFormattedIDs() {
         const project = this.elements.projectID.value || '';

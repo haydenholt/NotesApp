@@ -11,46 +11,45 @@ export class SystemPromptView {
 
     render() {
         this.container.innerHTML = `
-            <div class="container mx-auto p-4">
-                <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">System Prompt Generators</h1>
+            <div class="max-w-4xl mx-auto">
 
                 <!-- System Prompt for Code Setup -->
-                <div class="bg-white shadow-md rounded-lg p-6 mb-8">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Code Setup Prompt</h2>
-                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your code here..."></textarea>
-                    <div class="mt-4 flex space-x-2 justify-between">
-                        <button id="copySystemPromptButton1" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition-colors duration-150">
+                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
+                    <h2 class="text-lg font-medium mb-4 text-gray-700">Code Setup Prompt</h2>
+                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste your code here..."></textarea>
+                    <div class="mt-6 flex gap-3 justify-between">
+                        <button id="copySystemPromptButton1" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Setup Prompt
                         </button>
-                        <button id="clearSystemPromptButton1" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-150">
+                        <button id="clearSystemPromptButton1" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>
                 </div>
 
                 <!-- System Prompt for Prompt/Response Evaluation -->
-                <div class="bg-white shadow-md rounded-lg p-6">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Prompt/Response Evaluation Prompt</h2>
+                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6">
+                    <h2 class="text-lg font-medium mb-4 text-gray-700">Prompt/Response Evaluation Prompt</h2>
 
-                    <div>
-                        <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-1">Original Prompt to AI:</label>
-                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Paste the original prompt..."></textarea>
+                    <div class="mb-4">
+                        <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
+                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste the original prompt..."></textarea>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                            <label for="systemPromptInputResponse2_1" class="block text-sm font-medium text-gray-700 mb-1">AI's Response 1:</label>
-                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Paste AI's first response..."></textarea>
+                            <label for="systemPromptInputResponse2_1" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
+                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste AI's first response..."></textarea>
                         </div>
                         <div>
-                            <label for="systemPromptInputResponse2_2" class="block text-sm font-medium text-gray-700 mb-1">AI's Response 2:</label>
-                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Paste AI's second response..."></textarea>
+                            <label for="systemPromptInputResponse2_2" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
+                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste AI's second response..."></textarea>
                         </div>
                     </div>
-                    <div class="mt-6 flex space-x-2 justify-between">
-                        <button id="copySystemPromptButton2" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition-colors duration-150">
+                    <div class="flex gap-3 justify-between">
+                        <button id="copySystemPromptButton2" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Evaluation Prompt
                         </button>
-                        <button id="clearSystemPromptButton2" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-150">
+                        <button id="clearSystemPromptButton2" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>

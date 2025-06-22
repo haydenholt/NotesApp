@@ -25,12 +25,11 @@ export class NoteApp {
     
         // Set up event listeners
         this.dateSelector.addEventListener('change', () => {
-            // Update current date
+            // Update current date immediately
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -51,25 +50,47 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Add date navigation buttons
         this.addDateNavigationButtons();
         
-        // Set up search functionality
+        // Set up search functionality with debounce
+        let searchDebounceTimer;
+        const searchDebounceDelay = 300; // ms
+        
         this.searchInput.addEventListener('input', () => {
             const query = this.searchInput.value.trim();
+            
+            // Clear existing timer
+            clearTimeout(searchDebounceTimer);
+            
             if (query === '') {
+                // For empty query, reset immediately (no debounce needed)
                 // Show the off-platform container again
                 const offPlatformContainer = document.getElementById('offPlatformContainer');
                 if (offPlatformContainer) {
                     offPlatformContainer.style.display = '';
                 }
                 
+                // Show the date and total time bar again
+                const dateTimeBar = document.getElementById('totalTime').parentElement;
+                if (dateTimeBar) {
+                    dateTimeBar.style.display = '';
+                }
+                
                 this.loadNotes();
                 this.createOffPlatformSection();
             } else if (query !== '') {
-                this.searchNotes(query);
+                // For non-empty query, debounce the expensive search operation
+                searchDebounceTimer = setTimeout(() => {
+                    this.searchNotes(query);
+                }, searchDebounceDelay);
             }
         });
         
@@ -81,6 +102,13 @@ export class NoteApp {
             if (offPlatformContainer) {
                 offPlatformContainer.style.display = '';
             }
+            
+            // Show the date and total time bar again
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
+            }
+            
             this.loadNotes();
             this.createOffPlatformSection();
         });
@@ -103,12 +131,12 @@ export class NoteApp {
     addDateNavigationButtons() {
         // Create wrapper for the date picker and buttons
         const dateNavContainer = document.createElement('div');
-        dateNavContainer.className = 'flex items-center';
+        dateNavContainer.className = 'flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm';
         
         // Previous day button
         const prevDayButton = document.createElement('button');
-        prevDayButton.innerHTML = '&larr;'; // Left arrow
-        prevDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-l';
+        prevDayButton.innerHTML = '‹'; // Left chevron
+        prevDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-r border-gray-200 transition-colors';
         prevDayButton.title = 'Previous day';
         prevDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -117,9 +145,8 @@ export class NoteApp {
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -140,12 +167,17 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Next day button
         const nextDayButton = document.createElement('button');
-        nextDayButton.innerHTML = '&rarr;'; // Right arrow
-        nextDayButton.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-r';
+        nextDayButton.innerHTML = '›'; // Right chevron
+        nextDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-l border-gray-200 transition-colors';
         nextDayButton.title = 'Next day';
         nextDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -154,9 +186,8 @@ export class NoteApp {
             this.dateSelector.value = currentDate.toISOString().split('T')[0];
             this.currentDate = this.dateSelector.value;
             
-            // Update off-platform timer date and load state for the new date
+            // Update off-platform timer date immediately
             this.offPlatformTimer.currentDate = this.currentDate;
-            this.offPlatformTimer.loadTimerState();
             
             // Only reload notes if not in search mode
             if (this.searchInput.value.trim() === '') {
@@ -177,6 +208,11 @@ export class NoteApp {
                 // Re-run the search with the new date context
                 this.searchNotes(this.searchInput.value.trim());
             }
+            
+            // Load timer state asynchronously to avoid blocking UI
+            setTimeout(() => {
+                this.offPlatformTimer.loadTimerState();
+            }, 0);
         });
         
         // Replace the date selector with our new container
@@ -187,7 +223,7 @@ export class NoteApp {
         parent.removeChild(originalDateSelector);
         
         // Style the date selector to remove default browser border
-        originalDateSelector.className = 'px-2 py-1 border-y border-gray-200 focus:outline-none';
+        originalDateSelector.className = 'px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset text-gray-700 min-w-32';
         
         // Add elements to the container
         dateNavContainer.appendChild(prevDayButton);
@@ -528,8 +564,19 @@ export class NoteApp {
 
     updateTotalTime() {
         const updateDisplay = () => {
-            const totalSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
-            this.totalTimeDisplay.textContent = `On-platform Time: ${new Timer().formatTime(totalSeconds)}`;
+            const onPlatformSeconds = this.notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
+            const offPlatformSeconds = this.offPlatformTimer ? this.offPlatformTimer.getTotalSeconds() : 0;
+            const totalSeconds = onPlatformSeconds + offPlatformSeconds;
+            
+            this.totalTimeDisplay.innerHTML = `
+                <div class="flex items-center justify-between gap-4">
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <div>On-platform: ${new Timer().formatTime(onPlatformSeconds)}</div>
+                        <div>Off-platform: ${new Timer().formatTime(offPlatformSeconds)}</div>
+                    </div>
+                    <div class="font-semibold text-lg">Total: ${new Timer().formatTime(totalSeconds)}</div>
+                </div>
+            `;
         };
         
         setInterval(updateDisplay, 1000);
@@ -594,8 +641,8 @@ export class NoteApp {
             const projectID = note.elements.projectID.value.trim();
             if (!projectID) return; // Skip notes without project ID
             
-            // Skip cancelled notes for project statistics
-            if (note.canceled) return;
+            // Skip cancelled notes and incomplete notes for project statistics
+            if (note.canceled || !note.completed) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
@@ -672,6 +719,12 @@ export class NoteApp {
             offPlatformContainer.style.display = 'none';
         }
         
+        // Hide the date and total time bar during search
+        const dateTimeBar = document.getElementById('totalTime').parentElement;
+        if (dateTimeBar) {
+            dateTimeBar.style.display = 'none';
+        }
+        
         // Clear the current container and update originalNotes
         if (query !== '') {
             this.container.innerHTML = '';
@@ -699,21 +752,23 @@ export class NoteApp {
             dateKeys.forEach(dateKey => {
                 const notesForDate = JSON.parse(localStorage.getItem(dateKey) || '{}');
                 
-                Object.entries(notesForDate).forEach(([id, note]) => {
-                    const projectID = (note.projectID || '').toLowerCase();
-                    const attemptID = (note.attemptID || '').toLowerCase();
-                    const operationID = (note.operationID || '').toLowerCase();
-                    
-                    if (projectID.includes(query) || operationID.includes(query) || attemptID.includes(query)) {
-                        allNotes.push({
-                            dateKey,
-                            id,
-                            note,
-                            formattedDate: this.formatDate(dateKey),
-                            matchesProjectID: projectID.includes(query)
-                        });
-                    }
-                });
+                Object.entries(notesForDate)
+                    .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
+                    .forEach(([id, note]) => {
+                        const projectID = (note.projectID || '').toLowerCase();
+                        const attemptID = (note.attemptID || '').toLowerCase();
+                        const operationID = (note.operationID || '').toLowerCase();
+                        
+                        if (projectID.includes(query) || operationID.includes(query) || attemptID.includes(query)) {
+                            allNotes.push({
+                                dateKey,
+                                id,
+                                note,
+                                formattedDate: this.formatDate(dateKey),
+                                matchesProjectID: projectID.includes(query)
+                            });
+                        }
+                    });
             });
             
             // Render all search results at once without pagination
@@ -749,6 +804,12 @@ export class NoteApp {
             // Show the off-platform container again
             if (offPlatformContainer) {
                 offPlatformContainer.style.display = '';
+            }
+            
+            // Show the date and total time bar again
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
             }
             
             this.loadNotes();
@@ -812,8 +873,8 @@ export class NoteApp {
             const projectID = note.projectID ? note.projectID.trim() : '';
             if (!projectID) return; // Skip notes without project ID
             
-            // Skip cancelled notes for project statistics
-            if (note.canceled) return;
+            // Skip cancelled notes and incomplete notes for project statistics
+            if (note.canceled || !note.completed) return;
             
             if (!projectStats[projectID]) {
                 projectStats[projectID] = { 
@@ -922,98 +983,160 @@ export class NoteApp {
     
     // Render an individual search result
     renderSearchResult(dateKey, id, note, formattedDate) {
-        // Create result container
+        // Create result container with styling matching regular notes
         const resultContainer = document.createElement('div');
-        
-        // Set background color based on note state
-        let bgColorClass = 'bg-white';
-        if (note.completed) {
-            bgColorClass = note.canceled ? 'bg-red-50' : 'bg-gray-50';
-        }
-        
-        // Use the original class string for tests compatibility
-        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow bg-white relative';
-        
-        // Apply the correct background color override
-        if (bgColorClass !== 'bg-white') {
-            resultContainer.classList.remove('bg-white');
-            resultContainer.classList.add(bgColorClass);
-        }
-        
-        // Date label
-        const dateLabel = document.createElement('div');
-        dateLabel.className = 'absolute top-2 right-2 text-xs bg-gray-200 px-2 py-1 rounded text-gray-700';
-        dateLabel.textContent = formattedDate;
-        resultContainer.appendChild(dateLabel);
-        
-        // Left sidebar with ID fields
+        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' +
+            (note.completed ?
+                (note.canceled ? 'bg-red-50' : 'bg-gray-50') :
+                'bg-white');
+        resultContainer.dataset.noteId = id;
+
+        // Left sidebar with number, timer and ID fields (matching regular notes)
         const leftSidebar = document.createElement('div');
-        leftSidebar.className = 'flex flex-col mr-6 min-w-40 flex-shrink-0'; // Wider sidebar with flex-shrink-0
-        
-        // Note ID (number) - show "Cancelled" for cancelled notes
-        const numberLabel = document.createElement('div');
-        numberLabel.className = 'text-gray-600 font-bold mb-2';
+        leftSidebar.className = 'flex flex-col mr-4 min-w-32';
+
+        // Note number display
+        const numberDisplay = document.createElement('div');
         if (note.canceled) {
-            numberLabel.textContent = 'Cancelled';
-            numberLabel.className = 'text-red-600 font-bold mb-2';
+            numberDisplay.textContent = "Cancelled";
+            numberDisplay.className = 'text-red-600 font-bold mb-2';
         } else {
-            numberLabel.textContent = `Note #${id}`;
+            // Compute display index for non-canceled notes
+            const saved = JSON.parse(localStorage.getItem(dateKey) || '{}');
+            const nonCanceledIds = Object.entries(saved)
+                .filter(([, data]) => !data.canceled)
+                .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+                .map(([nid]) => nid);
+            const idx = nonCanceledIds.indexOf(String(id));
+            const displayIndex = idx !== -1 ? idx + 1 : nonCanceledIds.length + 1;
+            numberDisplay.textContent = String(displayIndex);
+            numberDisplay.className = 'text-gray-600 font-bold mb-2';
         }
-        leftSidebar.appendChild(numberLabel);
+        leftSidebar.appendChild(numberDisplay);
+
+        // Timer display
+        const timerDisplay = document.createElement('div');
+        timerDisplay.className = 'font-mono text-base mb-3 ' + 
+            (note.completed ? 
+                (note.canceled ? 'text-red-600' : 'text-green-600') : 
+                'text-gray-600');
+        timerDisplay.textContent = '00:00:00';
+        leftSidebar.appendChild(timerDisplay);
+        const timer = new Timer(note.startTimestamp, note.endTimestamp);
+        timer.displayElement = timerDisplay;
+        timer.additionalTime = note.additionalTime || 0;
+        timer.updateDisplay();
+
+        // Date label (placed after timer)
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded mb-3';
+        dateLabel.textContent = formattedDate;
+        leftSidebar.appendChild(dateLabel);
+
+        // Create ID fields container (vertical layout like regular notes)
+        const idFieldsContainer = document.createElement('div');
+        idFieldsContainer.className = 'flex flex-col gap-1';
         
-        // Project ID
-        if (note.projectID) {
-            const projectIDLabel = document.createElement('div');
-            projectIDLabel.className = 'text-xs text-gray-500';
-            projectIDLabel.textContent = 'Project ID:';
+        // Create ID field with copy functionality
+        const createIDField = (value, labelText) => {
+            if (!value) return null;
+
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500';
+            label.textContent = labelText;
             
-            const projectIDValue = document.createElement('div');
-            projectIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            projectIDValue.textContent = note.projectID;
+            const fieldContainer = document.createElement('div');
+            fieldContainer.className = 'flex items-center gap-2';
             
-            leftSidebar.appendChild(projectIDLabel);
-            leftSidebar.appendChild(projectIDValue);
+            const displayText = value.length > 5 ? value.slice(-5) : value;
+            const textSpan = document.createElement('span');
+            textSpan.className = 'font-mono text-sm text-gray-700';
+            textSpan.textContent = displayText;
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'text-gray-600 hover:text-gray-800 transition-colors';
+            copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg>';
+            copyBtn.title = `Copy ${labelText}`;
+            const originalIcon = copyBtn.innerHTML;
+            
+            copyBtn.addEventListener('click', () => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(value).catch(err => console.error('Copy failed', err));
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = value;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                // Show feedback with checkmark
+                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalIcon;
+                }, 1000);
+            });
+            
+            fieldContainer.appendChild(textSpan);
+            fieldContainer.appendChild(copyBtn);
+            
+            return { label, input: fieldContainer };
+        };
+        
+        // Add ID fields in order like regular notes
+        const projectField = createIDField(note.projectID, 'Project ID:');
+        if (projectField) {
+            idFieldsContainer.appendChild(projectField.label);
+            idFieldsContainer.appendChild(projectField.input);
         }
         
-        
-        // Attempt ID
-        if (note.attemptID) {
-            const attemptIDLabel = document.createElement('div');
-            attemptIDLabel.className = 'text-xs text-gray-500';
-            attemptIDLabel.textContent = 'Attempt ID:';
-            
-            const attemptIDValue = document.createElement('div');
-            attemptIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            attemptIDValue.textContent = note.attemptID;
-            
-            leftSidebar.appendChild(attemptIDLabel);
-            leftSidebar.appendChild(attemptIDValue);
+        const attemptField = createIDField(note.attemptID, 'Attempt ID:');
+        if (attemptField) {
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500 mt-1';
+            label.textContent = 'Attempt ID:';
+            idFieldsContainer.appendChild(label);
+            idFieldsContainer.appendChild(attemptField.input);
         }
         
-        // Operation ID
-        if (note.operationID) {
-            const operationIDLabel = document.createElement('div');
-            operationIDLabel.className = 'text-xs text-gray-500';
-            operationIDLabel.textContent = 'Operation ID:';
-            
-            const operationIDValue = document.createElement('div');
-            operationIDValue.className = 'font-mono text-sm mb-2 break-all'; // Add break-all to prevent overflow
-            operationIDValue.textContent = note.operationID;
-            
-            leftSidebar.appendChild(operationIDLabel);
-            leftSidebar.appendChild(operationIDValue);
+        const operationField = createIDField(note.operationID, 'Operation ID:');
+        if (operationField) {
+            const label = document.createElement('label');
+            label.className = 'text-xs text-gray-500 mt-1';
+            label.textContent = 'Operation ID:';
+            idFieldsContainer.appendChild(label);
+            idFieldsContainer.appendChild(operationField.input);
         }
-        // View full note button
+        
+        leftSidebar.appendChild(idFieldsContainer);
+
+        // View full note button at bottom of sidebar
         const viewButton = document.createElement('button');
-        viewButton.className = 'mt-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded w-full'; // Make button full width
-        viewButton.textContent = 'View Full Note';
+        viewButton.className = 'mt-3 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded';
+        viewButton.textContent = 'View Full';
         viewButton.addEventListener('click', () => {
             // Change to the date of this note and load all notes for that date
             this.dateSelector.value = dateKey;
             this.currentDate = dateKey;
             this.searchInput.value = '';
             this.isSearchActive = false;
+            
+            // Restore the calendar bar visibility
+            const dateTimeBar = document.getElementById('totalTime').parentElement;
+            if (dateTimeBar) {
+                dateTimeBar.style.display = '';
+            }
+            
+            // Ensure off-platform container is visible
+            const offPlatformContainer = document.getElementById('offPlatformContainer');
+            if (offPlatformContainer) {
+                offPlatformContainer.style.display = '';
+            }
+            
             this.loadNotes();
+            this.createOffPlatformSection();
             
             // Highlight the specific note
             setTimeout(() => {
@@ -1028,40 +1151,42 @@ export class NoteApp {
             }, 100);
         });
         leftSidebar.appendChild(viewButton);
-        
-        // Content preview
+        // Content container (matching regular notes layout)
         const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex-grow overflow-hidden'; // Add overflow-hidden
-        
-        // Add note content preview
+        contentContainer.className = 'flex-grow flex flex-col gap-3';
+
+        // Create the three sections (matching regular notes)
         const sections = [
             { label: 'Failing issues:', value: note.failingIssues, key: 'failingIssues' },
             { label: 'Non-failing issues:', value: note.nonFailingIssues, key: 'nonFailingIssues' },
             { label: 'Discussion:', value: note.discussion, key: 'discussion' }
         ];
-        
+
         sections.forEach(section => {
-            if (section.value && section.value.trim()) {
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'mb-2';
-                
-                const label = document.createElement('div');
-                label.className = 'font-bold text-sm text-gray-700';
-                label.textContent = section.label;
-                
-                const content = document.createElement('div');
-                content.className = 'text-sm text-gray-600 whitespace-pre-wrap break-words'; // Add break-words
-                // Truncate long content
-                content.textContent = section.value.length > 150 
-                    ? section.value.substring(0, 150) + '...' 
-                    : section.value;
-                
-                sectionDiv.appendChild(label);
-                sectionDiv.appendChild(content);
-                contentContainer.appendChild(sectionDiv);
-            }
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'flex flex-col';
+
+            const label = document.createElement('div');
+            label.className = 'font-bold mb-1 text-gray-700';
+            label.textContent = section.label;
+
+            const textarea = document.createElement('textarea');
+            textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
+            textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden text-gray-500';
+            textarea.value = section.value || '';
+            textarea.disabled = true;
+            
+            // Auto-resize textarea based on content
+            setTimeout(() => {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }, 0);
+
+            sectionDiv.appendChild(label);
+            sectionDiv.appendChild(textarea);
+            contentContainer.appendChild(sectionDiv);
         });
-        
+
         resultContainer.appendChild(leftSidebar);
         resultContainer.appendChild(contentContainer);
         this.container.appendChild(resultContainer);
@@ -1113,25 +1238,6 @@ export class NoteApp {
         });
         
         offPlatformSection.appendChild(timerGrid);
-        
-        // Create total time display
-        const totalSection = document.createElement('div');
-        totalSection.className = 'bg-gray-50 p-3 rounded flex justify-between items-center';
-        
-        const totalLabel = document.createElement('span');
-        totalLabel.className = 'font-semibold text-gray-700';
-        totalLabel.textContent = 'Total off-platform time:';
-        
-        const totalTime = document.createElement('span');
-        totalTime.className = 'text-xl font-mono font-semibold text-gray-800';
-        totalTime.textContent = '00:00:00';
-        
-        // Store reference to the total time display
-        this.offPlatformTimer.displayElements.total = totalTime;
-        
-        totalSection.appendChild(totalLabel);
-        totalSection.appendChild(totalTime);
-        offPlatformSection.appendChild(totalSection);
         
         // Add the off-platform section to its dedicated container
         offPlatformContainer.appendChild(offPlatformSection);

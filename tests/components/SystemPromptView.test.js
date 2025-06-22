@@ -36,7 +36,6 @@ describe('SystemPromptView Component', () => {
     describe('Initialization and Rendering', () => {
         test('should render correctly when container element exists', () => {
             expect(container.innerHTML).not.toBe('');
-            expect(container.querySelector('h1').textContent).toBe('System Prompt Generators');
             expect(container.querySelector('#systemPromptInputCode')).not.toBeNull();
             expect(container.querySelector('#copySystemPromptButton1')).not.toBeNull();
             expect(container.querySelector('#clearSystemPromptButton1')).not.toBeNull();
@@ -63,9 +62,9 @@ describe('SystemPromptView Component', () => {
             expect(headings[1].textContent).toBe('Prompt/Response Evaluation Prompt');
         });
 
-        test('copySystemPromptButton1 should have indigo background', () => {
+        test('copySystemPromptButton1 should have blue background', () => {
             const copyButton1 = container.querySelector('#copySystemPromptButton1');
-            expect(copyButton1.classList.contains('bg-indigo-500')).toBe(true);
+            expect(copyButton1.classList.contains('bg-blue-500')).toBe(true);
         });
     });
 
