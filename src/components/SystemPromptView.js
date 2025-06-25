@@ -28,7 +28,7 @@ export class SystemPromptView {
                 </div>
 
                 <!-- System Prompt for Prompt/Response Evaluation -->
-                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6">
+                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
                     <h2 class="text-lg font-medium mb-4 text-gray-700">Prompt/Response Evaluation Prompt</h2>
 
                     <div class="mb-4">
@@ -50,6 +50,30 @@ export class SystemPromptView {
                             Copy Evaluation Prompt
                         </button>
                         <button id="clearSystemPromptButton2" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Prompt for Content Comparison -->
+                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6">
+                    <h2 class="text-lg font-medium mb-4 text-gray-700">Content Comparison Prompt</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label for="systemPromptInputResponseA" class="block text-sm font-medium text-gray-700 mb-2">Response A:</label>
+                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste Response A here..."></textarea>
+                        </div>
+                        <div>
+                            <label for="systemPromptInputResponseB" class="block text-sm font-medium text-gray-700 mb-2">Response B:</label>
+                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste Response B here..."></textarea>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 justify-between">
+                        <button id="copySystemPromptButton3" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            Copy Comparison Prompt
+                        </button>
+                        <button id="clearSystemPromptButton3" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>
@@ -253,6 +277,101 @@ Try to be as concise as possible with your responses while not omitting any impo
                 systemPromptInputResponse2_1.value = '';
                 systemPromptInputResponse2_2.value = '';
                 this.showToast('Evaluation fields cleared.', 'info');
+            });
+        }
+
+        // --- Third System Prompt (Content Comparison) ---
+        const systemPromptInputResponseA = document.getElementById('systemPromptInputResponseA');
+        const systemPromptInputResponseB = document.getElementById('systemPromptInputResponseB');
+        const copySystemPromptButton3 = document.getElementById('copySystemPromptButton3');
+        const clearSystemPromptButton3 = document.getElementById('clearSystemPromptButton3');
+
+        const systemPromptTemplate3 = `You are an expert computer-science content comparator. You will be given two blocks of text, Response A and Response B. Your job is to:
+
+1. Break each response into its individual claims or steps.  
+2. For each claim/step:
+   a. Restate it succinctly.  
+   b. Indicate whether it appears in A, in B, or in both.  
+   c. Judge whether the wording or logic is functionally equivalent.  
+   d. Check for any factual errors or logical missteps in that claim.
+3. Identify any claims that appear in one response but not the other.  
+4. Summarize any mismatches in logic or missing details.  
+5. At the end, answer:
+   • "Functionally identical?" (Yes/No)  
+   • "Any false or misleading statements?" (Yes/No)  
+   • If "No" to either, list the specific points of difference or error.
+
+### Output format (table example)
+
+Claim/Step                  | In A? | In B? | Equivalent? | False? | Comments  
+-----------------------------|-------|-------|-------------|--------|---------  
+All inputs = 1               |  ✔    | ✔     | Yes         | No     | —  
+y₁ = AND(x₁,x₂) → 1          |  ✔    | ✔     | Yes         | No     | —  
+MUX second data input = XOR  |  ✘    | ✘     | —           | No     | Both skip naming it  
+…                            | …     | …     | …           | …      | …  
+
+Functionally identical? Yes  
+Any false statements? No  
+
+If you find any mismatches or errors, call them out in the table and the final summary.
+
+### Inputs
+<ResponseA>
+{{RESPONSE_A_PLACEHOLDER}}
+</ResponseA>
+
+<ResponseB>
+{{RESPONSE_B_PLACEHOLDER}}
+</ResponseB>
+`;
+
+        if (copySystemPromptButton3 && systemPromptInputResponseA && systemPromptInputResponseB) {
+            copySystemPromptButton3.addEventListener('click', () => {
+                const responseA = systemPromptInputResponseA.value;
+                const responseB = systemPromptInputResponseB.value;
+
+                if (responseA.trim() === '') {
+                    this.showToast('Response A cannot be empty.', 'error');
+                    return;
+                }
+                if (responseB.trim() === '') {
+                    this.showToast('Response B cannot be empty.', 'error');
+                    return;
+                }
+
+                const generatedPrompt = systemPromptTemplate3
+                    .replace('{{RESPONSE_A_PLACEHOLDER}}', responseA)
+                    .replace('{{RESPONSE_B_PLACEHOLDER}}', responseB);
+
+                navigator.clipboard.writeText(generatedPrompt)
+                    .then(() => {
+                        this.showToast('Comparison prompt copied!', 'success');
+                    })
+                    .catch(err => {
+                        this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Comparison Prompt', true);
+                    });
+            });
+
+            systemPromptInputResponseA.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'x') {
+                    e.preventDefault();
+                    copySystemPromptButton3.click();
+                }
+            });
+
+            systemPromptInputResponseB.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'x') {
+                    e.preventDefault();
+                    copySystemPromptButton3.click();
+                }
+            });
+        }
+
+        if (clearSystemPromptButton3 && systemPromptInputResponseA && systemPromptInputResponseB) {
+            clearSystemPromptButton3.addEventListener('click', () => {
+                systemPromptInputResponseA.value = '';
+                systemPromptInputResponseB.value = '';
+                this.showToast('Comparison fields cleared.', 'info');
             });
         }
     }
