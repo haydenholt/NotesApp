@@ -57,9 +57,10 @@ describe('SystemPromptView Component', () => {
 
         test('should render both system prompt sections with titles', () => {
             const headings = container.querySelectorAll('h2');
-            expect(headings.length).toBe(2);
+            expect(headings.length).toBe(3);
             expect(headings[0].textContent).toBe('Code Setup Prompt');
             expect(headings[1].textContent).toBe('Prompt/Response Evaluation Prompt');
+            expect(headings[2].textContent).toBe('Content Comparison Prompt');
         });
 
         test('copySystemPromptButton1 should have blue background', () => {
