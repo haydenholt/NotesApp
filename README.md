@@ -92,4 +92,4 @@ Timer Notes is fully compatible with popular writing enhancement tools:
 - **Grammarly**: Get real-time writing suggestions and corrections
 
 ## Screenshot
-![alt text](public/images/image-1.png)
+![alt text](public/images/screenshot_2.png)
