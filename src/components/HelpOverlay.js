@@ -82,6 +82,7 @@ export default class HelpOverlay {
                 shortcuts: [
                     { key: 'Ctrl+Enter', description: 'Complete the current note' },
                     { key: 'Ctrl+X', description: 'Copy formatted feedback to clipboard' },
+                    { key: 'Ctrl+Shift+V', description: 'Paste clipboard as formatted bullet point' },
                     { key: 'F1', description: 'Copy cancel message to clipboard and show cancel dialog' }
                 ]
             },
