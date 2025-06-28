@@ -82,6 +82,7 @@ python -m http.server 8000
 ### Note Controls
 - **Ctrl+Enter**: Finish current note and stop the timer
 - **Ctrl+X**: Copy formatted feedback to clipboard (Notes view) or copy generated prompt (System Prompt view)
+- **Ctrl+Shift+V**: Paste clipboard content as formatted bullet point `- [content]`
 - **F1**: Cancel the current active note and copy cancellation message to clipboard
 
 ## Writing Tool Integration

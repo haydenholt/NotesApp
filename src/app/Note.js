@@ -304,6 +304,10 @@ export class Note {
                     this.fallbackCopy(text);
                 }
             }
+            if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+                e.preventDefault();
+                this.pasteAsFormattedBullet();
+            }
         });
 
         contentContainer.addEventListener('keydown', (e) => {
@@ -434,6 +438,61 @@ export class Note {
             if (!successful) console.error('fallbackCopy: Unable to copy text');
         } catch (err) {
             console.error('fallbackCopy failed:', err);
+        }
+    }
+
+    /** Paste clipboard content as formatted bullet point */
+    async pasteAsFormattedBullet() {
+        try {
+            let clipboardText = '';
+            
+            // Try to get clipboard content
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                clipboardText = await navigator.clipboard.readText();
+            } else {
+                // Fallback - can't read clipboard without modern API
+                console.warn('Clipboard API not available, cannot read clipboard content');
+                return;
+            }
+            
+            if (!clipboardText.trim()) {
+                return;
+            }
+            
+            // Format as bullet point with brackets
+            const formattedText = `- [${clipboardText.trim()}] `;
+            
+            // Find the currently focused textarea within this note
+            const activeElement = document.activeElement;
+            const noteTextareas = [
+                this.elements.failingIssues,
+                this.elements.nonFailingIssues,
+                this.elements.discussion
+            ];
+            
+            let targetTextarea = null;
+            if (noteTextareas.includes(activeElement)) {
+                targetTextarea = activeElement;
+            } else {
+                // Default to the first textarea if none is focused
+                targetTextarea = this.elements.failingIssues;
+            }
+            
+            // Insert the formatted text at cursor position
+            const start = targetTextarea.selectionStart;
+            const end = targetTextarea.selectionEnd;
+            const value = targetTextarea.value;
+            targetTextarea.value = value.slice(0, start) + formattedText + value.slice(end);
+            targetTextarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+            
+            // Trigger input event to update height and save
+            targetTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // Focus the textarea
+            targetTextarea.focus();
+            
+        } catch (err) {
+            console.error('Failed to paste formatted bullet:', err);
         }
     }
 
