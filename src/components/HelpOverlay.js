@@ -2,7 +2,8 @@
  * Help overlay component that displays all keyboard shortcuts
  */
 export default class HelpOverlay {
-    constructor() {
+    constructor(themeManager = null) {
+        this.themeManager = themeManager;
         this.overlay = document.getElementById('helpOverlay');
         this.content = document.getElementById('helpContent');
         this.closeButton = document.getElementById('closeHelpButton');
@@ -101,14 +102,19 @@ export default class HelpOverlay {
             }
         ];
 
+        const borderClass = this.themeManager?.getColor('border', 'primary') || 'border-gray-200';
+        const titleClass = this.themeManager?.getColor('text', 'secondary') || 'text-gray-700';
+        const keyBgClass = this.themeManager?.getColor('background', 'secondary') || 'bg-gray-100';
+        const descClass = this.themeManager?.getColor('text', 'secondary') || 'text-gray-600';
+        
         this.content.innerHTML = shortcuts.map(category => `
-            <div class="border-b border-gray-200 pb-3">
-                <h3 class="text-lg font-semibold text-gray-700 mb-2">${category.category}</h3>
+            <div class="border-b ${borderClass} pb-3">
+                <h3 class="text-lg font-semibold ${titleClass} mb-2">${category.category}</h3>
                 <div class="space-y-1">
                     ${category.shortcuts.map(shortcut => `
                         <div class="flex justify-between items-center">
-                            <span class="bg-gray-100 px-2 py-1 rounded text-sm font-mono">${shortcut.key}</span>
-                            <span class="text-sm text-gray-600 ml-4 flex-1">${shortcut.description}</span>
+                            <span class="${keyBgClass} px-2 py-1 rounded text-sm font-mono">${shortcut.key}</span>
+                            <span class="text-sm ${descClass} ml-4 flex-1">${shortcut.description}</span>
                         </div>
                     `).join('')}
                 </div>

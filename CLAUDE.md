@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test:coverage` - Generate coverage report
 
 **Local Development:**
-- `python -m http.server 8000` - Start local server at http://localhost:8000
+- `python3 -m http.server 8001` - Start local server at http://localhost:8001
 - No build or compilation needed - vanilla JavaScript application
 
 ## Architecture Overview

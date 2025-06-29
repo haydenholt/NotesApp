@@ -371,6 +371,221 @@ export class ThemeManager {
             'rounded px-3 py-2 focus:outline-none focus:ring-2'
         );
     }
+    
+    /**
+     * Helper method to get card classes
+     */
+    getCardClasses(variant = 'default') {
+        const bg = this.getColor('background', 'card');
+        const border = this.getColor('border', 'primary');
+        const shadow = this.getColor('shadow', 'sm');
+        
+        const variants = {
+            default: 'p-4 rounded-md',
+            large: 'p-6 rounded-md',
+            stat: 'p-4 rounded-md border-l-2'
+        };
+        
+        return this.combineClasses(
+            bg,
+            border && `border ${border}`,
+            shadow,
+            variants[variant] || variants.default
+        );
+    }
+    
+    /**
+     * Helper method to get stat card classes with accent colors
+     */
+    getStatCardClasses(accentColor = 'blue') {
+        const bg = this.getColor('background', 'card');
+        const shadow = this.getColor('shadow', 'sm');
+        const accentBorder = `border-${accentColor}-300`;
+        
+        return this.combineClasses(
+            bg,
+            shadow,
+            accentBorder,
+            'p-4 rounded-md border-l-2'
+        );
+    }
+    
+    /**
+     * Helper method to get table classes
+     */
+    getTableClasses() {
+        const bg = this.getColor('background', 'card');
+        const border = this.getColor('border', 'primary');
+        const textPrimary = this.getColor('text', 'primary');
+        const textSecondary = this.getColor('text', 'secondary');
+        
+        return {
+            container: this.combineClasses(bg, 'rounded-md shadow-sm overflow-x-auto'),
+            table: 'w-full text-sm',
+            headerRow: this.combineClasses('border-b', border),
+            headerCell: this.combineClasses('py-3 px-4 text-left font-medium', textSecondary),
+            bodyRow: this.combineClasses('border-b', border),
+            bodyCell: this.combineClasses('py-3 px-4', textPrimary),
+            title: this.combineClasses('text-lg font-light mb-4', textPrimary)
+        };
+    }
+    
+    /**
+     * Helper method to get calendar classes
+     */
+    getCalendarClasses() {
+        const calendar = this.getColors('calendar');
+        const bg = this.getColor('background', 'card');
+        const border = this.getColor('border', 'primary');
+        
+        return {
+            container: this.combineClasses(bg, 'rounded-md shadow-sm p-4'),
+            weekday: calendar.weekday,
+            weekend: calendar.weekend,
+            selectedWeek: calendar.selectedWeek,
+            dayOff: calendar.dayOff,
+            border: border
+        };
+    }
+    
+    /**
+     * Helper method to get text utility classes
+     */
+    getTextClasses() {
+        return {
+            primary: this.getColor('text', 'primary'),
+            secondary: this.getColor('text', 'secondary'),
+            tertiary: this.getColor('text', 'tertiary'),
+            muted: this.getColor('text', 'muted'),
+            lighter: this.getColor('text', 'lighter'),
+            inverse: this.getColor('text', 'inverse')
+        };
+    }
+    
+    /**
+     * Helper method to get background utility classes
+     */
+    getBackgroundClasses() {
+        return {
+            primary: this.getColor('background', 'primary'),
+            secondary: this.getColor('background', 'secondary'),
+            tertiary: this.getColor('background', 'tertiary'),
+            overlay: this.getColor('background', 'overlay'),
+            card: this.getColor('background', 'card')
+        };
+    }
+    
+    /**
+     * Helper method to format numbers with theme-appropriate styling
+     */
+    getNumberDisplayClasses(size = 'default') {
+        const textPrimary = this.getColor('text', 'primary');
+        const textMuted = this.getColor('text', 'muted');
+        
+        const sizes = {
+            large: 'text-2xl font-light',
+            default: 'text-lg font-medium',
+            small: 'text-sm'
+        };
+        
+        return {
+            number: this.combineClasses(sizes[size] || sizes.default, textPrimary),
+            unit: this.combineClasses('ml-1 text-sm', textMuted)
+        };
+    }
+    
+    /**
+     * Helper method to get label classes for forms and displays
+     */
+    getLabelClasses(variant = 'default') {
+        const textMuted = this.getColor('text', 'muted');
+        
+        const variants = {
+            default: 'text-sm',
+            uppercase: 'text-xs uppercase tracking-wider',
+            large: 'text-base font-medium',
+            small: 'text-xs'
+        };
+        
+        return this.combineClasses(
+            variants[variant] || variants.default,
+            textMuted
+        );
+    }
+    
+    /**
+     * Helper method to get form state classes
+     */
+    getFormStateClasses() {
+        return {
+            disabled: {
+                text: this.getColor('text', 'muted'),
+                background: this.getColor('background', 'secondary'),
+                border: this.getColor('border', 'primary')
+            },
+            enabled: {
+                text: this.getColor('text', 'primary'),
+                background: this.getColor('background', 'card'),
+                border: this.getColor('border', 'primary')
+            }
+        };
+    }
+    
+    /**
+     * Helper method to get empty state / placeholder text classes
+     */
+    getEmptyStateClasses() {
+        return {
+            text: this.combineClasses('italic', this.getColor('text', 'muted')),
+            container: 'w-full text-center py-8'
+        };
+    }
+    
+    /**
+     * Helper method to apply disabled state to form elements
+     */
+    applyDisabledState(element) {
+        const states = this.getFormStateClasses();
+        element.disabled = true;
+        element.classList.remove(this.getColor('text', 'primary'));
+        element.classList.add(states.disabled.text, states.disabled.background);
+    }
+    
+    /**
+     * Helper method to apply enabled state to form elements
+     */
+    applyEnabledState(element) {
+        const states = this.getFormStateClasses();
+        element.disabled = false;
+        element.classList.remove(this.getColor('text', 'muted'), this.getColor('background', 'secondary'));
+        element.classList.add(states.enabled.text);
+    }
+    
+    /**
+     * Helper method to get diff highlight classes
+     */
+    getDiffClasses() {
+        return {
+            noDiff: this.combineClasses(
+                this.getColor('background', 'secondary'),
+                this.getColor('border', 'secondary'),
+                this.getColor('text', 'secondary'),
+                'border rounded-md p-3 mb-4 text-sm'
+            ),
+            summary: this.combineClasses(
+                'bg-blue-50 border-blue-200',
+                'border rounded-md p-3 mb-4 text-sm'
+            ),
+            added: {
+                line: 'bg-green-50 border-l-2 border-green-300 pl-2',
+                text: 'bg-green-200 font-medium'
+            },
+            removed: {
+                line: 'bg-red-50 border-l-2 border-red-300 pl-2',
+                text: 'bg-red-200 font-medium line-through'
+            }
+        };
+    }
 }
 
 export default ThemeManager;

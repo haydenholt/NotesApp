@@ -3,7 +3,8 @@
  * Uses global Diff object from CDN
  */
 export class DiffTool {
-    constructor() {
+    constructor(themeManager = null) {
+        this.themeManager = themeManager;
         this.originalTextArea = document.getElementById('originalText');
         this.modifiedTextArea = document.getElementById('modifiedText');
         this.clearButton = document.getElementById('clearDiffButton');
@@ -74,7 +75,8 @@ export class DiffTool {
      */
     generateDiffSummary(original, modified, mode = 'line') {
         if (original === modified) {
-            return '<div class="bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600">No differences found</div>';
+            const diffClasses = this.themeManager?.getDiffClasses();
+            return `<div class="${diffClasses?.noDiff || 'bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600'}">No differences found</div>`;
         }
         
         // Only generate detailed hunk headers for line mode
@@ -93,16 +95,19 @@ export class DiffTool {
         const changes = Diff.diffLines(original, modified);
         
         if (!changes.some(change => change.added || change.removed)) {
-            return '<div class="bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600">No differences found</div>';
+            const diffClasses = this.themeManager?.getDiffClasses();
+            return `<div class="${diffClasses?.noDiff || 'bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600'}">No differences found</div>`;
         }
         
         const hunks = this.generateHunksFromJSDiff(changes);
         
         if (hunks.length === 0) {
-            return '<div class="bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600">No differences found</div>';
+            const diffClasses = this.themeManager?.getDiffClasses();
+            return `<div class="${diffClasses?.noDiff || 'bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600'}">No differences found</div>`;
         }
         
-        let summaryHtml = '<div class="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm">';
+        const diffClasses = this.themeManager?.getDiffClasses();
+        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm'}">`;
         summaryHtml += '<div class="font-medium text-blue-800 mb-2">Diff Summary:</div>';
         
         hunks.forEach(hunk => {
@@ -132,7 +137,8 @@ export class DiffTool {
             if (change.removed) deletions += change.count || 1;
         });
         
-        let summaryHtml = '<div class="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm">';
+        const diffClasses = this.themeManager?.getDiffClasses();
+        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm'}">`;
         summaryHtml += '<div class="font-medium text-blue-800 mb-2">Diff Summary:</div>';
         summaryHtml += `<div class="text-blue-700">${mode.charAt(0).toUpperCase() + mode.slice(1)} mode: +${additions} -${deletions} changes</div>`;
         summaryHtml += '</div>';
@@ -227,10 +233,15 @@ export class DiffTool {
             }
             
             lines.forEach(line => {
+                const diffClasses = this.themeManager?.getDiffClasses();
                 if (change.added) {
-                    output += `<div class="bg-green-50 border-l-2 border-green-300 pl-2"><span class="bg-green-200 font-medium">${this.escapeHtml(line)}</span></div>`;
+                    const addedLine = diffClasses?.added.line || 'bg-green-50 border-l-2 border-green-300 pl-2';
+                    const addedText = diffClasses?.added.text || 'bg-green-200 font-medium';
+                    output += `<div class="${addedLine}"><span class="${addedText}">${this.escapeHtml(line)}</span></div>`;
                 } else if (change.removed) {
-                    output += `<div class="bg-red-50 border-l-2 border-red-300 pl-2"><span class="bg-red-200 font-medium line-through">${this.escapeHtml(line)}</span></div>`;
+                    const removedLine = diffClasses?.removed.line || 'bg-red-50 border-l-2 border-red-300 pl-2';
+                    const removedText = diffClasses?.removed.text || 'bg-red-200 font-medium line-through';
+                    output += `<div class="${removedLine}"><span class="${removedText}">${this.escapeHtml(line)}</span></div>`;
                 } else {
                     output += `<div>${this.escapeHtml(line)}</div>`;
                 }

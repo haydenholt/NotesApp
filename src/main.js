@@ -15,11 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize app components
     const app = new NoteApp(themeManager);
-    const diffTool = new DiffTool();
+    const diffTool = new DiffTool(themeManager);
     const viewManager = new ViewManager();
     const navigationManager = new NavigationManager(viewManager);
     const payAnalysis = new PayAnalysis(themeManager);
-    const helpOverlay = new HelpOverlay();
+    const helpOverlay = new HelpOverlay(themeManager);
 
     // Set up theme toggle
     const themeToggle = document.getElementById('themeToggle');

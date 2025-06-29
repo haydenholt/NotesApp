@@ -16,6 +16,16 @@ export class PayAnalysis {
         }
         // Select the current week on load
         this.selectDate(new Date());
+        
+        // Listen for theme changes and re-render
+        document.addEventListener('themeChanged', () => {
+            if (this.calendarContainer) {
+                this.renderCalendar();
+            }
+            if (this.selectedMonday) {
+                this.generateReport();
+            }
+        });
     }
 
     generateReport() {
@@ -80,20 +90,23 @@ export class PayAnalysis {
         </div>`;
         
         // Main report with balanced styling
-        html += `<div class="bg-white p-6 rounded-md shadow-sm">
-            <h3 class="text-lg font-light mb-4 text-gray-800">
+        const tableClasses = this.themeManager.getTableClasses();
+        const cardClass = this.themeManager.getCardClasses('large');
+        
+        html += `<div class="${cardClass}">
+            <h3 class="${tableClasses.title}">
                 Week of ${monday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </h3>
             
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="${tableClasses.table}">
                     <thead>
-                        <tr class="border-b border-gray-200">
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Day</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">On-platform</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Off-platform</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Total</th>
+                        <tr class="${tableClasses.headerRow}">
+                            <th class="${tableClasses.headerCell}">Day</th>
+                            <th class="${tableClasses.headerCell}">Date</th>
+                            <th class="${tableClasses.headerCell}">On-platform</th>
+                            <th class="${tableClasses.headerCell}">Off-platform</th>
+                            <th class="${tableClasses.headerCell}">Total</th>
                         </tr>
                     </thead>
                     <tbody>`;
@@ -105,58 +118,69 @@ export class PayAnalysis {
             const totalTime = this.formatTime(totalSeconds);
             const isDayOff = index >= 2 && index <= 4; // Wed, Thu, Fri
             
-            html += `<tr class="border-b border-gray-100 ${isDayOff ? 'text-gray-500' : ''}">
-                <td class="py-3 px-4 font-medium">${row.dayName}</td>
-                <td class="py-3 px-4">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                <td class="py-3 px-4 font-mono">${onTime}</td>
-                <td class="py-3 px-4 font-mono">${offTime}</td>
-                <td class="py-3 px-4 font-mono">${totalTime}</td>
+            const rowClass = isDayOff ? 
+                this.themeManager.combineClasses(tableClasses.bodyRow, this.themeManager.getColor('calendar', 'dayOff')) :
+                tableClasses.bodyRow;
+            
+            html += `<tr class="${rowClass}">
+                <td class="${tableClasses.bodyCell} font-medium">${row.dayName}</td>
+                <td class="${tableClasses.bodyCell}">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                <td class="${tableClasses.bodyCell} font-mono">${onTime}</td>
+                <td class="${tableClasses.bodyCell} font-mono">${offTime}</td>
+                <td class="${tableClasses.bodyCell} font-mono">${totalTime}</td>
             </tr>`;
         });
         
         html += '</tbody></table></div>';
         
-        html += `<div class="mt-6 p-4 bg-white border-t border-gray-200">
+        const sectionBg = this.themeManager.getColor('background', 'card');
+        const sectionBorder = this.themeManager.getColor('border', 'primary');
+        const textPrimary = this.themeManager.getColor('text', 'primary');
+        const textSecondary = this.themeManager.getColor('text', 'secondary');
+        const textMuted = this.themeManager.getColor('text', 'muted');
+        const bgSecondary = this.themeManager.getColor('background', 'secondary');
+        
+        html += `<div class="mt-6 p-4 ${sectionBg} border-t ${sectionBorder}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h4 class="text-base font-medium text-gray-800 mb-3">Time Breakdown</h4>
+                    <h4 class="text-base font-medium ${textPrimary} mb-3">Time Breakdown</h4>
                     <div class="space-y-2">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">On-platform:</span>
-                            <span class="text-sm font-mono text-gray-800">${this.formatTime(totalOnSeconds)}</span>
+                            <span class="text-sm ${textSecondary}">On-platform:</span>
+                            <span class="text-sm font-mono ${textPrimary}">${this.formatTime(totalOnSeconds)}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Off-platform:</span>
-                            <span class="text-sm font-mono text-gray-800">${this.formatTime(totalOffSeconds)}</span>
+                            <span class="text-sm ${textSecondary}">Off-platform:</span>
+                            <span class="text-sm font-mono ${textPrimary}">${this.formatTime(totalOffSeconds)}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-800">Total Time:</span>
-                            <span class="text-sm font-mono font-semibold text-gray-900">${this.formatTime(grandTotalSeconds)}</span>
+                            <span class="text-sm font-medium ${textPrimary}">Total Time:</span>
+                            <span class="text-sm font-mono font-semibold ${textPrimary}">${this.formatTime(grandTotalSeconds)}</span>
                         </div>
                     </div>
                     
-                    <div class="mt-3 bg-gray-200 rounded-full h-1.5">
+                    <div class="mt-3 ${bgSecondary} rounded-full h-1.5">
                         <div class="bg-blue-400 h-1.5 rounded-full" style="width: ${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%"></div>
                     </div>
-                    <div class="flex justify-between mt-1 text-xs text-gray-500">
+                    <div class="flex justify-between mt-1 text-xs ${textMuted}">
                         <span>On-platform (${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%)</span>
                         <span>Off-platform (${Math.round(totalOffSeconds / grandTotalSeconds * 100)}%)</span>
                     </div>
                 </div>
                 
                 <div>
-                    <h4 class="text-base font-medium text-gray-800 mb-3">Payment Details</h4>
-                    <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+                    <h4 class="text-base font-medium ${textPrimary} mb-3">Payment Details</h4>
+                    <div class="${bgSecondary} p-3 rounded-md border ${sectionBorder}">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-600">Rate per hour:</span>
-                            <span class="text-sm text-gray-700">$${this.ratePerHour.toFixed(2)}</span>
+                            <span class="text-sm ${textSecondary}">Rate per hour:</span>
+                            <span class="text-sm ${textSecondary}">$${this.ratePerHour.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-600">Total hours:</span>
-                            <span class="text-sm text-gray-700">${totalHours.toFixed(2)}</span>
+                            <span class="text-sm ${textSecondary}">Total hours:</span>
+                            <span class="text-sm ${textSecondary}">${totalHours.toFixed(2)}</span>
                         </div>
-                        <div class="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span class="text-sm font-medium text-gray-800">Total pay:</span>
+                        <div class="flex justify-between items-center pt-2 border-t ${sectionBorder}">
+                            <span class="text-sm font-medium ${textPrimary}">Total pay:</span>
                             <span class="text-sm font-medium text-green-600">$${payAmount}</span>
                         </div>
                     </div>
@@ -225,41 +249,61 @@ export class PayAnalysis {
         this.currentYear = today.getFullYear();
         this.calendarContainer.innerHTML = '';
 
-        // Calendar container with balanced styling
+        // Calendar container with theme styling
+        const calendarClasses = this.themeManager.getCalendarClasses();
         const calendarWrapper = document.createElement('div');
-        calendarWrapper.className = 'border border-gray-200 rounded-md bg-white shadow-sm';
+        calendarWrapper.className = this.themeManager.combineClasses(
+            calendarClasses.container,
+            'border',
+            calendarClasses.border
+        );
         this.calendarContainer.appendChild(calendarWrapper);
         
-        // Navigation header - balanced
+        // Navigation header with theme styling
         const nav = document.createElement('div');
-        nav.className = 'flex justify-between items-center p-4 border-b border-gray-100';
+        nav.className = this.themeManager.combineClasses(
+            'flex justify-between items-center p-4 border-b',
+            calendarClasses.border
+        );
+        
+        const buttonHoverBg = this.themeManager.getColor('background', 'secondary');
+        const buttonTextColor = this.themeManager.getColor('text', 'muted');
         
         const prevBtn = document.createElement('button');
         prevBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path></svg>';
-        prevBtn.className = 'p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors';
+        prevBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
         prevBtn.title = 'Previous Month';
         prevBtn.addEventListener('click', () => this.changeMonth(-1));
         
         this.monthLabelElement = document.createElement('div');
-        this.monthLabelElement.className = 'text-base font-light text-gray-700';
+        this.monthLabelElement.className = this.themeManager.combineClasses(
+            'text-base font-light',
+            this.themeManager.getColor('text', 'secondary')
+        );
         
         const nextBtn = document.createElement('button');
         nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>';
-        nextBtn.className = 'p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors';
+        nextBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
         nextBtn.title = 'Next Month';
         nextBtn.addEventListener('click', () => this.changeMonth(1));
         
         nav.append(prevBtn, this.monthLabelElement, nextBtn);
         calendarWrapper.appendChild(nav);
         
-        // Day names header - balanced
+        // Day names header with theme styling
         const daysRow = document.createElement('div');
-        daysRow.className = 'grid grid-cols-7 text-center border-b border-gray-100';
+        daysRow.className = this.themeManager.combineClasses(
+            'grid grid-cols-7 text-center border-b',
+            calendarClasses.border
+        );
         
         ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(d => {
             const cell = document.createElement('div');
             cell.textContent = d;
-            cell.className = 'py-2 text-xs font-medium text-gray-400';
+            cell.className = this.themeManager.combineClasses(
+                'py-2 text-xs font-medium',
+                this.themeManager.getColor('text', 'lighter')
+            );
             daysRow.appendChild(cell);
         });
         
@@ -327,13 +371,27 @@ export class PayAnalysis {
             
 
             
-            // Create the inner content of the date cell - balanced styling
+            // Create the inner content of the date cell with theme styling
             const innerContent = document.createElement('div');
-            innerContent.className = `h-9 flex items-center justify-center cursor-pointer border-b border-gray-50 ${isInSelectedWeek ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'} transition-colors`;
+            const lightBorder = this.themeManager.getColor('border', 'light');
+            const hoverBg = this.themeManager.getColor('background', 'secondary');
+            const selectedBg = 'bg-blue-50';
+            const selectedHoverBg = 'hover:bg-blue-100';
             
-            // Date number without any "today" highlighting
+            innerContent.className = this.themeManager.combineClasses(
+                'h-9 flex items-center justify-center cursor-pointer border-b transition-colors',
+                lightBorder,
+                isInSelectedWeek ? `${selectedBg} ${selectedHoverBg}` : `hover:${hoverBg}`
+            );
+            
+            // Date number with theme styling
             const dateNumber = document.createElement('div');
-            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-bold' : 'font-light'} text-gray-700`;
+            const textColor = this.themeManager.getColor('text', 'secondary');
+            dateNumber.className = this.themeManager.combineClasses(
+                'text-xs',
+                isInSelectedWeek ? 'font-bold' : 'font-light',
+                textColor
+            );
             dateNumber.textContent = day;
             innerContent.appendChild(dateNumber);
             

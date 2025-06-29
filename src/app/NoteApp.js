@@ -121,9 +121,11 @@ export class NoteApp {
         // Make the app instance globally available for the Timer class
         window.app = this;
         
-        // Listen for theme changes to update off-platform timers
+        // Listen for theme changes to update UI
         document.addEventListener('themeChanged', () => {
             this.updateOffPlatformTimerThemes();
+            this.updateDateNavigationTheme();
+            this.refreshUI();
         });
         
         // Create the off-platform section after window.app is set
@@ -137,12 +139,23 @@ export class NoteApp {
     addDateNavigationButtons() {
         // Create wrapper for the date picker and buttons
         const dateNavContainer = document.createElement('div');
-        dateNavContainer.className = 'flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm';
+        dateNavContainer.className = this.themeManager.combineClasses(
+            'flex items-center rounded-lg overflow-hidden shadow-sm border',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary')
+        );
         
         // Previous day button
         const prevDayButton = document.createElement('button');
         prevDayButton.innerHTML = '‹'; // Left chevron
-        prevDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-r border-gray-200 transition-colors';
+        prevDayButton.className = this.themeManager.combineClasses(
+            'px-3 py-2 border-r transition-colors',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary'),
+            this.themeManager.getColor('text', 'secondary'),
+            `hover:${this.themeManager.getColor('background', 'secondary')}`,
+            `hover:${this.themeManager.getColor('text', 'primary')}`
+        );
         prevDayButton.title = 'Previous day';
         prevDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -183,7 +196,14 @@ export class NoteApp {
         // Next day button
         const nextDayButton = document.createElement('button');
         nextDayButton.innerHTML = '›'; // Right chevron
-        nextDayButton.className = 'px-3 py-2 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-l border-gray-200 transition-colors';
+        nextDayButton.className = this.themeManager.combineClasses(
+            'px-3 py-2 border-l transition-colors',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary'),
+            this.themeManager.getColor('text', 'secondary'),
+            `hover:${this.themeManager.getColor('background', 'secondary')}`,
+            `hover:${this.themeManager.getColor('text', 'primary')}`
+        );
         nextDayButton.title = 'Next day';
         nextDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -228,8 +248,12 @@ export class NoteApp {
         // Remove the original date selector from DOM
         parent.removeChild(originalDateSelector);
         
-        // Style the date selector to remove default browser border
-        originalDateSelector.className = 'px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset text-gray-700 min-w-32';
+        // Style the date selector with theme classes
+        originalDateSelector.className = this.themeManager.combineClasses(
+            'px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset min-w-32',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('text', 'secondary')
+        );
         
         // Add elements to the container
         dateNavContainer.appendChild(prevDayButton);
@@ -364,21 +388,13 @@ export class NoteApp {
         // Disable all textareas and ID fields (UI updates)
         Object.values(note.elements).forEach(element => {
             if (element.tagName === 'TEXTAREA') {
-                element.disabled = true;
-                element.classList.remove('text-black');
-                element.classList.add('text-gray-500');
+                this.themeManager.applyDisabledState(element);
                 element.classList.remove('pb-6');
             }
         });
-        note.elements.attemptID.disabled = true;
-        note.elements.attemptID.classList.remove('text-black');
-        note.elements.attemptID.classList.add('text-gray-500', 'bg-gray-100');
-        note.elements.projectID.disabled = true;
-        note.elements.projectID.classList.remove('text-black');
-        note.elements.projectID.classList.add('text-gray-500', 'bg-gray-100');
-        note.elements.operationID.disabled = true;
-        note.elements.operationID.classList.remove('text-black');
-        note.elements.operationID.classList.add('text-gray-500', 'bg-gray-100');
+        this.themeManager.applyDisabledState(note.elements.attemptID);
+        this.themeManager.applyDisabledState(note.elements.projectID);
+        this.themeManager.applyDisabledState(note.elements.operationID);
         
         // UI styling for note container and number display based on isCanceled
         note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
@@ -489,17 +505,9 @@ export class NoteApp {
             });
             
             // Enable ID fields
-            note.elements.attemptID.disabled = false;
-            note.elements.attemptID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.attemptID.classList.add('text-black');
-            
-            note.elements.projectID.disabled = false;
-            note.elements.projectID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.projectID.classList.add('text-black');
-            
-            note.elements.operationID.disabled = false;
-            note.elements.operationID.classList.remove('text-gray-500', 'bg-gray-100');
-            note.elements.operationID.classList.add('text-black');
+            this.themeManager.applyEnabledState(note.elements.attemptID);
+            this.themeManager.applyEnabledState(note.elements.projectID);
+            this.themeManager.applyEnabledState(note.elements.operationID);
             
             note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
             note.container.classList.add('bg-white');
@@ -673,7 +681,8 @@ export class NoteApp {
         let html = `<div class="font-semibold text-lg mb-2">Project Fail Rates (${this.currentDate})</div>`;
         
         if (Object.keys(projectStats).length === 0) {
-            html += '<div class="text-gray-500 italic">No projects with data available for this date</div>';
+            const emptyStateClasses = this.themeManager.getEmptyStateClasses();
+            html += `<div class="${emptyStateClasses.text}">No projects with data available for this date</div>`;
         } else {
             html += '<div class="space-y-3">';
             
@@ -785,7 +794,7 @@ export class NoteApp {
             // Add count information
             if (allNotes.length > 0) {
                 const countInfo = document.createElement('div');
-                countInfo.className = 'text-center text-sm text-gray-500 mt-4 mb-6';
+                countInfo.className = `text-center mt-4 mb-6 ${this.themeManager.getLabelClasses('default')}`;
                 countInfo.textContent = `Showing all ${allNotes.length} matching notes`;
                 this.container.appendChild(countInfo);
             }
@@ -793,7 +802,8 @@ export class NoteApp {
             // If no results found
             if (allNotes.length === 0) {
                 const noResults = document.createElement('div');
-                noResults.className = 'w-full text-center py-8 text-gray-500';
+                const emptyStateClasses = this.themeManager.getEmptyStateClasses();
+                noResults.className = `${emptyStateClasses.container} ${emptyStateClasses.text}`;
                 noResults.textContent = 'No matching notes found';
                 this.container.appendChild(noResults);
                 
@@ -917,7 +927,8 @@ export class NoteApp {
         let html = `<div class="font-semibold text-lg mb-2">Search Results Project Fail Rates</div>`;
         
         if (Object.keys(projectStats).length === 0) {
-            html += '<div class="text-gray-500 italic">No projects with data available in search results</div>';
+            const emptyStateClasses = this.themeManager.getEmptyStateClasses();
+            html += `<div class="${emptyStateClasses.text}">No projects with data available in search results</div>`;
         } else {
             html += '<div class="space-y-3">';
             
@@ -959,14 +970,14 @@ export class NoteApp {
         if (this.statsDisplay) {
             this.statsDisplay.innerHTML = `
                 <div class="font-semibold text-lg mb-2">Search Results Stats</div>
-                <div class="text-gray-500 italic">No matching results found</div>
+                <div class="${this.themeManager.getEmptyStateClasses().text}">No matching results found</div>
             `;
         }
         
         if (this.projectFailRateDisplay) {
             this.projectFailRateDisplay.innerHTML = `
                 <div class="font-semibold text-lg mb-2">Search Results Project Fail Rates</div>
-                <div class="text-gray-500 italic">No matching results found</div>
+                <div class="${this.themeManager.getEmptyStateClasses().text}">No matching results found</div>
             `;
         }
     }
@@ -1048,7 +1059,7 @@ export class NoteApp {
             if (!value) return null;
 
             const label = document.createElement('label');
-            label.className = 'text-xs text-gray-500';
+            label.className = this.themeManager.getLabelClasses('small');
             label.textContent = labelText;
             
             const fieldContainer = document.createElement('div');
@@ -1101,7 +1112,7 @@ export class NoteApp {
         const attemptField = createIDField(note.attemptID, 'Attempt ID:');
         if (attemptField) {
             const label = document.createElement('label');
-            label.className = 'text-xs text-gray-500 mt-1';
+            label.className = `mt-1 ${this.themeManager.getLabelClasses('small')}`;
             label.textContent = 'Attempt ID:';
             idFieldsContainer.appendChild(label);
             idFieldsContainer.appendChild(attemptField.input);
@@ -1110,7 +1121,7 @@ export class NoteApp {
         const operationField = createIDField(note.operationID, 'Operation ID:');
         if (operationField) {
             const label = document.createElement('label');
-            label.className = 'text-xs text-gray-500 mt-1';
+            label.className = `mt-1 ${this.themeManager.getLabelClasses('small')}`;
             label.textContent = 'Operation ID:';
             idFieldsContainer.appendChild(label);
             idFieldsContainer.appendChild(operationField.input);
@@ -1178,7 +1189,11 @@ export class NoteApp {
 
             const textarea = document.createElement('textarea');
             textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
-            textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden text-gray-500';
+            textarea.className = this.themeManager.combineClasses(
+                'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border',
+                this.themeManager.getColor('border', 'secondary'),
+                this.themeManager.getColor('text', 'muted')
+            );
             textarea.value = section.value || '';
             textarea.disabled = true;
             
@@ -1315,7 +1330,7 @@ export class NoteApp {
                     
                     // Add stop button
                     const stopButton = document.createElement('button');
-                    stopButton.className = 'bg-red-100 hover:bg-red-200 text-red-700 border border-red-100 py-1 px-3 rounded text-sm transition-colors';
+                    stopButton.className = this.themeManager.getButtonClasses('danger', 'sm');
                     stopButton.textContent = 'Stop';
                     stopButton.addEventListener('click', () => {
                         this.offPlatformTimer.stopTimer(activeCategory);
@@ -1603,7 +1618,10 @@ export class NoteApp {
         hoursInput.type = 'number';
         hoursInput.min = 0;
         hoursInput.value = hours;
-        hoursInput.className = 'w-16 border border-gray-300 rounded px-2 py-1 text-center';
+        hoursInput.className = this.themeManager.combineClasses(
+            'w-16 rounded px-2 py-1 text-center border',
+            this.themeManager.getColor('border', 'secondary')
+        );
         
         // Minutes input
         const minutesInput = document.createElement('input');
@@ -1611,7 +1629,10 @@ export class NoteApp {
         minutesInput.min = 0;
         minutesInput.max = 59;
         minutesInput.value = minutes;
-        minutesInput.className = 'w-16 border border-gray-300 rounded px-2 py-1 text-center';
+        minutesInput.className = this.themeManager.combineClasses(
+            'w-16 rounded px-2 py-1 text-center border',
+            this.themeManager.getColor('border', 'secondary')
+        );
         
         // Seconds input
         const secondsInput = document.createElement('input');
@@ -1619,7 +1640,10 @@ export class NoteApp {
         secondsInput.min = 0;
         secondsInput.max = 59;
         secondsInput.value = secs;
-        secondsInput.className = 'w-16 border border-gray-300 rounded px-2 py-1 text-center';
+        secondsInput.className = this.themeManager.combineClasses(
+            'w-16 rounded px-2 py-1 text-center border',
+            this.themeManager.getColor('border', 'secondary')
+        );
         
         // Labels
         const hoursLabel = document.createElement('span');
@@ -1777,6 +1801,54 @@ export class NoteApp {
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    // Refresh UI elements when theme changes
+    refreshUI() {
+        // Re-render the current view to apply new theme
+        if (this.searchInput.value.trim() !== '') {
+            // If in search mode, refresh search results
+            this.searchNotes(this.searchInput.value.trim());
+        } else {
+            // If in normal mode, refresh notes which will update all displays
+            this.loadNotes();
+        }
+        
+        // Date navigation button themes are updated separately in the theme change listener
+    }
+    
+    // Update theme classes for existing date navigation buttons
+    updateDateNavigationTheme() {
+        const container = this.dateSelector.parentNode;
+        if (!container || !container.classList.contains('flex')) return;
+        
+        // Update container classes
+        container.className = this.themeManager.combineClasses(
+            'flex items-center rounded-lg overflow-hidden shadow-sm border',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary')
+        );
+        
+        // Update button classes
+        const buttons = container.querySelectorAll('button');
+        buttons.forEach((button, index) => {
+            const borderClass = index === 0 ? 'border-r' : 'border-l';
+            button.className = this.themeManager.combineClasses(
+                `px-3 py-2 ${borderClass} transition-colors`,
+                this.themeManager.getColor('background', 'card'),
+                this.themeManager.getColor('border', 'primary'),
+                this.themeManager.getColor('text', 'secondary'),
+                `hover:${this.themeManager.getColor('background', 'secondary')}`,
+                `hover:${this.themeManager.getColor('text', 'primary')}`
+            );
+        });
+        
+        // Update date selector classes
+        this.dateSelector.className = this.themeManager.combineClasses(
+            'px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset min-w-32',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('text', 'secondary')
+        );
     }
 }
 
