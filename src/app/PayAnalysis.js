@@ -102,9 +102,9 @@ export class PayAnalysis {
             const offTime = this.formatTime(row.offSeconds);
             const totalSeconds = row.onSeconds + row.offSeconds;
             const totalTime = this.formatTime(totalSeconds);
-            const isWeekend = index > 4;
+            const isDayOff = index >= 2 && index <= 4; // Wed, Thu, Fri
             
-            html += `<tr class="border-b border-gray-100 ${isWeekend ? 'text-gray-400' : ''}">
+            html += `<tr class="border-b border-gray-100 ${isDayOff ? 'text-gray-500' : ''}">
                 <td class="py-3 px-4 font-medium">${row.dayName}</td>
                 <td class="py-3 px-4">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                 <td class="py-3 px-4 font-mono">${onTime}</td>
@@ -337,7 +337,7 @@ export class PayAnalysis {
                 isInSelectedWeek = weekDates.includes(currentDateStr);
             }
             
-            const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
             
             // Create the inner content of the date cell - balanced styling
             const innerContent = document.createElement('div');
@@ -347,7 +347,7 @@ export class PayAnalysis {
             
             // Date number without any "today" highlighting
             const dateNumber = document.createElement('div');
-            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-medium' : 'font-light'} ${isWeekend ? 'text-gray-400' : 'text-gray-700'}`;
+            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-bold' : 'font-light'} text-gray-700}`;
             dateNumber.textContent = day;
             innerContent.appendChild(dateNumber);
             
