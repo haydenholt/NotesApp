@@ -113,53 +113,52 @@ export class ThemeManager {
             },
             
             dark: {
-                // Dark theme will be implemented later
-                // For now, we'll keep the same structure but with dark colors
+                // Dark gray theme for better readability
                 background: {
-                    primary: 'bg-gray-900',
-                    secondary: 'bg-gray-800',
-                    tertiary: 'bg-gray-700',
-                    overlay: 'bg-gray-800',
-                    card: 'bg-gray-800'
+                    primary: 'bg-gray-800',    // Main background - dark gray instead of black
+                    secondary: 'bg-gray-700',  // Secondary surfaces
+                    tertiary: 'bg-gray-600',   // Tertiary surfaces
+                    overlay: 'bg-gray-900',    // Overlays and modals
+                    card: 'bg-gray-700'        // Cards and containers
                 },
                 
                 text: {
-                    primary: 'text-gray-100',
-                    secondary: 'text-gray-300',
-                    tertiary: 'text-gray-400',
-                    muted: 'text-gray-500',
-                    lighter: 'text-gray-600',
-                    inverse: 'text-gray-900'
+                    primary: 'text-gray-100',     // Main text - very light gray
+                    secondary: 'text-gray-200',   // Secondary text
+                    tertiary: 'text-gray-300',    // Tertiary text
+                    muted: 'text-gray-400',       // Muted text
+                    lighter: 'text-gray-500',     // Very muted text
+                    inverse: 'text-gray-900'      // Dark text on light backgrounds
                 },
                 
                 border: {
-                    primary: 'border-gray-600',
-                    secondary: 'border-gray-500',
-                    light: 'border-gray-700',
-                    focus: 'border-blue-400'
+                    primary: 'border-gray-600',   // Main borders
+                    secondary: 'border-gray-500', // Secondary borders
+                    light: 'border-gray-600',     // Light borders
+                    focus: 'border-blue-400'      // Focus borders
                 },
                 
                 button: {
                     primary: {
                         bg: 'bg-blue-600',
-                        hover: 'hover:bg-blue-700',
+                        hover: 'hover:bg-blue-500',
                         text: 'text-white'
                     },
                     secondary: {
-                        bg: 'bg-gray-700',
-                        hover: 'hover:bg-gray-600',
-                        text: 'text-gray-200'
+                        bg: 'bg-gray-600',
+                        hover: 'hover:bg-gray-500',
+                        text: 'text-gray-100'
                     },
                     success: {
-                        bg: 'bg-green-800',
-                        hover: 'hover:bg-green-700',
-                        text: 'text-green-200',
-                        border: 'border-green-600'
+                        bg: 'bg-green-100',          // Keep light mode green
+                        hover: 'hover:bg-green-200',
+                        text: 'text-green-700',      // Keep light mode text
+                        border: 'border-green-200'
                     },
                     danger: {
-                        bg: 'bg-red-800',
-                        hover: 'hover:bg-red-700',
-                        text: 'text-red-200',
+                        bg: 'bg-red-700',            // Darker red for dark theme
+                        hover: 'hover:bg-red-600',
+                        text: 'text-red-100',        // Light red text
                         border: 'border-red-600'
                     }
                 },
@@ -172,39 +171,39 @@ export class ThemeManager {
                 },
                 
                 navigation: {
-                    bg: 'bg-gray-900',
-                    text: 'text-gray-400',
-                    textHover: 'hover:text-gray-300',
+                    bg: 'bg-gray-800',
+                    text: 'text-gray-300',
+                    textHover: 'hover:text-gray-100',
                     textActive: 'text-blue-400',
-                    border: 'border-gray-700'
+                    border: 'border-gray-600'
                 },
                 
                 form: {
                     input: {
-                        bg: 'bg-gray-800',
+                        bg: 'bg-gray-700',
                         border: 'border-gray-600',
                         borderFocus: 'focus:border-blue-400',
                         text: 'text-gray-100',
-                        placeholder: 'placeholder-gray-500'
+                        placeholder: 'placeholder-gray-400'
                     },
-                    label: 'text-gray-300'
+                    label: 'text-gray-200'
                 },
                 
                 timer: {
                     active: 'text-green-400',
-                    inactive: 'text-gray-300'
+                    inactive: 'text-gray-200'
                 },
                 
                 calendar: {
-                    weekday: 'text-gray-300',
-                    weekend: 'text-gray-600',
+                    weekday: 'text-gray-200',
+                    weekend: 'text-gray-500',
                     selectedWeek: 'font-bold',
-                    dayOff: 'text-gray-500'
+                    dayOff: 'text-gray-400'
                 },
                 
                 shadow: {
                     sm: 'shadow-sm',
-                    md: 'shadow-md',
+                    md: 'shadow-md', 
                     lg: 'shadow-lg',
                     xl: 'shadow-xl'
                 }
@@ -269,9 +268,15 @@ export class ThemeManager {
      * Apply the current theme to the document
      */
     applyTheme() {
-        // Add theme class to document body for CSS-based theming
+        // Remove any existing theme classes
+        document.documentElement.className = document.documentElement.className.replace(/theme-\w+/g, '');
         document.body.className = document.body.className.replace(/theme-\w+/g, '');
-        document.body.classList.add(`theme-${this.currentTheme}`);
+        
+        // Add theme class to document body for CSS-based theming
+        if (this.currentTheme === 'dark') {
+            document.body.classList.add('theme-dark');
+            document.documentElement.classList.add('theme-dark');
+        }
         
         // Trigger custom event for components to react to theme change
         document.dispatchEvent(new CustomEvent('themeChanged', {

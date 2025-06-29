@@ -21,6 +21,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const payAnalysis = new PayAnalysis(themeManager);
     const helpOverlay = new HelpOverlay();
 
+    // Set up theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            themeManager.toggleTheme();
+            updateThemeToggleIcon();
+        });
+    }
+    
+    // Update theme toggle icon based on current theme
+    function updateThemeToggleIcon() {
+        if (themeToggle) {
+            themeToggle.textContent = themeManager.currentTheme === 'dark' ? '☀️' : '🌙';
+            themeToggle.title = themeManager.currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+        }
+    }
+    
+    // Initial icon update
+    updateThemeToggleIcon();
+    
+    // Listen for theme changes to update icon
+    document.addEventListener('themeChanged', updateThemeToggleIcon);
+
     // Make components accessible for debugging if needed
     window.themeManager = themeManager;
     window.noteApp = app;

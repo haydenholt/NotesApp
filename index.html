@@ -9,17 +9,93 @@
     <!-- Tailwind CSS -->
     <link rel="stylesheet" href="dist/output.css">
     <style>
+        /* Light theme (default) */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #f3f4f6;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-tertiary: #6b7280;
+            --text-muted: #9ca3af;
+            --border-primary: #e5e7eb;
+            --border-secondary: #d1d5db;
+            --nav-bg: #ffffff;
+            --nav-text: #6b7280;
+            --nav-text-hover: #374151;
+            --nav-text-active: #2563eb;
+        }
+
+        /* Dark theme */
+        .theme-dark {
+            --bg-primary: #1f2937;
+            --bg-secondary: #374151;
+            --bg-tertiary: #4b5563;
+            --text-primary: #f3f4f6;
+            --text-secondary: #e5e7eb;
+            --text-tertiary: #d1d5db;
+            --text-muted: #9ca3af;
+            --border-primary: #4b5563;
+            --border-secondary: #6b7280;
+            --nav-bg: #1f2937;
+            --nav-text: #d1d5db;
+            --nav-text-hover: #f3f4f6;
+            --nav-text-active: #60a5fa;
+        }
+
+        /* Apply CSS variables to elements */
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
         .nav-button {
-            color: #6b7280;
+            color: var(--nav-text);
         }
         .nav-button:hover {
-            color: #374151;
-            background-color: #f3f4f6;
+            color: var(--nav-text-hover);
+            background-color: var(--bg-tertiary);
         }
         .nav-button.active {
-            color: #2563eb;
-            background-color: #dbeafe;
+            color: var(--nav-text-active);
+            background-color: var(--bg-secondary);
         }
+
+        /* Theme-aware backgrounds */
+        .bg-white { background-color: var(--bg-primary) !important; }
+        .bg-gray-50 { background-color: var(--bg-secondary) !important; }
+        .bg-gray-100 { background-color: var(--bg-tertiary) !important; }
+
+        /* Theme-aware text */
+        .text-gray-900 { color: var(--text-primary) !important; }
+        .text-gray-800 { color: var(--text-primary) !important; }
+        .text-gray-700 { color: var(--text-secondary) !important; }
+        .text-gray-600 { color: var(--text-tertiary) !important; }
+        .text-gray-500 { color: var(--text-muted) !important; }
+        .text-gray-400 { color: var(--text-muted) !important; }
+
+        /* Theme-aware borders */
+        .border-gray-200 { border-color: var(--border-primary) !important; }
+        .border-gray-300 { border-color: var(--border-secondary) !important; }
+        .border-gray-100 { border-color: var(--border-primary) !important; }
+
+        /* Navigation specific */
+        nav {
+            background-color: var(--nav-bg) !important;
+            border-color: var(--border-primary) !important;
+        }
+
+        /* Form elements */
+        input[type="text"], input[type="date"], select, textarea {
+            background-color: var(--bg-secondary) !important;
+            border-color: var(--border-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        input[type="text"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+            background-color: var(--bg-primary) !important;
+        }
+
         .custom-select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
@@ -27,6 +103,80 @@
             background-repeat: no-repeat;
             background-size: 16px 12px;
             padding-right: 40px;
+        }
+
+        /* Theme-specific icons for dark mode */
+        .theme-dark .custom-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23d1d5db' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        }
+
+        /* Fix ID fields in dark mode */
+        .theme-dark input[type="text"],
+        .theme-dark input:not([type]) {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        .theme-dark input[type="text"]:disabled,
+        .theme-dark input:not([type]):disabled {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-muted) !important;
+        }
+        
+        .theme-dark input[type="text"]:focus,
+        .theme-dark input:not([type]):focus {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        /* Override hardcoded text colors in dark mode */
+        .theme-dark .text-black {
+            color: var(--text-primary) !important;
+        }
+
+        /* Calendar selected week styling */
+        .bg-blue-50 { 
+            background-color: #eff6ff !important; 
+        }
+        .theme-dark .bg-blue-50 { 
+            background-color: #1e3a8a !important; 
+        }
+        .hover\\:bg-blue-100:hover { 
+            background-color: #dbeafe !important; 
+        }
+        .theme-dark .hover\\:bg-blue-100:hover { 
+            background-color: #1e40af !important; 
+        }
+
+        /* Off-platform timer cards theming */
+        .theme-dark .off-platform-section {
+            background-color: var(--bg-primary) !important;
+            border-color: var(--border-primary) !important;
+        }
+        
+        /* Keep start buttons consistent between light and dark modes */
+        .bg-green-100 { background-color: #dcfce7 !important; }
+        .theme-dark .bg-green-100 { background-color: #dcfce7 !important; }
+        .bg-green-200 { background-color: #bbf7d0 !important; }
+        .theme-dark .bg-green-200 { background-color: #bbf7d0 !important; }
+        .text-green-700 { color: #15803d !important; }
+        .theme-dark .text-green-700 { color: #15803d !important; }
+        .border-green-200 { border-color: #bbf7d0 !important; }
+        .theme-dark .border-green-200 { border-color: #bbf7d0 !important; }
+        
+        .bg-red-100 { background-color: #fee2e2 !important; }
+        .bg-red-200 { background-color: #fecaca !important; }
+        .text-red-700 { color: #b91c1c !important; }
+        .border-red-100 { border-color: #fee2e2 !important; }
+        
+        /* Timer text colors */
+        .text-green-600 { color: #16a34a !important; }
+        .theme-dark .text-green-600 { color: #22c55e !important; }
+        
+        /* Sticky timer container */
+        #stickyTimerContainer {
+            background-color: var(--bg-primary) !important;
+            border-color: var(--border-primary) !important;
         }
     </style>
     <!-- jsdiff library -->
@@ -54,6 +204,7 @@
                         <input type="text" id="searchInput" placeholder="Search for ID..." class="p-2 border border-gray-200 rounded-lg text-sm w-52 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button id="clearSearchButton" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">×</button>
                     </div>
+                    <button id="themeToggle" class="text-gray-500 hover:text-gray-700 text-lg bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors" title="Toggle dark mode">🌙</button>
                     <button id="helpButton" class="text-gray-500 hover:text-gray-700 text-xl font-bold bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors" title="Show keyboard shortcuts">?</button>
                 </div>
             </div>

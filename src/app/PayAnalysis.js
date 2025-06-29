@@ -55,91 +55,49 @@ export class PayAnalysis {
     
 
         // Balanced summary cards with subtle color accents
-        const cardBaseClasses = this.themeManager.combineClasses(
-            'p-4 rounded-md border-l-2',
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('shadow', 'sm')
-        );
-        const cardLabelClasses = this.themeManager.combineClasses(
-            'text-xs uppercase tracking-wider',
-            this.themeManager.getColor('text', 'lighter')
-        );
-        const cardValueClasses = this.themeManager.combineClasses(
-            'text-2xl font-light',
-            this.themeManager.getColor('text', 'primary')
-        );
-        const cardUnitClasses = this.themeManager.combineClasses(
-            'ml-1 text-sm',
-            this.themeManager.getColor('text', 'muted')
-        );
-        
         let html = `<div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="${cardBaseClasses} border-blue-300">
-                <div class="${cardLabelClasses}">Total Hours</div>
+            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-blue-300">
+                <div class="text-xs uppercase text-gray-400 tracking-wider">Total Hours</div>
                 <div class="flex items-end mt-1">
-                    <span class="${cardValueClasses}">${(grandTotalSeconds / 3600).toFixed(1)}</span>
-                    <span class="${cardUnitClasses}">hours</span>
+                    <span class="text-2xl font-light text-gray-800">${(grandTotalSeconds / 3600).toFixed(1)}</span>
+                    <span class="ml-1 text-sm text-gray-500">hours</span>
                 </div>
             </div>
-            <div class="${cardBaseClasses} border-emerald-300">
-                <div class="${cardLabelClasses}">Total Pay</div>
+            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-emerald-300">
+                <div class="text-xs uppercase text-gray-400 tracking-wider">Total Pay</div>
                 <div class="flex items-end mt-1">
-                    <span class="${cardValueClasses}">$${payAmount}</span>
-                    <span class="${cardUnitClasses}">USD</span>
+                    <span class="text-2xl font-light text-gray-800">$${payAmount}</span>
+                    <span class="ml-1 text-sm text-gray-500">USD</span>
                 </div>
             </div>
-            <div class="${cardBaseClasses} border-indigo-300">
-                <div class="${cardLabelClasses}">Tasks Completed</div>
+            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-indigo-300">
+                <div class="text-xs uppercase text-gray-400 tracking-wider">Tasks Completed</div>
                 <div class="flex items-end mt-1">
-                    <span class="${cardValueClasses}">${totalTasks}</span>
-                    <span class="${cardUnitClasses}">tasks</span>
+                    <span class="text-2xl font-light text-gray-800">${totalTasks}</span>
+                    <span class="ml-1 text-sm text-gray-500">tasks</span>
                 </div>
             </div>
         </div>`;
         
         // Main report with balanced styling
-        const reportContainerClasses = this.themeManager.combineClasses(
-            'p-6 rounded-md',
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('shadow', 'sm')
-        );
-        const reportTitleClasses = this.themeManager.combineClasses(
-            'text-lg font-light mb-4',
-            this.themeManager.getColor('text', 'primary')
-        );
-        const tableHeaderClasses = this.themeManager.combineClasses(
-            'border-b',
-            this.themeManager.getColor('border', 'primary')
-        );
-        const tableHeaderCellClasses = this.themeManager.combineClasses(
-            'py-3 px-4 text-left font-medium',
-            this.themeManager.getColor('text', 'muted')
-        );
-        
-        html += `<div class="${reportContainerClasses}">
-            <h3 class="${reportTitleClasses}">
+        html += `<div class="bg-white p-6 rounded-md shadow-sm">
+            <h3 class="text-lg font-light mb-4 text-gray-800">
                 Week of ${monday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </h3>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="${tableHeaderClasses}">
-                            <th class="${tableHeaderCellClasses}">Day</th>
-                            <th class="${tableHeaderCellClasses}">Date</th>
-                            <th class="${tableHeaderCellClasses}">On-platform</th>
-                            <th class="${tableHeaderCellClasses}">Off-platform</th>
-                            <th class="${tableHeaderCellClasses}">Total</th>
+                        <tr class="border-b border-gray-200">
+                            <th class="py-3 px-4 text-left font-medium text-gray-500">Day</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-500">Date</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-500">On-platform</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-500">Off-platform</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-500">Total</th>
                         </tr>
                     </thead>
                     <tbody>`;
 
-        const tableRowBorderClasses = this.themeManager.combineClasses(
-            'border-b',
-            this.themeManager.getColor('border', 'light')
-        );
-        const dayOffTextClasses = this.themeManager.getColor('calendar', 'dayOff');
-        
         reportRows.forEach((row, index) => {
             const onTime = this.formatTime(row.onSeconds);
             const offTime = this.formatTime(row.offSeconds);
@@ -147,9 +105,7 @@ export class PayAnalysis {
             const totalTime = this.formatTime(totalSeconds);
             const isDayOff = index >= 2 && index <= 4; // Wed, Thu, Fri
             
-            const rowClasses = isDayOff ? `${tableRowBorderClasses} ${dayOffTextClasses}` : tableRowBorderClasses;
-            
-            html += `<tr class="${rowClasses}">
+            html += `<tr class="border-b border-gray-100 ${isDayOff ? 'text-gray-500' : ''}">
                 <td class="py-3 px-4 font-medium">${row.dayName}</td>
                 <td class="py-3 px-4">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                 <td class="py-3 px-4 font-mono">${onTime}</td>
@@ -158,55 +114,54 @@ export class PayAnalysis {
             </tr>`;
         });
         
-        html += `</tbody></table></div>
+        html += '</tbody></table></div>';
         
-        <div class="mt-6 pt-4 border-t border-gray-200">
+        html += `<div class="mt-6 p-4 bg-white border-t border-gray-200">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h4 class="text-sm font-medium text-gray-600 mb-3">Time Breakdown</h4>
+                    <h4 class="text-base font-medium text-gray-800 mb-3">Time Breakdown</h4>
                     <div class="space-y-2">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">On-platform:</span>
-                            <span class="font-mono text-sm">${this.formatTime(totalOnSeconds)}</span>
+                            <span class="text-sm text-gray-600">On-platform:</span>
+                            <span class="text-sm font-mono text-gray-800">${this.formatTime(totalOnSeconds)}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">Off-platform:</span>
-                            <span class="font-mono text-sm">${this.formatTime(totalOffSeconds)}</span>
+                            <span class="text-sm text-gray-600">Off-platform:</span>
+                            <span class="text-sm font-mono text-gray-800">${this.formatTime(totalOffSeconds)}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600 font-medium">Total Time:</span>
-                            <span class="font-mono text-sm font-medium">${this.formatTime(grandTotalSeconds)}</span>
+                            <span class="text-sm font-medium text-gray-800">Total Time:</span>
+                            <span class="text-sm font-mono font-semibold text-gray-900">${this.formatTime(grandTotalSeconds)}</span>
                         </div>
                     </div>
                     
-                    <div class="mt-3 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div class="bg-blue-400 h-1.5" style="width: ${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%"></div>
+                    <div class="mt-3 bg-gray-200 rounded-full h-1.5">
+                        <div class="bg-blue-400 h-1.5 rounded-full" style="width: ${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%"></div>
                     </div>
-                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <div class="flex justify-between mt-1 text-xs text-gray-500">
                         <span>On-platform (${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%)</span>
                         <span>Off-platform (${Math.round(totalOffSeconds / grandTotalSeconds * 100)}%)</span>
                     </div>
                 </div>
                 
                 <div>
-                    <h4 class="text-sm font-medium text-gray-600 mb-3">Payment Details</h4>
-                    <div class="p-4 bg-gray-50 rounded-md border border-gray-100">
+                    <h4 class="text-base font-medium text-gray-800 mb-3">Payment Details</h4>
+                    <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Rate per hour:</span>
-                            <span class="text-sm">$${this.ratePerHour.toFixed(2)}</span>
+                            <span class="text-sm text-gray-600">Rate per hour:</span>
+                            <span class="text-sm text-gray-700">$${this.ratePerHour.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Total hours:</span>
-                            <span class="text-sm">${totalHours.toFixed(2)}</span>
+                            <span class="text-sm text-gray-600">Total hours:</span>
+                            <span class="text-sm text-gray-700">${totalHours.toFixed(2)}</span>
                         </div>
-                        <div class="flex justify-between items-center pt-2 mt-2 border-t border-gray-200">
-                            <span class="text-sm text-gray-600 font-medium">Total pay:</span>
-                            <span class="text-sm font-medium text-emerald-600">$${payAmount}</span>
+                        <div class="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <span class="text-sm font-medium text-gray-800">Total pay:</span>
+                            <span class="text-sm font-medium text-green-600">$${payAmount}</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>`;
 
         if (this.reportContainer) {
@@ -279,34 +234,22 @@ export class PayAnalysis {
         const nav = document.createElement('div');
         nav.className = 'flex justify-between items-center p-4 border-b border-gray-100';
         
-        const monthYearContainer = document.createElement('div');
-        monthYearContainer.className = 'flex-1 text-center';
-        
-        const navButtonsContainer = document.createElement('div');
-        navButtonsContainer.className = 'flex gap-2';
-        
         const prevBtn = document.createElement('button');
-        prevBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
-        </svg>`;
+        prevBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path></svg>';
         prevBtn.className = 'p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors';
         prevBtn.title = 'Previous Month';
         prevBtn.addEventListener('click', () => this.changeMonth(-1));
         
+        this.monthLabelElement = document.createElement('div');
+        this.monthLabelElement.className = 'text-base font-light text-gray-700';
+        
         const nextBtn = document.createElement('button');
-        nextBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path>
-        </svg>`;
+        nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>';
         nextBtn.className = 'p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors';
         nextBtn.title = 'Next Month';
         nextBtn.addEventListener('click', () => this.changeMonth(1));
         
-        this.monthLabelElement = document.createElement('div');
-        this.monthLabelElement.className = 'text-base font-light text-gray-700';
-        
-        monthYearContainer.appendChild(this.monthLabelElement);
-        navButtonsContainer.append(prevBtn, nextBtn);
-        nav.append(navButtonsContainer, monthYearContainer);
+        nav.append(prevBtn, this.monthLabelElement, nextBtn);
         calendarWrapper.appendChild(nav);
         
         // Day names header - balanced
@@ -356,14 +299,14 @@ export class PayAnalysis {
         // Add empty cells for days before the first of the month
         for (let i = 0; i < startIndex; i++) {
             const cell = document.createElement('div');
-            cell.className = 'h-9 border-b border-gray-50';
+            cell.className = 'h-9';
             this.datesGrid.appendChild(cell);
         }
         
         // Add cells for days in the month - balanced styling
         for (let day = 1; day <= daysInMonth; day++) {
             const cell = document.createElement('div');
-            cell.className = 'relative border-b border-gray-50';
+            cell.className = 'relative';
             
             const dateObj = new Date(this.currentYear, this.currentMonth, day);
             // Determine if this date is in the selected week
@@ -386,13 +329,11 @@ export class PayAnalysis {
             
             // Create the inner content of the date cell - balanced styling
             const innerContent = document.createElement('div');
-            innerContent.className = `h-9 flex items-center justify-center cursor-pointer 
-                                      ${isInSelectedWeek ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'} 
-                                      transition-colors`;
+            innerContent.className = `h-9 flex items-center justify-center cursor-pointer border-b border-gray-50 ${isInSelectedWeek ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'} transition-colors`;
             
             // Date number without any "today" highlighting
             const dateNumber = document.createElement('div');
-            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-bold' : 'font-light'} text-gray-700}`;
+            dateNumber.className = `text-xs ${isInSelectedWeek ? 'font-bold' : 'font-light'} text-gray-700`;
             dateNumber.textContent = day;
             innerContent.appendChild(dateNumber);
             

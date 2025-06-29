@@ -202,9 +202,12 @@ export class OffPlatformTimer {
             // Add active class to the time display
             if (this.displayElements[category]) {
                 if (this.themeManager) {
+                    // Remove inactive color and add active color
+                    this.displayElements[category].classList.remove(...this.themeManager.getColor('text', 'primary').split(' '));
                     this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
                 } else {
-                    this.displayElements[category].classList.add('text-green-600'); // Fallback
+                    this.displayElements[category].classList.remove('text-gray-900');
+                    this.displayElements[category].classList.add('text-green-600');
                 }
             }
         }
@@ -244,9 +247,12 @@ export class OffPlatformTimer {
             // Remove active class from time display
             if (this.displayElements[category]) {
                 if (this.themeManager) {
+                    // Remove active color and add inactive color
                     this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                    this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
                 } else {
-                    this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                    this.displayElements[category].classList.remove('text-green-600');
+                    this.displayElements[category].classList.add('text-gray-900');
                 }
             }
         }
@@ -447,8 +453,10 @@ export class OffPlatformTimer {
                 if (this.displayElements[category]) {
                     if (this.themeManager) {
                         this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                        this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
                     } else {
-                        this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                        this.displayElements[category].classList.remove('text-green-600');
+                        this.displayElements[category].classList.add('text-gray-900');
                     }
                 }
             }
@@ -571,8 +579,10 @@ export class OffPlatformTimer {
                 if (this.displayElements[category]) {
                     if (this.themeManager) {
                         this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                        this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
                     } else {
-                        this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                        this.displayElements[category].classList.remove('text-green-600');
+                        this.displayElements[category].classList.add('text-gray-900');
                     }
                 }
                 
@@ -596,9 +606,11 @@ export class OffPlatformTimer {
                     // Add active class to the time display
                     if (this.displayElements[category]) {
                         if (this.themeManager) {
+                            this.displayElements[category].classList.remove(...this.themeManager.getColor('text', 'primary').split(' '));
                             this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
                         } else {
-                            this.displayElements[category].classList.add('text-green-600'); // Fallback
+                            this.displayElements[category].classList.remove('text-gray-900');
+                            this.displayElements[category].classList.add('text-green-600');
                         }
                     }
                     

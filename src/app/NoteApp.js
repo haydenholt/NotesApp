@@ -121,6 +121,11 @@ export class NoteApp {
         // Make the app instance globally available for the Timer class
         window.app = this;
         
+        // Listen for theme changes to update off-platform timers
+        document.addEventListener('themeChanged', () => {
+            this.updateOffPlatformTimerThemes();
+        });
+        
         // Create the off-platform section after window.app is set
         setTimeout(() => {
             this.createOffPlatformSection();
@@ -1400,26 +1405,16 @@ export class NoteApp {
     // Helper method to create a timer card
     createTimerCard(categoryId, label) {
         const card = document.createElement('div');
-        card.className = this.themeManager.combineClasses(
-            'p-3 rounded-lg border transition-all hover:shadow-sm relative group',
-            this.themeManager.getColor('background', 'secondary'),
-            this.themeManager.getColor('border', 'light')
-        );
+        this.applyTimerCardTheme(card, 'card');
         
         // Create timer display - make it the focal point
         const timeDisplay = document.createElement('div');
-        timeDisplay.className = this.themeManager.combineClasses(
-            'font-mono text-center text-2xl font-semibold my-2 py-2',
-            this.themeManager.getColor('text', 'primary')
-        );
+        this.applyTimerCardTheme(timeDisplay, 'timeDisplay');
         timeDisplay.textContent = '00:00:00';
         
         // Create label
         const cardLabel = document.createElement('div');
-        cardLabel.className = this.themeManager.combineClasses(
-            'text-center text-sm font-medium mb-2',
-            this.themeManager.getColor('text', 'tertiary')
-        );
+        this.applyTimerCardTheme(cardLabel, 'label');
         cardLabel.textContent = label;
         
         // Store reference to the time display
@@ -1431,12 +1426,7 @@ export class NoteApp {
         
         // Create edit button for timer
         const editButton = document.createElement('button');
-        editButton.className = this.themeManager.combineClasses(
-            'absolute top-2 right-2 w-6 h-6 rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity',
-            this.themeManager.getNestedColor('button', 'primary', 'bg'),
-            this.themeManager.getNestedColor('button', 'primary', 'hover'),
-            this.themeManager.getNestedColor('button', 'primary', 'text')
-        );
+        this.applyTimerCardTheme(editButton, 'editButton');
         editButton.innerHTML = '✎';
         editButton.title = 'Edit timer';
         editButton.addEventListener('click', () => {
@@ -1450,26 +1440,12 @@ export class NoteApp {
         
         // Create start button
         const startButton = document.createElement('button');
-        startButton.className = this.themeManager.combineClasses(
-            'w-full py-1 px-2 rounded text-sm transition-colors',
-            this.themeManager.getNestedColor('button', 'success', 'bg'),
-            this.themeManager.getNestedColor('button', 'success', 'hover'),
-            this.themeManager.getNestedColor('button', 'success', 'text'),
-            'border',
-            this.themeManager.getNestedColor('button', 'success', 'border')
-        );
+        this.applyTimerCardTheme(startButton, 'startButton');
         startButton.textContent = 'Start';
         
         // Create stop button
         const stopButton = document.createElement('button');
-        stopButton.className = this.themeManager.combineClasses(
-            'w-full py-1 px-2 rounded text-sm transition-colors',
-            this.themeManager.getNestedColor('button', 'danger', 'bg'),
-            this.themeManager.getNestedColor('button', 'danger', 'hover'),
-            this.themeManager.getNestedColor('button', 'danger', 'text'),
-            'border',
-            this.themeManager.getNestedColor('button', 'danger', 'border')
-        );
+        this.applyTimerCardTheme(stopButton, 'stopButton');
         stopButton.textContent = 'Stop';
         
         // Set initial button display based on timer state
@@ -1515,7 +1491,76 @@ export class NoteApp {
         buttonContainer.appendChild(stopButton);
         card.appendChild(buttonContainer);
         
+        // Store references for theme updates
+        card.dataset.timerCardType = 'card';
+        timeDisplay.dataset.timerCardType = 'timeDisplay';
+        cardLabel.dataset.timerCardType = 'label';
+        editButton.dataset.timerCardType = 'editButton';
+        startButton.dataset.timerCardType = 'startButton';
+        stopButton.dataset.timerCardType = 'stopButton';
+        
         return card;
+    }
+    
+    // Apply theme to timer card elements
+    applyTimerCardTheme(element, type) {
+        switch(type) {
+            case 'card':
+                element.className = this.themeManager.combineClasses(
+                    'p-3 rounded-lg border transition-all hover:shadow-sm relative group',
+                    this.themeManager.getColor('background', 'secondary'),
+                    this.themeManager.getColor('border', 'light')
+                );
+                break;
+            case 'timeDisplay':
+                element.className = this.themeManager.combineClasses(
+                    'font-mono text-center text-2xl font-semibold my-2 py-2',
+                    this.themeManager.getColor('text', 'primary')
+                );
+                break;
+            case 'label':
+                element.className = this.themeManager.combineClasses(
+                    'text-center text-sm font-medium mb-2',
+                    this.themeManager.getColor('text', 'tertiary')
+                );
+                break;
+            case 'editButton':
+                element.className = this.themeManager.combineClasses(
+                    'absolute top-2 right-2 w-6 h-6 rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity',
+                    this.themeManager.getNestedColor('button', 'primary', 'bg'),
+                    this.themeManager.getNestedColor('button', 'primary', 'hover'),
+                    this.themeManager.getNestedColor('button', 'primary', 'text')
+                );
+                break;
+            case 'startButton':
+                element.className = this.themeManager.combineClasses(
+                    'w-full py-1 px-2 rounded text-sm transition-colors border',
+                    this.themeManager.getNestedColor('button', 'success', 'bg'),
+                    this.themeManager.getNestedColor('button', 'success', 'hover'),
+                    this.themeManager.getNestedColor('button', 'success', 'text'),
+                    this.themeManager.getNestedColor('button', 'success', 'border')
+                );
+                break;
+            case 'stopButton':
+                element.className = this.themeManager.combineClasses(
+                    'w-full py-1 px-2 rounded text-sm transition-colors border',
+                    this.themeManager.getNestedColor('button', 'danger', 'bg'),
+                    this.themeManager.getNestedColor('button', 'danger', 'hover'),
+                    this.themeManager.getNestedColor('button', 'danger', 'text'),
+                    this.themeManager.getNestedColor('button', 'danger', 'border')
+                );
+                break;
+        }
+    }
+    
+    // Update theme for all off-platform timer elements
+    updateOffPlatformTimerThemes() {
+        // Find all timer card elements and re-apply theme
+        const timerElements = document.querySelectorAll('[data-timer-card-type]');
+        timerElements.forEach(element => {
+            const type = element.dataset.timerCardType;
+            this.applyTimerCardTheme(element, type);
+        });
     }
     
     // Display edit timer dialog
