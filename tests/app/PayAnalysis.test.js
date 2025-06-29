@@ -4,6 +4,46 @@ import OffPlatformTimer from '../../src/app/OffPlatformTimer.js';
 // Mock dependencies
 jest.mock('../../src/app/OffPlatformTimer.js');
 
+// Mock ThemeManager
+const mockThemeManager = {
+  getCalendarClasses: jest.fn().mockReturnValue({
+    container: 'bg-white rounded-md shadow-sm p-4',
+    weekday: 'text-gray-700',
+    weekend: 'text-gray-400',
+    selectedWeek: 'font-bold',
+    dayOff: 'text-gray-500',
+    border: 'border-gray-200'
+  }),
+  combineClasses: jest.fn((...classes) => classes.filter(Boolean).join(' ')),
+  getColor: jest.fn((category, colorKey) => {
+    const colors = {
+      background: { card: 'bg-white', primary: 'bg-white' },
+      border: { primary: 'border-gray-200' },
+      text: { primary: 'text-gray-900', secondary: 'text-gray-700' }
+    };
+    return colors[category]?.[colorKey] || '';
+  }),
+  getButtonClasses: jest.fn().mockReturnValue('bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors'),
+  getTextClasses: jest.fn().mockReturnValue({
+    primary: 'text-gray-900',
+    secondary: 'text-gray-700'
+  }),
+  getTableClasses: jest.fn().mockReturnValue({
+    container: 'bg-white rounded-md shadow-sm overflow-x-auto',
+    table: 'w-full text-sm',
+    headerRow: 'border-b border-gray-200',
+    headerCell: 'py-3 px-4 text-left font-medium text-gray-700',
+    bodyRow: 'border-b border-gray-200',
+    bodyCell: 'py-3 px-4 text-gray-900',
+    title: 'text-lg font-light mb-4 text-gray-900'
+  }),
+  getCardClasses: jest.fn().mockReturnValue('bg-white border border-gray-200 shadow-sm p-6 rounded-md'),
+  getNumberDisplayClasses: jest.fn().mockReturnValue({
+    number: 'text-lg font-medium text-gray-900',
+    unit: 'ml-1 text-sm text-gray-500'
+  })
+};
+
 describe('PayAnalysis', () => {
   let payAnalysis;
   let mockContainer;
@@ -57,7 +97,7 @@ describe('PayAnalysis', () => {
     jest.setSystemTime(new Date(2023, 5, 15)); // Fixed date: June 15, 2023
     
     // Instantiate PayAnalysis
-    payAnalysis = new PayAnalysis();
+    payAnalysis = new PayAnalysis(mockThemeManager);
   });
   
   afterEach(() => {

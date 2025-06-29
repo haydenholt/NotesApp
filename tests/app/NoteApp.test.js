@@ -1,6 +1,51 @@
 import NoteApp from '../../src/app/NoteApp.js';
 import Note from '../../src/app/Note.js';
 
+// Mock ThemeManager
+const mockThemeManager = {
+  combineClasses: jest.fn((...classes) => classes.filter(Boolean).join(' ')),
+  getColor: jest.fn((category, colorKey) => {
+    const colors = {
+      background: { card: 'bg-white', primary: 'bg-white' },
+      border: { primary: 'border-gray-200' },
+      text: { primary: 'text-gray-900', secondary: 'text-gray-700' }
+    };
+    return colors[category]?.[colorKey] || '';
+  }),
+  getButtonClasses: jest.fn().mockReturnValue('bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors'),
+  getInputClasses: jest.fn().mockReturnValue('bg-white border-gray-300 focus:border-blue-500 text-gray-900 placeholder-gray-500 rounded px-3 py-2 focus:outline-none focus:ring-2'),
+  getEmptyStateClasses: jest.fn().mockReturnValue({
+    text: 'italic text-gray-500',
+    container: 'w-full text-center py-8'
+  }),
+  getStatCardClasses: jest.fn().mockReturnValue('bg-white shadow-sm border-blue-300 p-4 rounded-md border-l-2'),
+  getNumberDisplayClasses: jest.fn().mockReturnValue({
+    number: 'text-lg font-medium text-gray-900',
+    unit: 'ml-1 text-sm text-gray-500'
+  }),
+  getLabelClasses: jest.fn().mockReturnValue('text-sm text-gray-500'),
+  applyDisabledState: jest.fn((element) => {
+    element.disabled = true;
+    element.classList.add('text-gray-500', 'bg-gray-100');
+  }),
+  applyEnabledState: jest.fn((element) => {
+    element.disabled = false;
+    element.classList.remove('text-gray-500', 'bg-gray-100');
+  }),
+  getNestedColor: jest.fn((category, subcategory, colorKey) => {
+    const colors = {
+      button: {
+        primary: {
+          bg: 'bg-blue-500',
+          hover: 'hover:bg-blue-600',
+          text: 'text-white'
+        }
+      }
+    };
+    return colors[category]?.[subcategory]?.[colorKey] || '';
+  })
+};
+
 // Global localStorage mock
 const localStorageMock = (() => {
   let store = {};
@@ -121,7 +166,7 @@ describe('NoteApp', () => {
     mockDateSelector.value = today;
 
     // Create NoteApp instance
-    noteApp = new NoteApp();
+    noteApp = new NoteApp(mockThemeManager);
     // Stub saveActiveTimers to support legacy tests
     noteApp.saveActiveTimers = () => {
       noteApp.activeTimers = {};
@@ -1608,7 +1653,7 @@ describe('NoteApp', () => {
     mockDateSelector.value = today;
     
     // Recreate the NoteApp instance
-    noteApp = new NoteApp();
+    noteApp = new NoteApp(mockThemeManager);
     
     // Get the note and timer after reload
     const noteAfterReload = document.querySelector('#notesContainer > div');
@@ -1744,7 +1789,7 @@ describe('NoteApp', () => {
     
     // Simulate page reload by recreating the NoteApp instance
     noteApp.container.innerHTML = '';
-    noteApp = new NoteApp();
+    noteApp = new NoteApp(mockThemeManager);
     
     // Verify the canceled note was reloaded with the correct state
     const reloadedNote = document.querySelector(`.flex[data-note-id="${noteId}"]`);
@@ -2142,7 +2187,7 @@ describe('NoteApp', () => {
 
     // 2. Re-initialize NoteApp to load the note from storage
     noteApp.container.innerHTML = ''; // Clear existing notes
-    noteApp = new NoteApp(); // This will call loadNotes
+    noteApp = new NoteApp(mockThemeManager); // This will call loadNotes
 
     // 3. Get the loaded note (it should be the first and only one)
     const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
@@ -2185,7 +2230,7 @@ describe('NoteApp', () => {
 
     // 2. Re-initialize NoteApp
     noteApp.container.innerHTML = '';
-    noteApp = new NoteApp();
+    noteApp = new NoteApp(mockThemeManager);
 
     // 3. Get the loaded note
     const loadedNoteElement = document.querySelector('.flex[data-note-id="1"]');
