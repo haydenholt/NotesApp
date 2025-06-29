@@ -68,6 +68,14 @@ export class ThemeManager {
                     info: 'text-blue-600'
                 },
                 
+                // Note states
+                note: {
+                    completed: 'bg-gray-50',
+                    cancelled: 'bg-red-50',
+                    cancelledText: 'text-red-600',
+                    cancelledNumber: 'text-red-600'
+                },
+                
                 // Navigation colors
                 navigation: {
                     bg: 'bg-white',
@@ -168,6 +176,14 @@ export class ThemeManager {
                     error: 'text-red-400',
                     warning: 'text-yellow-400',
                     info: 'text-blue-400'
+                },
+                
+                // Note states
+                note: {
+                    completed: 'bg-gray-700',
+                    cancelled: 'bg-gray-800',
+                    cancelledText: 'text-red-400',
+                    cancelledNumber: 'text-red-400'
                 },
                 
                 navigation: {
@@ -278,6 +294,9 @@ export class ThemeManager {
             document.documentElement.classList.add('theme-dark');
         }
         
+        // Apply CSS custom properties dynamically
+        this.applyCSSVariables();
+        
         // Trigger custom event for components to react to theme change
         document.dispatchEvent(new CustomEvent('themeChanged', {
             detail: {
@@ -285,6 +304,85 @@ export class ThemeManager {
                 colors: this.getCurrentTheme()
             }
         }));
+    }
+    
+    /**
+     * Apply CSS custom properties based on current theme
+     */
+    applyCSSVariables() {
+        const root = document.documentElement;
+        const theme = this.getCurrentTheme();
+        
+        // CSS variable mapping - convert Tailwind classes to CSS values
+        const cssVariables = {
+            // Backgrounds
+            '--bg-primary': this.tailwindToCSS(theme.background.primary),
+            '--bg-secondary': this.tailwindToCSS(theme.background.secondary),
+            '--bg-tertiary': this.tailwindToCSS(theme.background.tertiary),
+            
+            // Text colors
+            '--text-primary': this.tailwindToCSS(theme.text.primary),
+            '--text-secondary': this.tailwindToCSS(theme.text.secondary),
+            '--text-tertiary': this.tailwindToCSS(theme.text.tertiary),
+            '--text-muted': this.tailwindToCSS(theme.text.muted),
+            
+            // Borders
+            '--border-primary': this.tailwindToCSS(theme.border.primary),
+            '--border-secondary': this.tailwindToCSS(theme.border.secondary),
+            
+            // Navigation
+            '--nav-bg': this.tailwindToCSS(theme.navigation.bg),
+            '--nav-text': this.tailwindToCSS(theme.navigation.text),
+            '--nav-text-hover': this.tailwindToCSS(theme.navigation.textHover),
+            '--nav-text-active': this.tailwindToCSS(theme.navigation.textActive)
+        };
+        
+        // Apply all CSS variables to document root
+        Object.entries(cssVariables).forEach(([property, value]) => {
+            root.style.setProperty(property, value);
+        });
+    }
+    
+    /**
+     * Convert Tailwind CSS classes to actual CSS color values
+     */
+    tailwindToCSS(tailwindClass) {
+        // Extract color from Tailwind class name
+        const colorMap = {
+            // Backgrounds
+            'bg-white': '#ffffff',
+            'bg-gray-50': '#f9fafb',
+            'bg-gray-100': '#f3f4f6',
+            'bg-gray-600': '#4b5563',
+            'bg-gray-700': '#374151',
+            'bg-gray-800': '#1f2937',
+            'bg-gray-900': '#111827',
+            
+            // Text colors
+            'text-gray-100': '#f3f4f6',
+            'text-gray-200': '#e5e7eb',
+            'text-gray-300': '#d1d5db',
+            'text-gray-400': '#9ca3af',
+            'text-gray-500': '#6b7280',
+            'text-gray-600': '#4b5563',
+            'text-gray-700': '#374151',
+            'text-gray-800': '#1f2937',
+            'text-gray-900': '#111827',
+            'text-blue-400': '#60a5fa',
+            'text-blue-600': '#2563eb',
+            
+            // Borders
+            'border-gray-200': '#e5e7eb',
+            'border-gray-300': '#d1d5db',
+            'border-gray-500': '#6b7280',
+            'border-gray-600': '#4b5563',
+            
+            // Hover states (extract base color)
+            'hover:text-gray-100': '#f3f4f6',
+            'hover:text-gray-700': '#374151'
+        };
+        
+        return colorMap[tailwindClass] || tailwindClass;
     }
     
     /**
@@ -547,8 +645,14 @@ export class ThemeManager {
     applyDisabledState(element) {
         const states = this.getFormStateClasses();
         element.disabled = true;
-        element.classList.remove(this.getColor('text', 'primary'));
-        element.classList.add(states.disabled.text, states.disabled.background);
+        const primaryTextColor = this.getColor('text', 'primary');
+        if (primaryTextColor) {
+            element.classList.remove(primaryTextColor);
+        }
+        const classesToAdd = [states.disabled.text, states.disabled.background].filter(cls => cls);
+        if (classesToAdd.length > 0) {
+            element.classList.add(...classesToAdd);
+        }
     }
     
     /**
@@ -557,8 +661,13 @@ export class ThemeManager {
     applyEnabledState(element) {
         const states = this.getFormStateClasses();
         element.disabled = false;
-        element.classList.remove(this.getColor('text', 'muted'), this.getColor('background', 'secondary'));
-        element.classList.add(states.enabled.text);
+        const classesToRemove = [this.getColor('text', 'muted'), this.getColor('background', 'secondary')].filter(cls => cls);
+        if (classesToRemove.length > 0) {
+            element.classList.remove(...classesToRemove);
+        }
+        if (states.enabled.text) {
+            element.classList.add(states.enabled.text);
+        }
     }
     
     /**

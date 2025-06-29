@@ -368,7 +368,7 @@ export class NoteApp {
             completeEditing: this.completeNoteEditing.bind(this),
             deleteNote: this.deleteNote.bind(this),
             markEditing: this.markNoteAsEditing.bind(this)
-        });
+        }, this.themeManager);
         // Append to DOM and track in app
         this.container.appendChild(note.container);
         this.notes.push(note);
@@ -1077,6 +1077,10 @@ export class NoteApp {
             const originalIcon = copyBtn.innerHTML;
             
             copyBtn.addEventListener('click', () => {
+                if (!value || value.trim() === '') {
+                    console.warn('Cannot copy empty value');
+                    return;
+                }
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(value).catch(err => console.error('Copy failed', err));
                 } else {

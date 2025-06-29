@@ -2,10 +2,11 @@ import Timer from '../components/Timer.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
-    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote, markEditing}) {
+    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote, markEditing}, themeManager) {
         // Minimal context for this Note
         this.number = number;
         this.date = date;
+        this.themeManager = themeManager;
         this._enableNoteEditing = enableEditing;
         this._completeNoteEditing = completeEditing;
         this._deleteNote = deleteNote;
@@ -43,12 +44,12 @@ export class Note {
         completed = noteData.completed || false;
         additionalTime = noteData.additionalTime || 0;
         canceled = noteData.canceled || false;
-        // Create the note container with Tailwind classes
+        // Create the note container with theme-aware classes
         const noteContainer = document.createElement('div');
-        noteContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' +
-            (completed ?
-                (canceled ? 'bg-red-50' : 'bg-gray-50') :
-                'bg-white');
+        const backgroundClass = completed ?
+            (canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
+            this.themeManager.getColor('background', 'primary');
+        noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass}`;
         noteContainer.dataset.noteId = number;
 
         // Create action buttons
@@ -94,11 +95,11 @@ export class Note {
 
         // Number display - hide for cancelled notes, use provided displayIndex for non-cancelled notes
         const numberDisplay = document.createElement('div');
-        numberDisplay.className = 'text-gray-600 font-bold mb-2';
+        numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} font-bold mb-2`;
         // If note is completed and cancelled, show "Cancelled"; otherwise, show its position among non-cancelled notes
         if (completed && canceled) {
             numberDisplay.textContent = "Cancelled";
-            numberDisplay.className = 'text-red-600 font-bold mb-2';
+            numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} font-bold mb-2`;
         } else {
             // Use provided displayIndex
             numberDisplay.textContent = String(displayIndex);
@@ -109,8 +110,8 @@ export class Note {
         const timerDisplay = document.createElement('div');
         timerDisplay.className = 'font-mono text-base mb-3 ' + 
             (completed ? 
-                (canceled ? 'text-red-600' : 'text-green-600') : 
-                'text-gray-600');
+                (canceled ? this.themeManager.getColor('note', 'cancelledText') : this.themeManager.getColor('status', 'success')) : 
+                this.themeManager.getColor('text', 'tertiary'));
         timerDisplay.textContent = '00:00:00';
         leftSidebar.appendChild(timerDisplay);
 
@@ -277,14 +278,23 @@ export class Note {
                 e.preventDefault();
                 // Copy IDs first
                 const formattedIDs = this.getFormattedIDs();
+                if (!formattedIDs || formattedIDs.trim() === '') {
+                    console.warn('Cannot copy empty formatted IDs');
+                    return;
+                }
                 // Use clipboard API or fallback
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(formattedIDs)
-                        .catch(err => {
-                            console.error('Failed to copy formatted IDs: ', err);
-                            this.fallbackCopy(formattedIDs);
-                        });
-                } else {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(formattedIDs)
+                            .catch(err => {
+                                console.error('Failed to copy formatted IDs: ', err);
+                                this.fallbackCopy(formattedIDs);
+                            });
+                    } else {
+                        this.fallbackCopy(formattedIDs);
+                    }
+                } catch (err) {
+                    console.error('Clipboard operation failed:', err);
                     this.fallbackCopy(formattedIDs);
                 }
                 // Show inline cancel confirmation on this note
@@ -293,14 +303,23 @@ export class Note {
             if (e.ctrlKey && e.key === 'x') {
                 // Don't prevent default to allow normal copy behavior in addition to our custom one
                 const text = this.getFormattedText();
+                if (!text || text.trim() === '') {
+                    console.warn('Cannot copy empty text');
+                    return;
+                }
                 // Check if clipboard API is available
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text)
-                        .catch(err => {
-                            console.error('Failed to copy: ', err);
-                            this.fallbackCopy(text);
-                        });
-                } else {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text)
+                            .catch(err => {
+                                console.error('Failed to copy: ', err);
+                                this.fallbackCopy(text);
+                            });
+                    } else {
+                        this.fallbackCopy(text);
+                    }
+                } catch (err) {
+                    console.error('Clipboard operation failed:', err);
                     this.fallbackCopy(text);
                 }
             }
@@ -369,7 +388,7 @@ export class Note {
         const container = this.container;
         container.style.position = 'relative';
         const confirmationDiv = document.createElement('div');
-        confirmationDiv.className = 'absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center p-4 z-10';
+        confirmationDiv.className = `absolute inset-0 ${this.themeManager.getColor('background', 'overlay')} bg-opacity-90 flex flex-col items-center justify-center p-4 z-10`;
         confirmationDiv.dataset.confirmation = 'cancel';
         this.confirmationDiv = confirmationDiv;
 
@@ -377,12 +396,12 @@ export class Note {
         const number = this.container.dataset.noteId;
 
         const title = document.createElement('h3');
-        title.className = 'text-lg font-bold text-gray-900 mb-2';
+        title.className = `text-lg font-bold ${this.themeManager.getColor('text', 'primary')} mb-2`;
         title.textContent = 'Cancel Note';
         confirmationDiv.appendChild(title);
 
         const message = document.createElement('p');
-        message.className = 'text-gray-700 mb-4 text-center';
+        message.className = `${this.themeManager.getColor('text', 'secondary')} mb-4 text-center`;
         message.textContent = 'Are you sure you want to cancel this note? This will stop the timer and mark the note as canceled.';
         confirmationDiv.appendChild(message);
 
@@ -391,7 +410,7 @@ export class Note {
         confirmationDiv.appendChild(buttonContainer);
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded';
+        cancelBtn.className = `px-3 py-1 ${this.themeManager.getNestedColor('button', 'secondary', 'bg')} ${this.themeManager.getNestedColor('button', 'secondary', 'hover')} ${this.themeManager.getNestedColor('button', 'secondary', 'text')} rounded`;
         cancelBtn.textContent = 'No, Keep Note';
         cancelBtn.addEventListener('click', () => {
             container.removeChild(confirmationDiv);
@@ -400,7 +419,7 @@ export class Note {
         buttonContainer.appendChild(cancelBtn);
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.className = 'px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded';
+        confirmBtn.className = `px-3 py-1 ${this.themeManager.getNestedColor('button', 'danger', 'bg')} ${this.themeManager.getNestedColor('button', 'danger', 'hover')} ${this.themeManager.getNestedColor('button', 'danger', 'text')} rounded`;
         confirmBtn.textContent = 'Yes, Cancel Note';
         confirmBtn.addEventListener('click', () => {
             this._completeNoteEditing(number, true);
@@ -424,6 +443,10 @@ export class Note {
 
     /** Fallback copy for cases where clipboard API fails */
     fallbackCopy(text) {
+        if (!text || text.trim() === '') {
+            console.warn('Cannot copy empty text using fallback');
+            return;
+        }
         try {
             const textArea = document.createElement('textarea');
             textArea.value = text;

@@ -132,6 +132,10 @@ export class SystemPromptView {
             .replace('{{PROMPT_PLACEHOLDER}}', originalPrompt)
             .replace('{{RESPONSE_PLACEHOLDER}}', aiResponse);
 
+        if (!generatedPrompt || generatedPrompt.trim() === '') {
+            this.showToast('Cannot copy empty content', 'error');
+            return;
+        }
         navigator.clipboard.writeText(generatedPrompt)
             .then(() => {
                 this.showToast(successMessage, 'success');
@@ -173,6 +177,10 @@ Got it? Here is the prompt.
                 }
                 const generatedPrompt = systemPromptTemplate1.replace('{{CODE_PLACEHOLDER}}', userCode);
                 
+                if (!generatedPrompt || generatedPrompt.trim() === '') {
+                    this.showToast('Cannot copy empty content', 'error');
+                    return;
+                }
                 navigator.clipboard.writeText(generatedPrompt)
                     .then(() => {
                         this.showToast('Setup prompt copied!', 'success');
@@ -343,6 +351,10 @@ If you find any mismatches or errors, call them out in the table and the final s
                     .replace('{{RESPONSE_A_PLACEHOLDER}}', responseA)
                     .replace('{{RESPONSE_B_PLACEHOLDER}}', responseB);
 
+                if (!generatedPrompt || generatedPrompt.trim() === '') {
+                    this.showToast('Cannot copy empty content', 'error');
+                    return;
+                }
                 navigator.clipboard.writeText(generatedPrompt)
                     .then(() => {
                         this.showToast('Comparison prompt copied!', 'success');

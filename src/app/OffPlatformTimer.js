@@ -2,6 +2,15 @@
  * OffPlatformTimer class for tracking off-platform time with multiple timer types
  */
 export class OffPlatformTimer {
+    // Helper function to safely add/remove classes from getColor() results
+    static safeClassListOperation(element, operation, colorString) {
+        if (!element || !colorString) return;
+        
+        const classes = colorString.split(' ').filter(cls => cls.trim() !== '');
+        if (classes.length > 0) {
+            element.classList[operation](...classes);
+        }
+    }
     constructor(themeManager = null) {
         this.themeManager = themeManager;
         // Initialize base timer structure
@@ -171,7 +180,11 @@ export class OffPlatformTimer {
                     // Update UI for stopped timer
                     this.stopDisplay(otherCategory);
                     if (this.displayElements[otherCategory] && this.themeManager) {
-                        this.displayElements[otherCategory].classList.remove(this.themeManager.getColor('timer', 'active').replace('text-', ''));
+                        OffPlatformTimer.safeClassListOperation(
+                            this.displayElements[otherCategory], 
+                            'remove', 
+                            this.themeManager.getColor('timer', 'active')
+                        );
                         this.displayElements[otherCategory].classList.remove('text-green-600'); // Fallback for old class
                     }
                     this.triggerStopCallbacks(otherCategory);
@@ -203,8 +216,16 @@ export class OffPlatformTimer {
             if (this.displayElements[category]) {
                 if (this.themeManager) {
                     // Remove inactive color and add active color
-                    this.displayElements[category].classList.remove(...this.themeManager.getColor('text', 'primary').split(' '));
-                    this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
+                    OffPlatformTimer.safeClassListOperation(
+                        this.displayElements[category], 
+                        'remove', 
+                        this.themeManager.getColor('text', 'primary')
+                    );
+                    OffPlatformTimer.safeClassListOperation(
+                        this.displayElements[category], 
+                        'add', 
+                        this.themeManager.getColor('timer', 'active')
+                    );
                 } else {
                     this.displayElements[category].classList.remove('text-gray-900');
                     this.displayElements[category].classList.add('text-green-600');
@@ -248,8 +269,16 @@ export class OffPlatformTimer {
             if (this.displayElements[category]) {
                 if (this.themeManager) {
                     // Remove active color and add inactive color
-                    this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
-                    this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
+                    OffPlatformTimer.safeClassListOperation(
+                        this.displayElements[category], 
+                        'remove', 
+                        this.themeManager.getColor('timer', 'active')
+                    );
+                    OffPlatformTimer.safeClassListOperation(
+                        this.displayElements[category], 
+                        'add', 
+                        this.themeManager.getColor('text', 'primary')
+                    );
                 } else {
                     this.displayElements[category].classList.remove('text-green-600');
                     this.displayElements[category].classList.add('text-gray-900');
@@ -452,8 +481,16 @@ export class OffPlatformTimer {
                 this.stopDisplay(category);
                 if (this.displayElements[category]) {
                     if (this.themeManager) {
-                        this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
-                        this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
+                        OffPlatformTimer.safeClassListOperation(
+                            this.displayElements[category], 
+                            'remove', 
+                            this.themeManager.getColor('timer', 'active')
+                        );
+                        OffPlatformTimer.safeClassListOperation(
+                            this.displayElements[category], 
+                            'add', 
+                            this.themeManager.getColor('text', 'primary')
+                        );
                     } else {
                         this.displayElements[category].classList.remove('text-green-600');
                         this.displayElements[category].classList.add('text-gray-900');
@@ -578,8 +615,16 @@ export class OffPlatformTimer {
                 // Reset any UI indicators
                 if (this.displayElements[category]) {
                     if (this.themeManager) {
-                        this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
-                        this.displayElements[category].classList.add(...this.themeManager.getColor('text', 'primary').split(' '));
+                        OffPlatformTimer.safeClassListOperation(
+                            this.displayElements[category], 
+                            'remove', 
+                            this.themeManager.getColor('timer', 'active')
+                        );
+                        OffPlatformTimer.safeClassListOperation(
+                            this.displayElements[category], 
+                            'add', 
+                            this.themeManager.getColor('text', 'primary')
+                        );
                     } else {
                         this.displayElements[category].classList.remove('text-green-600');
                         this.displayElements[category].classList.add('text-gray-900');
@@ -606,8 +651,16 @@ export class OffPlatformTimer {
                     // Add active class to the time display
                     if (this.displayElements[category]) {
                         if (this.themeManager) {
-                            this.displayElements[category].classList.remove(...this.themeManager.getColor('text', 'primary').split(' '));
-                            this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
+                            OffPlatformTimer.safeClassListOperation(
+                                this.displayElements[category], 
+                                'remove', 
+                                this.themeManager.getColor('text', 'primary')
+                            );
+                            OffPlatformTimer.safeClassListOperation(
+                                this.displayElements[category], 
+                                'add', 
+                                this.themeManager.getColor('timer', 'active')
+                            );
                         } else {
                             this.displayElements[category].classList.remove('text-gray-900');
                             this.displayElements[category].classList.add('text-green-600');

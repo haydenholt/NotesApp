@@ -106,8 +106,22 @@ describe('NoteApp', () => {
 
     // Mock window.scrollTo
     window.scrollTo = jest.fn();
+    
     // Restore other potential mocks from previous tests if needed
     jest.restoreAllMocks();
+    
+    // Completely override navigator.clipboard to prevent JSDOM errors
+    delete global.navigator.clipboard;
+    global.navigator.clipboard = undefined;
+    
+    // Also override on window.navigator if it exists
+    if (window.navigator) {
+      delete window.navigator.clipboard;
+      window.navigator.clipboard = undefined;
+    }
+    
+    // Mock document.execCommand for fallback
+    document.execCommand = jest.fn(() => true);
 
     // Create mock DOM elements
     mockContainer = document.createElement('div');
