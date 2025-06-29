@@ -49,7 +49,10 @@ export class Note {
         const backgroundClass = completed ?
             (canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
             this.themeManager.getColor('background', 'primary');
-        noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass}`;
+        // Add border and reduced opacity for completed notes to make them more distinct
+        const completedStyling = completed && !canceled ? 'border-2 border-green-200 opacity-75' : '';
+        const cancelledStyling = completed && canceled ? 'border-2 border-red-200' : '';
+        noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass} ${completedStyling} ${cancelledStyling}`;
         noteContainer.dataset.noteId = number;
 
         // Create action buttons
@@ -131,7 +134,7 @@ export class Note {
         attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
         (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
         attemptIDInput.style.direction = 'rtl';
-        attemptIDInput.placeholder = 'Enter ID';
+        attemptIDInput.placeholder = completed ? '' : 'Enter ID';
         attemptIDInput.value = attemptID;
         attemptIDInput.disabled = completed;
         
@@ -144,7 +147,7 @@ export class Note {
         projectIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
                                   (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
         projectIDInput.style.direction = 'rtl';
-        projectIDInput.placeholder = 'Enter ID';
+        projectIDInput.placeholder = completed ? '' : 'Enter ID';
         projectIDInput.value = projectID;
         projectIDInput.disabled = completed;
         
@@ -157,7 +160,7 @@ export class Note {
         operationIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
                                   (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
         operationIDInput.style.direction = 'rtl';
-        operationIDInput.placeholder = 'Enter ID';
+        operationIDInput.placeholder = completed ? '' : 'Enter ID';
         operationIDInput.value = operationID;
         operationIDInput.disabled = completed;
         
@@ -196,7 +199,7 @@ export class Note {
             textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
             textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden ' + 
                      (completed ? 'text-gray-500' : 'text-black');
-            textarea.placeholder = `Type ${section.label.toLowerCase().replace(':', '')}...`;
+            textarea.placeholder = completed ? '' : `Type ${section.label.toLowerCase().replace(':', '')}...`;
             textarea.value = section.value;
             textarea.disabled = completed;
             

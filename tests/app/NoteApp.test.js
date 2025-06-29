@@ -2292,7 +2292,7 @@ describe('NoteApp', () => {
     // 7. Verify textareas and ID fields are disabled
     const textarea = loadedNoteElement.querySelector('textarea');
     expect(textarea.disabled).toBe(true);
-    const projectIDInput = loadedNoteElement.querySelector('input[placeholder="Enter ID"]');
+    const projectIDInput = loadedNoteElement.querySelector('input[type="text"], input:not([type])');
     expect(projectIDInput.disabled).toBe(true);
 
     // 8. Verify the state is saved to localStorage
