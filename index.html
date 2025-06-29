@@ -24,8 +24,8 @@
             background-color: var(--bg-tertiary);
         }
         .nav-button.active {
-            color: var(--nav-text-active);
-            background-color: var(--bg-secondary);
+            color: #1e40af; /* Blue-800 */
+            background-color: #dbeafe; /* Blue-50 - very light blue */
         }
 
         /* Theme-aware backgrounds */
@@ -61,6 +61,15 @@
 
         input[type="text"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
             background-color: var(--bg-primary) !important;
+        }
+
+        /* Set neutral accent color for date picker calendar */
+        input[type="date"] {
+            accent-color: #6b7280; /* Gray-500 for neutral selection */
+        }
+        
+        .theme-dark input[type="date"] {
+            accent-color: #9ca3af; /* Gray-400 for dark theme */
         }
 
         .custom-select {
@@ -101,13 +110,7 @@
             color: var(--text-primary) !important;
         }
 
-        /* Calendar selected week styling - use CSS variables */
-        .calendar-selected { 
-            background-color: var(--bg-secondary) !important; 
-        }
-        .calendar-selected:hover { 
-            background-color: var(--bg-tertiary) !important; 
-        }
+
 
         /* Off-platform timer cards theming */
         .theme-dark .off-platform-section {

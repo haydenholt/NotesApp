@@ -851,8 +851,8 @@ export class ThemeManager {
      */
     getProgressBarClasses() {
         const bg = this.getColor('background', 'secondary');
-        // Use neutral colors for progress bars
-        const fill = this.currentTheme === 'dark' ? 'bg-neutral-400' : 'bg-gray-500';
+        // Use blue colors for progress bars
+        const fill = this.currentTheme === 'dark' ? 'bg-blue-400' : 'bg-blue-500';
         
         return {
             container: this.combineClasses(bg, 'w-full h-2 rounded-full overflow-hidden'),
@@ -871,6 +871,30 @@ export class ThemeManager {
         // Use neutral colors for calendar selection
         const selectedBg = this.currentTheme === 'dark' ? 'bg-neutral-600' : 'bg-gray-100';
         const selectedHover = this.currentTheme === 'dark' ? 'hover:bg-neutral-500' : 'hover:bg-gray-200';
+        
+        return {
+            container: this.combineClasses(bg, 'rounded-md shadow-sm p-4'),
+            weekday: calendar.weekday,
+            weekend: calendar.weekend,
+            selectedWeek: calendar.selectedWeek,
+            dayOff: calendar.dayOff,
+            border: border,
+            selected: selectedBg,
+            selectedHover: selectedHover
+        };
+    }
+    
+    /**
+     * Helper method to get pay analysis calendar selection classes with blue highlighting
+     */
+    getPayAnalysisCalendarClasses() {
+        const calendar = this.getColors('calendar');
+        const bg = this.getColor('background', 'card');
+        const border = this.getColor('border', 'primary');
+        
+        // Use blue colors for pay analysis calendar selection
+        const selectedBg = this.currentTheme === 'dark' ? 'bg-blue-900' : 'bg-blue-100';
+        const selectedHover = this.currentTheme === 'dark' ? 'hover:bg-blue-800' : 'hover:bg-blue-200';
         
         return {
             container: this.combineClasses(bg, 'rounded-md shadow-sm p-4'),

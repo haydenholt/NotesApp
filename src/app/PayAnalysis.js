@@ -375,13 +375,12 @@ export class PayAnalysis {
             const innerContent = document.createElement('div');
             const lightBorder = this.themeManager.getColor('border', 'light');
             const hoverBg = this.themeManager.getColor('background', 'secondary');
-            const selectedBg = this.themeManager.getCalendarClasses().selected;
-            const selectedHoverBg = this.themeManager.getCalendarClasses().selectedHover;
+            const payCalendarClasses = this.themeManager.getPayAnalysisCalendarClasses();
             
             innerContent.className = this.themeManager.combineClasses(
                 'h-9 flex items-center justify-center cursor-pointer border-b transition-colors',
                 lightBorder,
-                isInSelectedWeek ? `${selectedBg} ${selectedHoverBg}` : `hover:${hoverBg}`
+                isInSelectedWeek ? `${payCalendarClasses.selected} ${payCalendarClasses.selectedHover}` : `hover:${hoverBg}`
             );
             
             // Date number with theme styling

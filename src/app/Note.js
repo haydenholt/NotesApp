@@ -49,9 +49,9 @@ export class Note {
         const backgroundClass = completed ?
             (canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
             this.themeManager.getColor('background', 'primary');
-        // Add border and reduced opacity for completed notes to make them more distinct
-        const completedStyling = completed && !canceled ? 'border-2 border-green-200 opacity-75' : '';
-        const cancelledStyling = completed && canceled ? 'border-2 border-red-200' : '';
+        // Add reduced opacity and light border for completed notes to make them more distinct
+        const completedStyling = completed && !canceled ? 'border border-gray-300' : '';
+        const cancelledStyling = completed && canceled ? 'border-2 border-red-200 opacity-75' : '';
         noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass} ${completedStyling} ${cancelledStyling}`;
         noteContainer.dataset.noteId = number;
 
@@ -61,12 +61,13 @@ export class Note {
         
         const editButton = document.createElement('button');
         editButton.className = this.themeManager.combineClasses(
-            'w-6 h-6 text-white rounded text-sm flex items-center justify-center',
+            'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
             this.themeManager.getPrimaryButtonClasses('sm')
         );
         editButton.innerHTML = '✎';
         editButton.title = 'Edit note';
         editButton.style.display = completed ? 'block' : 'none';
+        editButton.style.textIndent = '-1px';
 
         const saveButton = document.createElement('button');
         saveButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
@@ -78,6 +79,18 @@ export class Note {
         deleteButton.className = 'w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded text-sm flex items-center justify-center';
         deleteButton.innerHTML = '×';
         deleteButton.title = 'Delete note';
+
+        const completeButton = document.createElement('button');
+        completeButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
+        completeButton.innerHTML = '✓';
+        completeButton.title = 'Complete note';
+        completeButton.style.display = completed ? 'none' : 'block';
+
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'w-6 h-6 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm flex items-center justify-center';
+        cancelButton.innerHTML = '⚠';
+        cancelButton.title = 'Cancel note';
+        cancelButton.style.display = completed ? 'none' : 'block';
 
         // Wire up actions
         editButton.addEventListener('click', () => {
@@ -91,8 +104,14 @@ export class Note {
             editButton.style.display = 'block';
         });
         deleteButton.addEventListener('click', () => this._deleteNote(number));
+        completeButton.addEventListener('click', () => {
+            this._completeNoteEditing(number, false);
+        });
+        cancelButton.addEventListener('click', () => {
+            this.showCancelConfirmation();
+        });
 
-        actionsDiv.append(editButton, saveButton, deleteButton);
+        actionsDiv.append(editButton, saveButton, deleteButton, completeButton, cancelButton);
         noteContainer.appendChild(actionsDiv);
 
         // Left sidebar with number, timer and ID fields
