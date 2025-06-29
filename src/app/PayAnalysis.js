@@ -1,7 +1,8 @@
 import OffPlatformTimer from './OffPlatformTimer.js';
 
 export class PayAnalysis {
-    constructor() {
+    constructor(themeManager) {
+        this.themeManager = themeManager;
         this.calendarContainer = document.getElementById('calendarContainer');
         this.reportContainer = document.getElementById('payReportContainer');
         this.selectedMonday = null;
@@ -54,49 +55,91 @@ export class PayAnalysis {
     
 
         // Balanced summary cards with subtle color accents
+        const cardBaseClasses = this.themeManager.combineClasses(
+            'p-4 rounded-md border-l-2',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('shadow', 'sm')
+        );
+        const cardLabelClasses = this.themeManager.combineClasses(
+            'text-xs uppercase tracking-wider',
+            this.themeManager.getColor('text', 'lighter')
+        );
+        const cardValueClasses = this.themeManager.combineClasses(
+            'text-2xl font-light',
+            this.themeManager.getColor('text', 'primary')
+        );
+        const cardUnitClasses = this.themeManager.combineClasses(
+            'ml-1 text-sm',
+            this.themeManager.getColor('text', 'muted')
+        );
+        
         let html = `<div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-blue-300">
-                <div class="text-xs uppercase text-gray-400 tracking-wider">Total Hours</div>
+            <div class="${cardBaseClasses} border-blue-300">
+                <div class="${cardLabelClasses}">Total Hours</div>
                 <div class="flex items-end mt-1">
-                    <span class="text-2xl font-light text-gray-800">${(grandTotalSeconds / 3600).toFixed(1)}</span>
-                    <span class="ml-1 text-sm text-gray-500">hours</span>
+                    <span class="${cardValueClasses}">${(grandTotalSeconds / 3600).toFixed(1)}</span>
+                    <span class="${cardUnitClasses}">hours</span>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-emerald-300">
-                <div class="text-xs uppercase text-gray-400 tracking-wider">Total Pay</div>
+            <div class="${cardBaseClasses} border-emerald-300">
+                <div class="${cardLabelClasses}">Total Pay</div>
                 <div class="flex items-end mt-1">
-                    <span class="text-2xl font-light text-gray-800">$${payAmount}</span>
-                    <span class="ml-1 text-sm text-gray-500">USD</span>
+                    <span class="${cardValueClasses}">$${payAmount}</span>
+                    <span class="${cardUnitClasses}">USD</span>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-indigo-300">
-                <div class="text-xs uppercase text-gray-400 tracking-wider">Tasks Completed</div>
+            <div class="${cardBaseClasses} border-indigo-300">
+                <div class="${cardLabelClasses}">Tasks Completed</div>
                 <div class="flex items-end mt-1">
-                    <span class="text-2xl font-light text-gray-800">${totalTasks}</span>
-                    <span class="ml-1 text-sm text-gray-500">tasks</span>
+                    <span class="${cardValueClasses}">${totalTasks}</span>
+                    <span class="${cardUnitClasses}">tasks</span>
                 </div>
             </div>
         </div>`;
         
         // Main report with balanced styling
-        html += `<div class="bg-white p-6 rounded-md shadow-sm">
-            <h3 class="text-lg font-light mb-4 text-gray-800">
+        const reportContainerClasses = this.themeManager.combineClasses(
+            'p-6 rounded-md',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('shadow', 'sm')
+        );
+        const reportTitleClasses = this.themeManager.combineClasses(
+            'text-lg font-light mb-4',
+            this.themeManager.getColor('text', 'primary')
+        );
+        const tableHeaderClasses = this.themeManager.combineClasses(
+            'border-b',
+            this.themeManager.getColor('border', 'primary')
+        );
+        const tableHeaderCellClasses = this.themeManager.combineClasses(
+            'py-3 px-4 text-left font-medium',
+            this.themeManager.getColor('text', 'muted')
+        );
+        
+        html += `<div class="${reportContainerClasses}">
+            <h3 class="${reportTitleClasses}">
                 Week of ${monday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </h3>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="border-b border-gray-200">
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Day</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">On-platform</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Off-platform</th>
-                            <th class="py-3 px-4 text-left font-medium text-gray-500">Total</th>
+                        <tr class="${tableHeaderClasses}">
+                            <th class="${tableHeaderCellClasses}">Day</th>
+                            <th class="${tableHeaderCellClasses}">Date</th>
+                            <th class="${tableHeaderCellClasses}">On-platform</th>
+                            <th class="${tableHeaderCellClasses}">Off-platform</th>
+                            <th class="${tableHeaderCellClasses}">Total</th>
                         </tr>
                     </thead>
                     <tbody>`;
 
+        const tableRowBorderClasses = this.themeManager.combineClasses(
+            'border-b',
+            this.themeManager.getColor('border', 'light')
+        );
+        const dayOffTextClasses = this.themeManager.getColor('calendar', 'dayOff');
+        
         reportRows.forEach((row, index) => {
             const onTime = this.formatTime(row.onSeconds);
             const offTime = this.formatTime(row.offSeconds);
@@ -104,7 +147,9 @@ export class PayAnalysis {
             const totalTime = this.formatTime(totalSeconds);
             const isDayOff = index >= 2 && index <= 4; // Wed, Thu, Fri
             
-            html += `<tr class="border-b border-gray-100 ${isDayOff ? 'text-gray-500' : ''}">
+            const rowClasses = isDayOff ? `${tableRowBorderClasses} ${dayOffTextClasses}` : tableRowBorderClasses;
+            
+            html += `<tr class="${rowClasses}">
                 <td class="py-3 px-4 font-medium">${row.dayName}</td>
                 <td class="py-3 px-4">${new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                 <td class="py-3 px-4 font-mono">${onTime}</td>

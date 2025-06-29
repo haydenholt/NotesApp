@@ -7,17 +7,22 @@ import ViewManager from './components/ViewManager.js';
 import NavigationManager from './components/NavigationManager.js';
 import PayAnalysis from './app/PayAnalysis.js';
 import HelpOverlay from './components/HelpOverlay.js';
+import ThemeManager from './components/ThemeManager.js';
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize theme manager first
+    const themeManager = new ThemeManager();
+    
     // Initialize app components
-    const app = new NoteApp();
+    const app = new NoteApp(themeManager);
     const diffTool = new DiffTool();
     const viewManager = new ViewManager();
     const navigationManager = new NavigationManager(viewManager);
-    const payAnalysis = new PayAnalysis();
+    const payAnalysis = new PayAnalysis(themeManager);
     const helpOverlay = new HelpOverlay();
 
     // Make components accessible for debugging if needed
+    window.themeManager = themeManager;
     window.noteApp = app;
     window.diffTool = diffTool;
     window.viewManager = viewManager;

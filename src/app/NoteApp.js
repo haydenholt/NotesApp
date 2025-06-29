@@ -2,7 +2,8 @@ import Timer from '../components/Timer.js';
 import OffPlatformTimer from './OffPlatformTimer.js';
 import Note from './Note.js'
 export class NoteApp {
-    constructor() {
+    constructor(themeManager) {
+        this.themeManager = themeManager;
         this.notes = [];
         this.container = document.getElementById('notesContainer');
         this.totalTimeDisplay = document.getElementById('totalTime');
@@ -20,7 +21,7 @@ export class NoteApp {
         this.currentDate = today;
         
         // Initialize off-platform timer with current date
-        this.offPlatformTimer = new OffPlatformTimer();
+        this.offPlatformTimer = new OffPlatformTimer(this.themeManager);
         this.offPlatformTimer.currentDate = this.currentDate;
     
         // Set up event listeners
@@ -1399,16 +1400,26 @@ export class NoteApp {
     // Helper method to create a timer card
     createTimerCard(categoryId, label) {
         const card = document.createElement('div');
-        card.className = 'bg-gray-50 p-3 rounded-lg border border-gray-100 transition-all hover:shadow-sm relative group';
+        card.className = this.themeManager.combineClasses(
+            'p-3 rounded-lg border transition-all hover:shadow-sm relative group',
+            this.themeManager.getColor('background', 'secondary'),
+            this.themeManager.getColor('border', 'light')
+        );
         
         // Create timer display - make it the focal point
         const timeDisplay = document.createElement('div');
-        timeDisplay.className = 'font-mono text-center text-2xl font-semibold text-gray-800 my-2 py-2';
+        timeDisplay.className = this.themeManager.combineClasses(
+            'font-mono text-center text-2xl font-semibold my-2 py-2',
+            this.themeManager.getColor('text', 'primary')
+        );
         timeDisplay.textContent = '00:00:00';
         
         // Create label
         const cardLabel = document.createElement('div');
-        cardLabel.className = 'text-center text-sm font-medium text-gray-600 mb-2';
+        cardLabel.className = this.themeManager.combineClasses(
+            'text-center text-sm font-medium mb-2',
+            this.themeManager.getColor('text', 'tertiary')
+        );
         cardLabel.textContent = label;
         
         // Store reference to the time display
@@ -1420,7 +1431,12 @@ export class NoteApp {
         
         // Create edit button for timer
         const editButton = document.createElement('button');
-        editButton.className = 'absolute top-2 right-2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
+        editButton.className = this.themeManager.combineClasses(
+            'absolute top-2 right-2 w-6 h-6 rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity',
+            this.themeManager.getNestedColor('button', 'primary', 'bg'),
+            this.themeManager.getNestedColor('button', 'primary', 'hover'),
+            this.themeManager.getNestedColor('button', 'primary', 'text')
+        );
         editButton.innerHTML = '✎';
         editButton.title = 'Edit timer';
         editButton.addEventListener('click', () => {
@@ -1434,12 +1450,26 @@ export class NoteApp {
         
         // Create start button
         const startButton = document.createElement('button');
-        startButton.className = 'w-full bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 py-1 px-2 rounded text-sm transition-colors';
+        startButton.className = this.themeManager.combineClasses(
+            'w-full py-1 px-2 rounded text-sm transition-colors',
+            this.themeManager.getNestedColor('button', 'success', 'bg'),
+            this.themeManager.getNestedColor('button', 'success', 'hover'),
+            this.themeManager.getNestedColor('button', 'success', 'text'),
+            'border',
+            this.themeManager.getNestedColor('button', 'success', 'border')
+        );
         startButton.textContent = 'Start';
         
         // Create stop button
         const stopButton = document.createElement('button');
-        stopButton.className = 'w-full bg-red-100 hover:bg-red-100 text-red-700 border border-red-100 py-1 px-2 rounded text-sm transition-colors';
+        stopButton.className = this.themeManager.combineClasses(
+            'w-full py-1 px-2 rounded text-sm transition-colors',
+            this.themeManager.getNestedColor('button', 'danger', 'bg'),
+            this.themeManager.getNestedColor('button', 'danger', 'hover'),
+            this.themeManager.getNestedColor('button', 'danger', 'text'),
+            'border',
+            this.themeManager.getNestedColor('button', 'danger', 'border')
+        );
         stopButton.textContent = 'Stop';
         
         // Set initial button display based on timer state

@@ -2,7 +2,8 @@
  * OffPlatformTimer class for tracking off-platform time with multiple timer types
  */
 export class OffPlatformTimer {
-    constructor() {
+    constructor(themeManager = null) {
+        this.themeManager = themeManager;
         // Initialize base timer structure
         this.timers = {
             projectTraining: { startTime: null, totalSeconds: 0 },
@@ -169,8 +170,9 @@ export class OffPlatformTimer {
                     
                     // Update UI for stopped timer
                     this.stopDisplay(otherCategory);
-                    if (this.displayElements[otherCategory]) {
-                        this.displayElements[otherCategory].classList.remove('text-green-600');
+                    if (this.displayElements[otherCategory] && this.themeManager) {
+                        this.displayElements[otherCategory].classList.remove(this.themeManager.getColor('timer', 'active').replace('text-', ''));
+                        this.displayElements[otherCategory].classList.remove('text-green-600'); // Fallback for old class
                     }
                     this.triggerStopCallbacks(otherCategory);
                 }
@@ -199,7 +201,11 @@ export class OffPlatformTimer {
             
             // Add active class to the time display
             if (this.displayElements[category]) {
-                this.displayElements[category].classList.add('text-green-600');
+                if (this.themeManager) {
+                    this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
+                } else {
+                    this.displayElements[category].classList.add('text-green-600'); // Fallback
+                }
             }
         }
     }
@@ -237,7 +243,11 @@ export class OffPlatformTimer {
             
             // Remove active class from time display
             if (this.displayElements[category]) {
-                this.displayElements[category].classList.remove('text-green-600');
+                if (this.themeManager) {
+                    this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                } else {
+                    this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                }
             }
         }
     }
@@ -435,7 +445,11 @@ export class OffPlatformTimer {
                 // Update UI
                 this.stopDisplay(category);
                 if (this.displayElements[category]) {
-                    this.displayElements[category].classList.remove('text-green-600');
+                    if (this.themeManager) {
+                        this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                    } else {
+                        this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                    }
                 }
             }
         });
@@ -555,7 +569,11 @@ export class OffPlatformTimer {
             Object.keys(this.timers).forEach(category => {
                 // Reset any UI indicators
                 if (this.displayElements[category]) {
-                    this.displayElements[category].classList.remove('text-green-600');
+                    if (this.themeManager) {
+                        this.displayElements[category].classList.remove(...this.themeManager.getColor('timer', 'active').split(' '));
+                    } else {
+                        this.displayElements[category].classList.remove('text-green-600'); // Fallback
+                    }
                 }
                 
                 // Check if this timer should be running based on previous state
@@ -577,7 +595,11 @@ export class OffPlatformTimer {
                     
                     // Add active class to the time display
                     if (this.displayElements[category]) {
-                        this.displayElements[category].classList.add('text-green-600');
+                        if (this.themeManager) {
+                            this.displayElements[category].classList.add(...this.themeManager.getColor('timer', 'active').split(' '));
+                        } else {
+                            this.displayElements[category].classList.add('text-green-600'); // Fallback
+                        }
                     }
                     
                     // Trigger callbacks
