@@ -1,6 +1,7 @@
 export class SystemPromptView {
-    constructor(containerId) {
+    constructor(containerId, themeManager = null) {
         this.container = document.getElementById(containerId);
+        this.themeManager = themeManager;
         if (!this.container) {
             console.error("System Prompt View container not found!");
             return;
@@ -10,18 +11,23 @@ export class SystemPromptView {
     }
 
     render() {
+        // Get theme classes
+        const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:ring-2 focus:ring-gray-500 focus:border-gray-500';
+        const primaryButtonClasses = this.themeManager ? this.themeManager.getPrimaryButtonClasses() : 'bg-gray-600 hover:bg-gray-700';
+        const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
+        
         this.container.innerHTML = `
             <div class="max-w-4xl mx-auto">
 
                 <!-- System Prompt for Code Setup -->
                 <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
                     <h2 class="text-lg font-medium mb-4 text-gray-700">Code Setup Prompt</h2>
-                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste your code here..."></textarea>
+                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste your code here..."></textarea>
                     <div class="mt-6 flex gap-3 justify-between">
-                        <button id="copySystemPromptButton1" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="copySystemPromptButton1" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Setup Prompt
                         </button>
-                        <button id="clearSystemPromptButton1" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="clearSystemPromptButton1" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>
@@ -33,23 +39,23 @@ export class SystemPromptView {
 
                     <div class="mb-4">
                         <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
-                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste the original prompt..."></textarea>
+                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label for="systemPromptInputResponse2_1" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
-                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste AI's first response..."></textarea>
+                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste AI's first response..."></textarea>
                         </div>
                         <div>
                             <label for="systemPromptInputResponse2_2" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
-                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste AI's second response..."></textarea>
+                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste AI's second response..."></textarea>
                         </div>
                     </div>
                     <div class="flex gap-3 justify-between">
-                        <button id="copySystemPromptButton2" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="copySystemPromptButton2" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Evaluation Prompt
                         </button>
-                        <button id="clearSystemPromptButton2" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="clearSystemPromptButton2" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>
@@ -62,18 +68,18 @@ export class SystemPromptView {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label for="systemPromptInputResponseA" class="block text-sm font-medium text-gray-700 mb-2">Response A:</label>
-                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste Response A here..."></textarea>
+                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste Response A here..."></textarea>
                         </div>
                         <div>
                             <label for="systemPromptInputResponseB" class="block text-sm font-medium text-gray-700 mb-2">Response B:</label>
-                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Paste Response B here..."></textarea>
+                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste Response B here..."></textarea>
                         </div>
                     </div>
                     <div class="flex gap-3 justify-between">
-                        <button id="copySystemPromptButton3" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="copySystemPromptButton3" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Comparison Prompt
                         </button>
-                        <button id="clearSystemPromptButton3" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        <button id="clearSystemPromptButton3" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Clear
                         </button>
                     </div>
@@ -95,7 +101,8 @@ export class SystemPromptView {
         }
 
         toastMessageElement.textContent = message;
-        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500'); // Remove existing color classes
+        const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
+        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', primaryBg); // Remove existing color classes
 
         if (type === 'success') {
             toastElement.classList.add('bg-green-500');
@@ -104,7 +111,7 @@ export class SystemPromptView {
         } else if (type === 'warning') {
             toastElement.classList.add('bg-yellow-500'); // Or another color for warning
         } else if (type === 'info') {
-            toastElement.classList.add('bg-blue-500');
+            toastElement.classList.add(primaryBg);
         } else {
             toastElement.classList.add('bg-gray-700'); // Default
         }

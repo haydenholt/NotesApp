@@ -1,4 +1,5 @@
 import { SystemPromptView } from '../../src/components/SystemPromptView.js';
+import { ThemeManager } from '../../src/components/ThemeManager.js';
 
 describe('SystemPromptView Component', () => {
     let container;
@@ -20,8 +21,9 @@ describe('SystemPromptView Component', () => {
         // Mock setTimeout and clearTimeout
         jest.useFakeTimers();
 
-        // Instantiate the view here and mock showToast after instantiation
-        systemPromptView = new SystemPromptView('systemPromptViewContainer');
+        // Create theme manager and instantiate the view with it
+        const themeManager = new ThemeManager();
+        systemPromptView = new SystemPromptView('systemPromptViewContainer', themeManager);
         systemPromptView.showToast = jest.fn();
     });
 
@@ -65,7 +67,7 @@ describe('SystemPromptView Component', () => {
 
         test('copySystemPromptButton1 should have blue background', () => {
             const copyButton1 = container.querySelector('#copySystemPromptButton1');
-            expect(copyButton1.classList.contains('bg-blue-500')).toBe(true);
+            expect(copyButton1.classList.contains('bg-blue-500') || copyButton1.classList.contains('bg-blue-600')).toBe(true);
         });
     });
 

@@ -231,7 +231,7 @@ describe('DiffTool', () => {
       expect(summary).toContain('@@');
       expect(summary).toContain('-');
       expect(summary).toContain('+');
-      expect(summary).toContain('bg-blue-50');
+      expect(summary).toContain('bg-gray-50');
     });
     
     test('should generate "No differences found" for identical texts', () => {
@@ -250,7 +250,7 @@ describe('DiffTool', () => {
       
       expect(summary).toContain('Word mode:');
       expect(summary).toContain('+1 -1 changes');
-      expect(summary).toContain('bg-blue-50');
+      expect(summary).toContain('bg-gray-50');
     });
     
     test('should generate simple summary for character mode', () => {
@@ -261,7 +261,7 @@ describe('DiffTool', () => {
       
       expect(summary).toContain('Character mode:');
       expect(summary).toContain('+3 -0 changes');
-      expect(summary).toContain('bg-blue-50');
+      expect(summary).toContain('bg-gray-50');
     });
     
     test('should generate simple summary for token mode', () => {
@@ -272,7 +272,7 @@ describe('DiffTool', () => {
       
       expect(summary).toContain('Token mode:');
       expect(summary).toContain('changes');
-      expect(summary).toContain('bg-blue-50');
+      expect(summary).toContain('bg-gray-50');
     });
   });
   

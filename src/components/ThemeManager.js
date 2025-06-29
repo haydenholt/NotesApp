@@ -123,11 +123,11 @@ export class ThemeManager {
             dark: {
                 // Dark gray theme for better readability
                 background: {
-                    primary: 'bg-gray-800',    // Main background - dark gray instead of black
-                    secondary: 'bg-gray-700',  // Secondary surfaces
-                    tertiary: 'bg-gray-600',   // Tertiary surfaces
-                    overlay: 'bg-gray-900',    // Overlays and modals
-                    card: 'bg-gray-700'        // Cards and containers
+                    primary: 'bg-neutral-800',    // Main background - neutral dark gray
+                    secondary: 'bg-neutral-700',  // Secondary surfaces - neutral gray
+                    tertiary: 'bg-neutral-600',   // Tertiary surfaces - neutral gray
+                    overlay: 'bg-neutral-900',    // Overlays and modals
+                    card: 'bg-neutral-700'        // Cards and containers - neutral gray
                 },
                 
                 text: {
@@ -140,10 +140,10 @@ export class ThemeManager {
                 },
                 
                 border: {
-                    primary: 'border-gray-600',   // Main borders
-                    secondary: 'border-gray-500', // Secondary borders
-                    light: 'border-gray-600',     // Light borders
-                    focus: 'border-blue-400'      // Focus borders
+                    primary: 'border-neutral-600',   // Main borders
+                    secondary: 'border-neutral-500', // Secondary borders
+                    light: 'border-neutral-600',     // Light borders
+                    focus: 'border-blue-400'         // Focus borders - keep blue for accent
                 },
                 
                 button: {
@@ -153,8 +153,8 @@ export class ThemeManager {
                         text: 'text-white'
                     },
                     secondary: {
-                        bg: 'bg-gray-600',
-                        hover: 'hover:bg-gray-500',
+                        bg: 'bg-neutral-600',
+                        hover: 'hover:bg-neutral-500',
                         text: 'text-gray-100'
                     },
                     success: {
@@ -180,24 +180,24 @@ export class ThemeManager {
                 
                 // Note states
                 note: {
-                    completed: 'bg-gray-700',
-                    cancelled: 'bg-gray-800',
+                    completed: 'bg-neutral-700',
+                    cancelled: 'bg-neutral-800',
                     cancelledText: 'text-red-400',
                     cancelledNumber: 'text-red-400'
                 },
                 
                 navigation: {
-                    bg: 'bg-gray-800',
+                    bg: 'bg-neutral-800',
                     text: 'text-gray-300',
                     textHover: 'hover:text-gray-100',
                     textActive: 'text-blue-400',
-                    border: 'border-gray-600'
+                    border: 'border-neutral-600'
                 },
                 
                 form: {
                     input: {
-                        bg: 'bg-gray-700',
-                        border: 'border-gray-600',
+                        bg: 'bg-neutral-700',
+                        border: 'border-neutral-600',
                         borderFocus: 'focus:border-blue-400',
                         text: 'text-gray-100',
                         placeholder: 'placeholder-gray-400'
@@ -319,6 +319,7 @@ export class ThemeManager {
             '--bg-primary': this.tailwindToCSS(theme.background.primary),
             '--bg-secondary': this.tailwindToCSS(theme.background.secondary),
             '--bg-tertiary': this.tailwindToCSS(theme.background.tertiary),
+            '--bg-card': this.tailwindToCSS(theme.background.card),
             
             // Text colors
             '--text-primary': this.tailwindToCSS(theme.text.primary),
@@ -329,12 +330,32 @@ export class ThemeManager {
             // Borders
             '--border-primary': this.tailwindToCSS(theme.border.primary),
             '--border-secondary': this.tailwindToCSS(theme.border.secondary),
+            '--border-focus': this.tailwindToCSS(theme.border.focus),
             
             // Navigation
             '--nav-bg': this.tailwindToCSS(theme.navigation.bg),
             '--nav-text': this.tailwindToCSS(theme.navigation.text),
             '--nav-text-hover': this.tailwindToCSS(theme.navigation.textHover),
-            '--nav-text-active': this.tailwindToCSS(theme.navigation.textActive)
+            '--nav-text-active': this.tailwindToCSS(theme.navigation.textActive),
+            
+            // Buttons
+            '--btn-primary-bg': this.tailwindToCSS(theme.button.primary.bg),
+            '--btn-primary-hover': this.tailwindToCSS(theme.button.primary.bg).replace('bg-', 'hover:bg-'),
+            '--btn-primary-text': this.tailwindToCSS(theme.button.primary.text),
+            '--btn-secondary-bg': this.tailwindToCSS(theme.button.secondary.bg),
+            '--btn-secondary-hover': this.tailwindToCSS(theme.button.secondary.bg).replace('bg-', 'hover:bg-'),
+            '--btn-secondary-text': this.tailwindToCSS(theme.button.secondary.text),
+            
+            // Form elements
+            '--input-bg': this.tailwindToCSS(theme.form.input.bg),
+            '--input-border': this.tailwindToCSS(theme.form.input.border),
+            '--input-text': this.tailwindToCSS(theme.form.input.text),
+            
+            // Status colors
+            '--status-info': this.tailwindToCSS(theme.status.info),
+            '--status-success': this.tailwindToCSS(theme.status.success),
+            '--status-warning': this.tailwindToCSS(theme.status.warning),
+            '--status-error': this.tailwindToCSS(theme.status.error)
         };
         
         // Apply all CSS variables to document root
@@ -347,6 +368,11 @@ export class ThemeManager {
      * Convert Tailwind CSS classes to actual CSS color values
      */
     tailwindToCSS(tailwindClass) {
+        // Handle hover states by extracting the base color
+        if (tailwindClass.startsWith('hover:')) {
+            return this.tailwindToCSS(tailwindClass.replace('hover:', ''));
+        }
+        
         // Extract color from Tailwind class name
         const colorMap = {
             // Backgrounds
@@ -358,6 +384,14 @@ export class ThemeManager {
             'bg-gray-800': '#1f2937',
             'bg-gray-900': '#111827',
             
+            // Neutral backgrounds (true grey, no blue undertones)
+            'bg-neutral-400': '#a3a3a3',
+            'bg-neutral-500': '#737373',
+            'bg-neutral-600': '#525252',
+            'bg-neutral-700': '#404040',
+            'bg-neutral-800': '#262626',
+            'bg-neutral-900': '#171717',
+            
             // Text colors
             'text-gray-100': '#f3f4f6',
             'text-gray-200': '#e5e7eb',
@@ -368,14 +402,17 @@ export class ThemeManager {
             'text-gray-700': '#374151',
             'text-gray-800': '#1f2937',
             'text-gray-900': '#111827',
-            'text-blue-400': '#60a5fa',
-            'text-blue-600': '#2563eb',
             
             // Borders
             'border-gray-200': '#e5e7eb',
             'border-gray-300': '#d1d5db',
+            'border-gray-400': '#9ca3af',
             'border-gray-500': '#6b7280',
             'border-gray-600': '#4b5563',
+            
+            // Neutral borders (true grey, no blue undertones)
+            'border-neutral-500': '#737373',
+            'border-neutral-600': '#525252',
             
             // Hover states (extract base color)
             'hover:text-gray-100': '#f3f4f6',
@@ -439,6 +476,7 @@ export class ThemeManager {
      */
     getButtonClasses(type = 'primary', size = 'default') {
         const buttonColors = this.getColors('button')[type] || this.getColors('button').primary;
+        const focusClasses = this.getFocusClasses();
         const sizeClasses = {
             sm: 'py-1 px-2 text-sm',
             default: 'py-2 px-4',
@@ -451,7 +489,8 @@ export class ThemeManager {
             buttonColors.text,
             buttonColors.border,
             sizeClasses[size] || sizeClasses.default,
-            'rounded transition-colors'
+            'rounded font-medium transition-colors',
+            focusClasses.ring
         );
     }
     
@@ -495,10 +534,20 @@ export class ThemeManager {
     /**
      * Helper method to get stat card classes with accent colors
      */
-    getStatCardClasses(accentColor = 'blue') {
+    getStatCardClasses(accentColor = 'neutral') {
         const bg = this.getColor('background', 'card');
         const shadow = this.getColor('shadow', 'sm');
-        const accentBorder = `border-${accentColor}-300`;
+        
+        // Use neutral colors by default, allow specific colors for semantic purposes
+        const accentMap = {
+            neutral: this.currentTheme === 'dark' ? 'border-neutral-500' : 'border-gray-300',
+            success: 'border-green-300',
+            warning: 'border-yellow-300',
+            error: 'border-red-300',
+            info: this.currentTheme === 'dark' ? 'border-blue-400' : 'border-blue-400'
+        };
+        
+        const accentBorder = accentMap[accentColor] || accentMap.neutral;
         
         return this.combineClasses(
             bg,
@@ -630,6 +679,212 @@ export class ThemeManager {
     }
     
     /**
+     * Helper method to get focus ring classes
+     */
+    getFocusClasses() {
+        const focusBorder = this.getColor('border', 'focus');
+        const focusRing = focusBorder.replace('border-', 'ring-');
+        return {
+            ring: `focus:ring-2 ${focusRing}`,
+            border: `focus:outline-none ${focusBorder}`,
+            combined: `focus:outline-none focus:ring-2 ${focusRing} ${focusBorder}`
+        };
+    }
+    
+    /**
+     * Helper method to get primary action button classes
+     */
+    getPrimaryButtonClasses(size = 'default') {
+        const buttonColors = this.getColors('button').primary;
+        const sizeClasses = {
+            sm: 'py-1 px-2 text-sm',
+            default: 'py-2 px-4',
+            lg: 'py-3 px-6 text-lg'
+        };
+        
+        return this.combineClasses(
+            buttonColors.bg,
+            buttonColors.hover,
+            buttonColors.text,
+            sizeClasses[size] || sizeClasses.default,
+            'rounded font-medium transition-colors focus:outline-none focus:ring-2',
+            this.getFocusClasses().ring
+        );
+    }
+    
+    /**
+     * Helper method to get secondary action button classes
+     */
+    getSecondaryButtonClasses(size = 'default') {
+        const buttonColors = this.getColors('button').secondary;
+        const sizeClasses = {
+            sm: 'py-1 px-2 text-sm',
+            default: 'py-2 px-4',
+            lg: 'py-3 px-6 text-lg'
+        };
+        
+        return this.combineClasses(
+            buttonColors.bg,
+            buttonColors.hover,
+            buttonColors.text,
+            sizeClasses[size] || sizeClasses.default,
+            'rounded font-medium transition-colors focus:outline-none focus:ring-2',
+            this.getFocusClasses().ring
+        );
+    }
+    
+    /**
+     * Helper method to get form input classes with proper theming
+     */
+    getInputClasses(variant = 'default') {
+        const inputColors = this.getColors('form').input;
+        const focusClasses = this.getFocusClasses();
+        
+        const variants = {
+            default: 'px-3 py-2 rounded-md border text-sm',
+            large: 'px-4 py-3 rounded-md border text-base',
+            small: 'px-2 py-1 rounded-md border text-xs'
+        };
+        
+        return this.combineClasses(
+            inputColors.bg,
+            inputColors.border,
+            inputColors.text,
+            inputColors.placeholder,
+            variants[variant] || variants.default,
+            focusClasses.combined,
+            'transition-colors'
+        );
+    }
+    
+    /**
+     * Helper method to get select dropdown classes
+     */
+    getSelectClasses(variant = 'default') {
+        const inputColors = this.getColors('form').input;
+        const focusClasses = this.getFocusClasses();
+        
+        return this.combineClasses(
+            inputColors.bg,
+            inputColors.border,
+            inputColors.text,
+            'px-3 py-2 rounded-md border text-sm',
+            focusClasses.combined,
+            'transition-colors appearance-none'
+        );
+    }
+    
+    /**
+     * Helper method to get textarea classes
+     */
+    getTextareaClasses(variant = 'default') {
+        const inputColors = this.getColors('form').input;
+        const focusClasses = this.getFocusClasses();
+        
+        const variants = {
+            default: 'px-3 py-2 rounded-md border text-sm resize-y',
+            large: 'px-4 py-3 rounded-md border text-base resize-y',
+            code: 'px-3 py-2 rounded-md border text-sm font-mono resize-y'
+        };
+        
+        return this.combineClasses(
+            inputColors.bg,
+            inputColors.border,
+            inputColors.text,
+            inputColors.placeholder,
+            variants[variant] || variants.default,
+            focusClasses.combined,
+            'transition-colors'
+        );
+    }
+    
+    /**
+     * Helper method to get search input classes
+     */
+    getSearchInputClasses() {
+        const inputColors = this.getColors('form').input;
+        const focusClasses = this.getFocusClasses();
+        
+        return this.combineClasses(
+            inputColors.bg,
+            inputColors.border,
+            inputColors.text,
+            inputColors.placeholder,
+            'px-3 py-2 rounded-lg border text-sm w-52',
+            focusClasses.combined,
+            'transition-colors'
+        );
+    }
+    
+    /**
+     * Helper method to get navigation button classes
+     */
+    getNavButtonClasses(isActive = false) {
+        const navColors = this.getColors('navigation');
+        const baseClasses = 'px-3 py-2 rounded-md text-sm font-medium transition-colors';
+        
+        if (isActive) {
+            return this.combineClasses(
+                baseClasses,
+                navColors.textActive,
+                this.getColor('background', 'secondary')
+            );
+        }
+        
+        return this.combineClasses(
+            baseClasses,
+            navColors.text,
+            navColors.textHover
+        );
+    }
+    
+    /**
+     * Helper method to get status indicator classes
+     */
+    getStatusClasses(status = 'info') {
+        const statusColors = this.getColors('status');
+        return statusColors[status] || statusColors.info;
+    }
+    
+    /**
+     * Helper method to get progress bar classes
+     */
+    getProgressBarClasses() {
+        const bg = this.getColor('background', 'secondary');
+        // Use neutral colors for progress bars
+        const fill = this.currentTheme === 'dark' ? 'bg-neutral-400' : 'bg-gray-500';
+        
+        return {
+            container: this.combineClasses(bg, 'w-full h-2 rounded-full overflow-hidden'),
+            fill: this.combineClasses(fill, 'h-full transition-all duration-300 ease-in-out')
+        };
+    }
+    
+    /**
+     * Helper method to get calendar selection classes
+     */
+    getCalendarClasses() {
+        const calendar = this.getColors('calendar');
+        const bg = this.getColor('background', 'card');
+        const border = this.getColor('border', 'primary');
+        
+        // Use neutral colors for calendar selection
+        const selectedBg = this.currentTheme === 'dark' ? 'bg-neutral-600' : 'bg-gray-100';
+        const selectedHover = this.currentTheme === 'dark' ? 'hover:bg-neutral-500' : 'hover:bg-gray-200';
+        
+        return {
+            container: this.combineClasses(bg, 'rounded-md shadow-sm p-4'),
+            weekday: calendar.weekday,
+            weekend: calendar.weekend,
+            selectedWeek: calendar.selectedWeek,
+            dayOff: calendar.dayOff,
+            border: border,
+            selected: selectedBg,
+            selectedHover: selectedHover
+        };
+    }
+    
+    /**
      * Helper method to get empty state / placeholder text classes
      */
     getEmptyStateClasses() {
@@ -674,6 +929,9 @@ export class ThemeManager {
      * Helper method to get diff highlight classes
      */
     getDiffClasses() {
+        const summaryBg = this.currentTheme === 'dark' ? 'bg-neutral-700' : 'bg-gray-50';
+        const summaryBorder = this.currentTheme === 'dark' ? 'border-neutral-600' : 'border-gray-200';
+        
         return {
             noDiff: this.combineClasses(
                 this.getColor('background', 'secondary'),
@@ -682,8 +940,17 @@ export class ThemeManager {
                 'border rounded-md p-3 mb-4 text-sm'
             ),
             summary: this.combineClasses(
-                'bg-blue-50 border-blue-200',
+                summaryBg,
+                summaryBorder,
                 'border rounded-md p-3 mb-4 text-sm'
+            ),
+            summaryTitle: this.combineClasses(
+                'font-medium mb-2',
+                this.getColor('text', 'primary')
+            ),
+            summaryText: this.combineClasses(
+                'font-mono',
+                this.getColor('text', 'secondary')
             ),
             added: {
                 line: 'bg-green-50 border-l-2 border-green-300 pl-2',

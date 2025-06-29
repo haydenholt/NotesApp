@@ -41,6 +41,10 @@ const mockThemeManager = {
   getNumberDisplayClasses: jest.fn().mockReturnValue({
     number: 'text-lg font-medium text-gray-900',
     unit: 'ml-1 text-sm text-gray-500'
+  }),
+  getProgressBarClasses: jest.fn().mockReturnValue({
+    container: 'bg-gray-200 w-full h-2 rounded-full overflow-hidden',
+    fill: 'bg-gray-500 h-full transition-all duration-300 ease-in-out'
   })
 };
 

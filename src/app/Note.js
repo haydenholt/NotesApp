@@ -57,7 +57,10 @@ export class Note {
         actionsDiv.className = 'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
         
         const editButton = document.createElement('button');
-        editButton.className = 'w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm flex items-center justify-center';
+        editButton.className = this.themeManager.combineClasses(
+            'w-6 h-6 text-white rounded text-sm flex items-center justify-center',
+            this.themeManager.getPrimaryButtonClasses('sm')
+        );
         editButton.innerHTML = '✎';
         editButton.title = 'Edit note';
         editButton.style.display = completed ? 'block' : 'none';

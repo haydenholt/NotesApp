@@ -250,7 +250,8 @@ export class NoteApp {
         
         // Style the date selector with theme classes
         originalDateSelector.className = this.themeManager.combineClasses(
-            'px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset min-w-32',
+            'px-3 py-2 min-w-32',
+            this.themeManager.getFocusClasses().combined,
             this.themeManager.getColor('background', 'card'),
             this.themeManager.getColor('text', 'secondary')
         );
@@ -1135,7 +1136,10 @@ export class NoteApp {
 
         // View full note button at bottom of sidebar
         const viewButton = document.createElement('button');
-        viewButton.className = 'mt-3 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded';
+        viewButton.className = this.themeManager.combineClasses(
+            'mt-3',
+            this.themeManager.getPrimaryButtonClasses('sm')
+        );
         viewButton.textContent = 'View Full';
         viewButton.addEventListener('click', () => {
             // Change to the date of this note and load all notes for that date
@@ -1164,9 +1168,11 @@ export class NoteApp {
                 const noteElement = document.querySelector(`.flex[data-note-id="${id}"]`);
                 if (noteElement) {
                     noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    noteElement.classList.add('ring-2', 'ring-blue-500');
+                    noteElement.classList.add('ring-2');
+                    noteElement.classList.add(this.themeManager.getFocusClasses().ring.replace('focus:', '').replace('ring-2 ', ''));
                     setTimeout(() => {
-                        noteElement.classList.remove('ring-2', 'ring-blue-500');
+                        noteElement.classList.remove('ring-2');
+                        noteElement.classList.remove(this.themeManager.getFocusClasses().ring.replace('focus:', '').replace('ring-2 ', ''));
                     }, 2000);
                 }
             }, 100);
@@ -1690,7 +1696,7 @@ export class NoteApp {
         // Save button
         const saveButton = document.createElement('button');
         saveButton.type = 'button';
-        saveButton.className = 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors';
+        saveButton.className = this.themeManager.getPrimaryButtonClasses();
         saveButton.textContent = 'Save';
         saveButton.addEventListener('click', () => {
             // Extract values
@@ -1849,7 +1855,8 @@ export class NoteApp {
         
         // Update date selector classes
         this.dateSelector.className = this.themeManager.combineClasses(
-            'px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset min-w-32',
+            'px-3 py-2 min-w-32',
+            this.themeManager.getFocusClasses().combined,
             this.themeManager.getColor('background', 'card'),
             this.themeManager.getColor('text', 'secondary')
         );

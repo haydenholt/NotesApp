@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize app components
     const app = new NoteApp(themeManager);
     const diffTool = new DiffTool(themeManager);
-    const viewManager = new ViewManager();
+    const viewManager = new ViewManager(themeManager);
     const navigationManager = new NavigationManager(viewManager);
     const payAnalysis = new PayAnalysis(themeManager);
     const helpOverlay = new HelpOverlay(themeManager);

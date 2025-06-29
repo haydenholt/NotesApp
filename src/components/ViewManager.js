@@ -4,7 +4,8 @@ import SystemPromptView from './SystemPromptView.js';
  * Manages switching between Notes view, Diff view, and System Prompt view
  */
 export class ViewManager {
-    constructor() {
+    constructor(themeManager = null) {
+        this.themeManager = themeManager;
         this.navigationManager = null; // Will be set by NavigationManager
         this.views = {
             notes: { 
@@ -29,7 +30,7 @@ export class ViewManager {
             diff: { element: document.getElementById('diffView') },
             systemPrompt: {
                 element: document.getElementById('systemPromptView'),
-                init: () => this.systemPromptViewInstance = new SystemPromptView('systemPromptView')
+                init: () => this.systemPromptViewInstance = new SystemPromptView('systemPromptView', this.themeManager)
             },
             payAnalysis: {
                 element: document.getElementById('payAnalysisView'),

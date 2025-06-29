@@ -11,6 +11,14 @@ export class DiffTool {
         this.resultContainer = document.getElementById('diffResult');
         this.diffModeSelect = document.getElementById('diffMode');
         
+        // Apply theme styling to clear button
+        this.updateButtonStyling();
+        
+        // Listen for theme changes
+        document.addEventListener('themeChanged', () => {
+            this.updateButtonStyling();
+        });
+        
         // Set up event listeners
         this.clearButton.addEventListener('click', () => this.clearTexts());
         
@@ -30,6 +38,19 @@ export class DiffTool {
         }
     }
     
+    updateButtonStyling() {
+        if (this.themeManager && this.clearButton) {
+            // Match the exact styling of system prompt buttons
+            const buttonColors = this.themeManager.getColors('button').primary;
+            const classes = this.themeManager.combineClasses(
+                buttonColors.bg,
+                buttonColors.hover,
+                buttonColors.text,
+                'py-2 px-4 rounded-md font-medium text-sm transition-colors focus:outline-none'
+            );
+            this.clearButton.className = classes;
+        }
+    }
     
     clearTexts() {
         this.originalTextArea.value = '';
@@ -107,11 +128,11 @@ export class DiffTool {
         }
         
         const diffClasses = this.themeManager?.getDiffClasses();
-        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm'}">`;
-        summaryHtml += '<div class="font-medium text-blue-800 mb-2">Diff Summary:</div>';
+        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 text-sm'}">`;
+        summaryHtml += `<div class="${diffClasses?.summaryTitle || 'font-medium mb-2'}">Diff Summary:</div>`;
         
         hunks.forEach(hunk => {
-            summaryHtml += `<div class="font-mono text-blue-700">${hunk.header}</div>`;
+            summaryHtml += `<div class="${diffClasses?.summaryText || 'font-mono'}">${hunk.header}</div>`;
         });
         
         summaryHtml += '</div>';
@@ -138,9 +159,9 @@ export class DiffTool {
         });
         
         const diffClasses = this.themeManager?.getDiffClasses();
-        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm'}">`;
-        summaryHtml += '<div class="font-medium text-blue-800 mb-2">Diff Summary:</div>';
-        summaryHtml += `<div class="text-blue-700">${mode.charAt(0).toUpperCase() + mode.slice(1)} mode: +${additions} -${deletions} changes</div>`;
+        let summaryHtml = `<div class="${diffClasses?.summary || 'bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 text-sm'}">`;
+        summaryHtml += `<div class="${diffClasses?.summaryTitle || 'font-medium mb-2'}">Diff Summary:</div>`;
+        summaryHtml += `<div class="${diffClasses?.summaryText || 'font-mono'}">${mode.charAt(0).toUpperCase() + mode.slice(1)} mode: +${additions} -${deletions} changes</div>`;
         summaryHtml += '</div>';
         
         return summaryHtml;

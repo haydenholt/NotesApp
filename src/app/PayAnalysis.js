@@ -66,7 +66,7 @@ export class PayAnalysis {
 
         // Balanced summary cards with subtle color accents
         let html = `<div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 border-blue-300">
+            <div class="bg-white p-4 rounded-md shadow-sm border-l-2 ${this.themeManager.getColor('border', 'primary')}">
                 <div class="text-xs uppercase text-gray-400 tracking-wider">Total Hours</div>
                 <div class="flex items-end mt-1">
                     <span class="text-2xl font-light text-gray-800">${(grandTotalSeconds / 3600).toFixed(1)}</span>
@@ -160,7 +160,7 @@ export class PayAnalysis {
                     </div>
                     
                     <div class="mt-3 ${bgSecondary} rounded-full h-1.5">
-                        <div class="bg-blue-400 h-1.5 rounded-full" style="width: ${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%"></div>
+                        <div class="${this.themeManager.getProgressBarClasses().fill} h-1.5 rounded-full" style="width: ${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%"></div>
                     </div>
                     <div class="flex justify-between mt-1 text-xs ${textMuted}">
                         <span>On-platform (${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%)</span>
@@ -375,8 +375,8 @@ export class PayAnalysis {
             const innerContent = document.createElement('div');
             const lightBorder = this.themeManager.getColor('border', 'light');
             const hoverBg = this.themeManager.getColor('background', 'secondary');
-            const selectedBg = 'bg-blue-50';
-            const selectedHoverBg = 'hover:bg-blue-100';
+            const selectedBg = this.themeManager.getCalendarClasses().selected;
+            const selectedHoverBg = this.themeManager.getCalendarClasses().selectedHover;
             
             innerContent.className = this.themeManager.combineClasses(
                 'h-9 flex items-center justify-center cursor-pointer border-b transition-colors',
