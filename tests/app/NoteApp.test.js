@@ -18,6 +18,15 @@ const mockThemeManager = {
     };
     return colors[category]?.[colorKey] || '';
   }),
+  getStatusClasses: jest.fn((status) => {
+    const statusColors = {
+      error: 'text-red-600',
+      warning: 'text-yellow-600',
+      info: 'text-blue-600',
+      success: 'text-green-600'
+    };
+    return statusColors[status] || statusColors.info;
+  }),
   getButtonClasses: jest.fn().mockReturnValue('bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors'),
   getInputClasses: jest.fn().mockReturnValue('bg-white border-gray-300 focus:border-blue-500 text-gray-900 placeholder-gray-500 rounded px-3 py-2 focus:outline-none focus:ring-2'),
   getEmptyStateClasses: jest.fn().mockReturnValue({
@@ -49,6 +58,11 @@ const mockThemeManager = {
       }
     };
     return colors[category]?.[subcategory]?.[colorKey] || '';
+  }),
+  getFailRateProgressClasses: jest.fn().mockReturnValue({
+    container: 'bg-gray-200',
+    fails: 'bg-red-200',
+    nonFails: 'bg-yellow-200'
   }),
   getFocusClasses: jest.fn().mockReturnValue({
     ring: 'focus:ring-2 ring-blue-500',
@@ -397,7 +411,8 @@ describe('NoteApp', () => {
     failingIssuesTextarea.dispatchEvent(event);
 
     // Stats should show 1 failed note
-    const failsCount = mockStatsDisplay.querySelector('.text-red-700');
+    const failsElement = mockStatsDisplay.querySelector('.text-red-600').parentElement;
+    const failsCount = failsElement.querySelector('.text-2xl');
     expect(failsCount.textContent).toBe('1');
   });
 
@@ -835,7 +850,8 @@ describe('NoteApp', () => {
     expect(savedData['1'].completed).toBe(true);
     
     // Verify statistics were updated
-    const failsCount = mockStatsDisplay.querySelector('.text-red-700');
+    const failsElement = mockStatsDisplay.querySelector('.text-red-600').parentElement;
+    const failsCount = failsElement.querySelector('.text-2xl');
     expect(failsCount.textContent).toBe('1');
     
     // Verify project fail rates were updated - only check for the last 5 characters of project ID
@@ -871,7 +887,8 @@ describe('NoteApp', () => {
     expect(mockProjectFailRateDisplay.textContent).toContain('0.0%');
     
     // Verify stats were updated
-    const nonFailsCount = mockStatsDisplay.querySelector('.text-yellow-700');
+    const nonFailsElement = mockStatsDisplay.querySelector('.text-yellow-600').parentElement;
+    const nonFailsCount = nonFailsElement.querySelector('.text-2xl');
     expect(nonFailsCount.textContent).toBe('1');
   });
   
@@ -2053,10 +2070,12 @@ describe('NoteApp', () => {
     noteApp.completeNoteEditing(3, true);
     
     // Verify statistics count includes the canceled note
-    const failsCount = mockStatsDisplay.querySelector('.text-red-700');
+    const failsElement = mockStatsDisplay.querySelector('.text-red-600').parentElement;
+    const failsCount = failsElement.querySelector('.text-2xl');
     expect(failsCount.textContent).toBe('1');
     
-    const nonFailsCount = mockStatsDisplay.querySelector('.text-yellow-700');
+    const nonFailsElement = mockStatsDisplay.querySelector('.text-yellow-600').parentElement;
+    const nonFailsCount = nonFailsElement.querySelector('.text-2xl');
     expect(nonFailsCount.textContent).toBe('1');
     
     // Removed test for no issues count as it depends on the implementation
@@ -2134,8 +2153,10 @@ describe('NoteApp', () => {
       textarea.dispatchEvent(new Event('input'));
       noteApp.completeNoteEditing(1, true);
       // Stats should not count the cancelled note as completed
-      const failsCount = mockStatsDisplay.querySelector('.text-red-700');
-      const nonFailsCount = mockStatsDisplay.querySelector('.text-yellow-700');
+      const failsElement = mockStatsDisplay.querySelector('.text-red-600').parentElement;
+      const failsCount = failsElement.querySelector('.text-2xl');
+      const nonFailsElement = mockStatsDisplay.querySelector('.text-yellow-600').parentElement;
+      const nonFailsCount = nonFailsElement.querySelector('.text-2xl');
       // No completed notes should be counted since only the cancelled note exists
       expect(failsCount.textContent).toBe('0');
       expect(nonFailsCount.textContent).toBe('0');

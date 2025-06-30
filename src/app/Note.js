@@ -80,17 +80,6 @@ export class Note {
         deleteButton.innerHTML = '×';
         deleteButton.title = 'Delete note';
 
-        const completeButton = document.createElement('button');
-        completeButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
-        completeButton.innerHTML = '✓';
-        completeButton.title = 'Complete note';
-        completeButton.style.display = completed ? 'none' : 'block';
-
-        const cancelButton = document.createElement('button');
-        cancelButton.className = 'w-6 h-6 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm flex items-center justify-center';
-        cancelButton.innerHTML = '⚠';
-        cancelButton.title = 'Cancel note';
-        cancelButton.style.display = completed ? 'none' : 'block';
 
         // Wire up actions
         editButton.addEventListener('click', () => {
@@ -104,14 +93,8 @@ export class Note {
             editButton.style.display = 'block';
         });
         deleteButton.addEventListener('click', () => this._deleteNote(number));
-        completeButton.addEventListener('click', () => {
-            this._completeNoteEditing(number, false);
-        });
-        cancelButton.addEventListener('click', () => {
-            this.showCancelConfirmation();
-        });
 
-        actionsDiv.append(editButton, saveButton, deleteButton, completeButton, cancelButton);
+        actionsDiv.append(editButton, saveButton, deleteButton);
         noteContainer.appendChild(actionsDiv);
 
         // Left sidebar with number, timer and ID fields
@@ -151,7 +134,7 @@ export class Note {
         
         const attemptIDInput = document.createElement('input');
         attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-        (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+        (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
         attemptIDInput.style.direction = 'rtl';
         attemptIDInput.placeholder = completed ? '' : 'Enter ID';
         attemptIDInput.value = attemptID;
@@ -164,7 +147,7 @@ export class Note {
         
         const projectIDInput = document.createElement('input');
         projectIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-                                  (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+                                  (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
         projectIDInput.style.direction = 'rtl';
         projectIDInput.placeholder = completed ? '' : 'Enter ID';
         projectIDInput.value = projectID;
@@ -177,7 +160,7 @@ export class Note {
         
         const operationIDInput = document.createElement('input');
         operationIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-                                  (completed ? 'bg-gray-100 text-gray-500' : 'text-black');
+                                  (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
         operationIDInput.style.direction = 'rtl';
         operationIDInput.placeholder = completed ? '' : 'Enter ID';
         operationIDInput.value = operationID;
@@ -217,7 +200,7 @@ export class Note {
             // Set the original font family
             textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
             textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden ' + 
-                     (completed ? 'text-gray-500' : 'text-black');
+                     (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
             textarea.placeholder = completed ? '' : `Type ${section.label.toLowerCase().replace(':', '')}...`;
             textarea.value = section.value;
             textarea.disabled = completed;

@@ -158,10 +158,10 @@ export class ThemeManager {
                         text: 'text-gray-100'
                     },
                     success: {
-                        bg: 'bg-green-100',          // Keep light mode green
-                        hover: 'hover:bg-green-200',
-                        text: 'text-green-700',      // Keep light mode text
-                        border: 'border-green-200'
+                        bg: 'bg-green-700',          // Dark mode success background
+                        hover: 'hover:bg-green-600',
+                        text: 'text-green-100',      // Light text on dark background
+                        border: 'border-green-600'
                     },
                     danger: {
                         bg: 'bg-red-700',            // Darker red for dark theme
@@ -553,7 +553,7 @@ export class ThemeManager {
             bg,
             shadow,
             accentBorder,
-            'p-4 rounded-md border-l-2'
+            'p-2 sm:p-4 rounded-md border-l-2'
         );
     }
     
@@ -857,6 +857,21 @@ export class ThemeManager {
         return {
             container: this.combineClasses(bg, 'w-full h-2 rounded-full overflow-hidden'),
             fill: this.combineClasses(fill, 'h-full transition-all duration-300 ease-in-out')
+        };
+    }
+    
+    /**
+     * Helper method to get fail rate progress bar classes
+     */
+    getFailRateProgressClasses() {
+        const bgContainer = this.currentTheme === 'dark' ? 'bg-neutral-600' : 'bg-gray-200';
+        const failsBg = this.currentTheme === 'dark' ? 'bg-red-500' : 'bg-red-200';
+        const nonFailsBg = this.currentTheme === 'dark' ? 'bg-yellow-500' : 'bg-yellow-200';
+        
+        return {
+            container: bgContainer,
+            fails: failsBg,
+            nonFails: nonFailsBg
         };
     }
     

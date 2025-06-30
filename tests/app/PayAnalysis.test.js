@@ -14,6 +14,16 @@ const mockThemeManager = {
     dayOff: 'text-gray-500',
     border: 'border-gray-200'
   }),
+  getPayAnalysisCalendarClasses: jest.fn().mockReturnValue({
+    container: 'bg-white rounded-md shadow-sm p-4',
+    weekday: 'text-gray-700',
+    weekend: 'text-gray-400',
+    selectedWeek: 'font-bold',
+    dayOff: 'text-gray-500',
+    border: 'border-gray-200',
+    selected: 'bg-blue-100',
+    selectedHover: 'hover:bg-blue-200'
+  }),
   combineClasses: jest.fn((...classes) => classes.filter(Boolean).join(' ')),
   getColor: jest.fn((category, colorKey) => {
     const colors = {

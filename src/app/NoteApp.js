@@ -625,24 +625,32 @@ export class NoteApp {
                 }
             }
         });
-            
-        this.statsDisplay.innerHTML = `
-            <div class="font-semibold text-lg mb-2">Audit Stats</div>
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-red-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-red-800">Fails</div>
-                    <div class="text-2xl text-red-700">${failedCount}</div>
+        
+        // Render audit stats using ThemeManager
+        const titleClass = `${this.themeManager.getColor('text','primary')} font-semibold text-lg mb-2`;
+        const gridClass = 'grid grid-cols-3 gap-4';
+        const statsData = [
+            { label: 'Fails', count: failedCount, accent: 'error' },
+            { label: 'Non-fails', count: nonFailedCount, accent: 'warning' },
+            { label: 'No Issues', count: noIssueCount, accent: 'neutral' }
+        ];
+        let html = `<div class="${titleClass}">Audit Stats</div>`;
+        html += `<div class="${gridClass}">`;
+        statsData.forEach(stat => {
+            const cardClasses = this.themeManager.getStatCardClasses(stat.accent);
+            const labelColor = stat.accent === 'neutral'
+                ? this.themeManager.getColor('text','secondary')
+                : this.themeManager.getStatusClasses(stat.accent);
+            const countColor = this.themeManager.getColor('text','primary');
+            html += `
+                <div class="${cardClasses}">
+                    <div class="font-semibold ${labelColor}">${stat.label}</div>
+                    <div class="text-2xl ${countColor}">${stat.count}</div>
                 </div>
-                <div class="bg-yellow-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-yellow-800">Non-fails</div>
-                    <div class="text-2xl text-yellow-700">${nonFailedCount}</div>
-                </div>
-                <div class="bg-gray-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-gray-800">No Issues</div>
-                    <div class="text-2xl text-gray-700">${noIssueCount}</div>
-                </div>
-            </div>
-        `;
+            `;
+        });
+        html += '</div>';
+        this.statsDisplay.innerHTML = html;
     }
     
     // Add new method for calculating and displaying project fail rates
@@ -706,9 +714,9 @@ export class NoteApp {
                             <span class="font-medium">${displayID}</span>
                             <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
-                            <div class="bg-red-200 h-2.5 absolute" style="width: ${failRate}%"></div>
-                            <div class="bg-yellow-200 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
+                        <div class="w-full ${this.themeManager.getFailRateProgressClasses().container} rounded-full h-2.5 relative overflow-hidden">
+                            <div class="${this.themeManager.getFailRateProgressClasses().fails} h-2.5 absolute" style="width: ${failRate}%"></div>
+                            <div class="${this.themeManager.getFailRateProgressClasses().nonFails} h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
                         </div>
                     </div>
                 `;
@@ -859,23 +867,31 @@ export class NoteApp {
             }
         });
         
-        this.statsDisplay.innerHTML = `
-            <div class="font-semibold text-lg mb-2">Search Results Stats</div>
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-red-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-red-800">Fails</div>
-                    <div class="text-2xl text-red-700">${failedCount}</div>
+        // Render search stats using ThemeManager
+        const titleClass = `${this.themeManager.getColor('text','primary')} font-semibold text-lg mb-2`;
+        const gridClass = 'grid grid-cols-3 gap-4';
+        const statsData = [
+            { label: 'Fails', count: failedCount, accent: 'error' },
+            { label: 'Non-fails', count: nonFailedCount, accent: 'warning' },
+            { label: 'No Issues', count: noIssueCount, accent: 'neutral' }
+        ];
+        let html = `<div class="${titleClass}">Search Results Stats</div>`;
+        html += `<div class="${gridClass}">`;
+        statsData.forEach(stat => {
+            const cardClasses = this.themeManager.getStatCardClasses(stat.accent);
+            const labelColor = stat.accent === 'neutral'
+                ? this.themeManager.getColor('text','secondary')
+                : this.themeManager.getStatusClasses(stat.accent);
+            const countColor = this.themeManager.getColor('text','primary');
+            html += `
+                <div class="${cardClasses}">
+                    <div class="font-semibold ${labelColor}">${stat.label}</div>
+                    <div class="text-2xl ${countColor}">${stat.count}</div>
                 </div>
-                <div class="bg-yellow-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-yellow-800">Non-fails</div>
-                    <div class="text-2xl text-yellow-700">${nonFailedCount}</div>
-                </div>
-                <div class="bg-gray-100 p-3 rounded shadow-sm">
-                    <div class="font-semibold text-gray-800">No Issues</div>
-                    <div class="text-2xl text-gray-700">${noIssueCount}</div>
-                </div>
-            </div>
-        `;
+            `;
+        });
+        html += '</div>';
+        this.statsDisplay.innerHTML = html;
     }
     
     // Update project fail rates based on search results
@@ -952,9 +968,9 @@ export class NoteApp {
                             <span class="font-medium">${displayID}</span>
                             <span>${failRate}% (${stats.failed}/${stats.total}) • avg: ${avgTime}</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5 relative overflow-hidden">
-                            <div class="bg-red-200 h-2.5 absolute" style="width: ${failRate}%"></div>
-                            <div class="bg-yellow-200 h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
+                        <div class="w-full ${this.themeManager.getFailRateProgressClasses().container} rounded-full h-2.5 relative overflow-hidden">
+                            <div class="${this.themeManager.getFailRateProgressClasses().fails} h-2.5 absolute" style="width: ${failRate}%"></div>
+                            <div class="${this.themeManager.getFailRateProgressClasses().nonFails} h-2.5 absolute" style="width: ${nonFailRate}%; left: ${failRate}%"></div>
                         </div>
                     </div>
                 `;
