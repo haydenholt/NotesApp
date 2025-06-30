@@ -122,7 +122,10 @@ export class NoteApp {
         window.app = this;
         
         // Listen for theme changes to update UI
-        document.addEventListener('themeChanged', () => {
+        document.addEventListener('themeChanged', (event) => {
+            // Store scroll position from the event or get current position
+            const scrollPosition = event.detail?.scrollPosition ?? (window.pageYOffset || document.documentElement.scrollTop);
+            
             this.updateOffPlatformTimerThemes();
             this.updateDateNavigationTheme();
             this.refreshUI();
@@ -136,6 +139,13 @@ export class NoteApp {
                     this.themeManager.getColor('border', 'primary')
                 );
             }
+            
+            // Restore scroll position after all UI updates are complete
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, scrollPosition);
+                });
+            });
         });
         
         // Create the off-platform section after window.app is set

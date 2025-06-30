@@ -284,6 +284,9 @@ export class ThemeManager {
      * Apply the current theme to the document
      */
     applyTheme() {
+        // Store current scroll position before theme change
+        const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+        
         // Remove any existing theme classes
         document.documentElement.className = document.documentElement.className.replace(/theme-\w+/g, '');
         document.body.className = document.body.className.replace(/theme-\w+/g, '');
@@ -301,9 +304,15 @@ export class ThemeManager {
         document.dispatchEvent(new CustomEvent('themeChanged', {
             detail: {
                 theme: this.currentTheme,
-                colors: this.getCurrentTheme()
+                colors: this.getCurrentTheme(),
+                scrollPosition: scrollPosition
             }
         }));
+        
+        // Restore scroll position after a brief delay to allow for DOM updates
+        requestAnimationFrame(() => {
+            window.scrollTo(0, scrollPosition);
+        });
     }
     
     /**

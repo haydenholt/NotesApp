@@ -15,8 +15,16 @@ export class DiffTool {
         this.updateButtonStyling();
         
         // Listen for theme changes
-        document.addEventListener('themeChanged', () => {
+        document.addEventListener('themeChanged', (event) => {
+            // Store scroll position from the event or get current position
+            const scrollPosition = event.detail?.scrollPosition ?? (window.pageYOffset || document.documentElement.scrollTop);
+            
             this.updateButtonStyling();
+            
+            // Restore scroll position after styling updates
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPosition);
+            });
         });
         
         // Set up event listeners

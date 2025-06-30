@@ -18,13 +18,21 @@ export class PayAnalysis {
         this.selectDate(new Date());
         
         // Listen for theme changes and re-render
-        document.addEventListener('themeChanged', () => {
+        document.addEventListener('themeChanged', (event) => {
+            // Store scroll position from the event or get current position
+            const scrollPosition = event.detail?.scrollPosition ?? (window.pageYOffset || document.documentElement.scrollTop);
+            
             if (this.calendarContainer) {
                 this.renderCalendar();
             }
             if (this.selectedMonday) {
                 this.generateReport();
             }
+            
+            // Restore scroll position after rendering updates
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPosition);
+            });
         });
     }
 
