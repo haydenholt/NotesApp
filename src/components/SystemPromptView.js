@@ -12,7 +12,7 @@ export class SystemPromptView {
 
     render() {
         // Get theme classes
-        const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:ring-2 focus:ring-gray-500 focus:border-gray-500';
+        const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
         const primaryButtonClasses = this.themeManager ? this.themeManager.getPrimaryButtonClasses() : 'bg-gray-600 hover:bg-gray-700';
         const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
         
@@ -22,7 +22,7 @@ export class SystemPromptView {
                 <!-- System Prompt for Code Setup -->
                 <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
                     <h2 class="text-lg font-medium mb-4 text-gray-700">Code Setup Prompt</h2>
-                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste your code here..."></textarea>
+                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste your code here..."></textarea>
                     <div class="mt-6 flex gap-3 justify-between">
                         <button id="copySystemPromptButton1" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                             Copy Setup Prompt
@@ -39,16 +39,16 @@ export class SystemPromptView {
 
                     <div class="mb-4">
                         <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
-                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
+                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label for="systemPromptInputResponse2_1" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
-                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste AI's first response..."></textarea>
+                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste AI's first response..."></textarea>
                         </div>
                         <div>
                             <label for="systemPromptInputResponse2_2" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
-                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste AI's second response..."></textarea>
+                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste AI's second response..."></textarea>
                         </div>
                     </div>
                     <div class="flex gap-3 justify-between">
@@ -68,11 +68,11 @@ export class SystemPromptView {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label for="systemPromptInputResponseA" class="block text-sm font-medium text-gray-700 mb-2">Response A:</label>
-                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste Response A here..."></textarea>
+                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste Response A here..."></textarea>
                         </div>
                         <div>
                             <label for="systemPromptInputResponseB" class="block text-sm font-medium text-gray-700 mb-2">Response B:</label>
-                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-2 ${focusClasses} text-sm" placeholder="Paste Response B here..."></textarea>
+                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste Response B here..."></textarea>
                         </div>
                     </div>
                     <div class="flex gap-3 justify-between">

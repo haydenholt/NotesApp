@@ -126,6 +126,16 @@ export class NoteApp {
             this.updateOffPlatformTimerThemes();
             this.updateDateNavigationTheme();
             this.refreshUI();
+            
+            // Also update sticky timer container if it exists
+            const stickyContainer = document.getElementById('stickyTimerContainer');
+            if (stickyContainer) {
+                stickyContainer.className = this.themeManager.combineClasses(
+                    'hidden fixed top-0 left-0 right-0 shadow-md p-3 z-50 transition-all duration-300',
+                    this.themeManager.getColor('background', 'primary'),
+                    this.themeManager.getColor('border', 'primary')
+                );
+            }
         });
         
         // Create the off-platform section after window.app is set
@@ -139,23 +149,19 @@ export class NoteApp {
     addDateNavigationButtons() {
         // Create wrapper for the date picker and buttons
         const dateNavContainer = document.createElement('div');
-        dateNavContainer.className = this.themeManager.combineClasses(
-            'flex items-center rounded-lg overflow-hidden shadow-sm border',
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('border', 'primary')
-        );
+        const containerBg = this.themeManager.getColor('background', 'card');
+        const containerBorder = this.themeManager.getColor('border', 'primary');
+        dateNavContainer.className = `flex items-center rounded-lg overflow-hidden shadow-sm border ${containerBg} ${containerBorder}`;
         
         // Previous day button
         const prevDayButton = document.createElement('button');
         prevDayButton.innerHTML = '‹'; // Left chevron
-        prevDayButton.className = this.themeManager.combineClasses(
-            'px-3 py-2 border-r transition-colors',
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('border', 'primary'),
-            this.themeManager.getColor('text', 'secondary'),
-            `hover:${this.themeManager.getColor('background', 'secondary')}`,
-            `hover:${this.themeManager.getColor('text', 'primary')}`
-        );
+        const btnBg = this.themeManager.getColor('background', 'card');
+        const btnBorder = this.themeManager.getColor('border', 'primary');
+        const btnText = this.themeManager.getColor('text', 'secondary');
+        const btnHoverBg = this.themeManager.getColor('background', 'secondary');
+        const btnHoverText = this.themeManager.getColor('text', 'primary');
+        prevDayButton.className = `px-3 py-2 border-r transition-colors ${btnBg} ${btnBorder} ${btnText} hover:${btnHoverBg} hover:${btnHoverText}`;
         prevDayButton.title = 'Previous day';
         prevDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -196,14 +202,7 @@ export class NoteApp {
         // Next day button
         const nextDayButton = document.createElement('button');
         nextDayButton.innerHTML = '›'; // Right chevron
-        nextDayButton.className = this.themeManager.combineClasses(
-            'px-3 py-2 border-l transition-colors',
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('border', 'primary'),
-            this.themeManager.getColor('text', 'secondary'),
-            `hover:${this.themeManager.getColor('background', 'secondary')}`,
-            `hover:${this.themeManager.getColor('text', 'primary')}`
-        );
+        nextDayButton.className = `px-3 py-2 border-l transition-colors ${btnBg} ${btnBorder} ${btnText} hover:${btnHoverBg} hover:${btnHoverText}`;
         nextDayButton.title = 'Next day';
         nextDayButton.addEventListener('click', () => {
             // note timers state is resumed per-note now
@@ -249,12 +248,10 @@ export class NoteApp {
         parent.removeChild(originalDateSelector);
         
         // Style the date selector with theme classes
-        originalDateSelector.className = this.themeManager.combineClasses(
-            'px-3 py-2 min-w-32',
-            this.themeManager.getFocusClasses().combined,
-            this.themeManager.getColor('background', 'card'),
-            this.themeManager.getColor('text', 'secondary')
-        );
+        const selectorBg = this.themeManager.getColor('background', 'card');
+        const selectorText = this.themeManager.getColor('text', 'secondary');
+        const focusClasses = this.themeManager.getFocusClasses();
+        originalDateSelector.className = `px-3 py-2 min-w-32 ${focusClasses.combined} ${selectorBg} ${selectorText}`;
         
         // Add elements to the container
         dateNavContainer.appendChild(prevDayButton);
@@ -386,34 +383,27 @@ export class NoteApp {
         
         const isCanceled = canceled || note.canceled;
         
-        // Disable all textareas and ID fields (UI updates)
-        Object.values(note.elements).forEach(element => {
-            if (element.tagName === 'TEXTAREA') {
-                this.themeManager.applyDisabledState(element);
-                element.classList.remove('pb-6');
-            }
-        });
-        this.themeManager.applyDisabledState(note.elements.attemptID);
-        this.themeManager.applyDisabledState(note.elements.projectID);
-        this.themeManager.applyDisabledState(note.elements.operationID);
+        // Use the Note class method to update styling
+        note.updateToCompletedState(isCanceled);
         
-        // UI styling for note container and number display based on isCanceled
-        note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
+        // Update number display specifically
         const numberDisplay = note.container.querySelector('.font-bold.mb-2');
         if (isCanceled) {
-            note.container.classList.add('bg-red-50');
             if (numberDisplay) {
                 numberDisplay.textContent = 'Cancelled';
-                numberDisplay.classList.remove('text-gray-600');
-                numberDisplay.classList.add('text-red-600');
+                // Remove all possible text color classes
+                numberDisplay.classList.remove('text-gray-600', 'text-red-600');
+                numberDisplay.classList.remove(this.themeManager.getColor('text', 'tertiary'));
+                const cancelledTextColor = this.themeManager.getColor('note', 'cancelledText');
+                numberDisplay.classList.add(cancelledTextColor);
             }
         } else {
-            note.container.classList.add('bg-gray-50');
             if (numberDisplay && numberDisplay.textContent === 'Cancelled') {
                  const nonCancelledNotes = this.notes.filter(n => !n.canceled && n.container.dataset.noteId <= number);
                  numberDisplay.textContent = String(nonCancelledNotes.length); 
-                 numberDisplay.classList.remove('text-red-600');
-                 numberDisplay.classList.add('text-gray-600');
+                 numberDisplay.classList.remove(this.themeManager.getColor('note', 'cancelledText'));
+                 const tertiaryTextColor = this.themeManager.getColor('text', 'tertiary');
+                 numberDisplay.classList.add(tertiaryTextColor);
             }
         }
         
@@ -428,14 +418,7 @@ export class NoteApp {
         }
         note.timer.hasStarted = true; // Ensure hasStarted is true
         
-        // Update timer display UI
-        const timerDisplay = note.timer.displayElement;
-        timerDisplay.classList.remove('text-gray-600', 'text-green-600', 'text-red-600');
-        if (isCanceled) {
-            timerDisplay.classList.add('text-red-600');
-        } else {
-            timerDisplay.classList.add('text-green-600');
-        }
+        // Timer display is now handled by the Note class updateStyling method
 
         // Explicitly update the note in the this.notes array with the modified object
         this.notes[noteIndex] = note;
@@ -495,23 +478,8 @@ export class NoteApp {
             this.editingNotes[this.currentDate][number] = true;
             
             
-            // Enable all textareas
-            Object.values(note.elements).forEach(element => {
-                if (element.tagName === 'TEXTAREA') {
-                    element.disabled = false;
-                    element.classList.remove('text-gray-500');
-                    element.classList.add('text-black');
-                    element.classList.add('pb-6'); // Changed to smaller padding
-                }
-            });
-            
-            // Enable ID fields
-            this.themeManager.applyEnabledState(note.elements.attemptID);
-            this.themeManager.applyEnabledState(note.elements.projectID);
-            this.themeManager.applyEnabledState(note.elements.operationID);
-            
-            note.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50');
-            note.container.classList.add('bg-white');
+            // Use the Note class method to update styling
+            note.updateToEditingState();
             
             // Update note object property
             note.completed = false;
@@ -523,9 +491,7 @@ export class NoteApp {
             // Make sure hasStarted is true when editing a completed note
             note.timer.hasStarted = true;
             
-            const timerDisplay = note.timer.displayElement;
-            timerDisplay.classList.remove('text-green-600', 'text-red-600');
-            timerDisplay.classList.add('text-gray-600');
+            // Timer display is now handled by the Note class updateStyling method
             
             // Focus the first textarea
             note.elements.failingIssues.focus();
@@ -755,7 +721,8 @@ export class NoteApp {
             
             // Add a heading for search results
             const heading = document.createElement('div');
-            heading.className = 'w-full text-lg font-bold mb-4 text-gray-700';
+            const headingTextColor = this.themeManager.getColor('text', 'secondary');
+            heading.className = `w-full text-lg font-bold mb-4 ${headingTextColor}`;
             heading.textContent = 'Search Results';
             this.container.appendChild(heading);
             
@@ -803,7 +770,8 @@ export class NoteApp {
             // Add count information
             if (allNotes.length > 0) {
                 const countInfo = document.createElement('div');
-                countInfo.className = `text-center mt-4 mb-6 ${this.themeManager.getLabelClasses('default')}`;
+                const mutedTextColor = this.themeManager.getColor('text', 'muted');
+                countInfo.className = `text-center mt-4 mb-6 text-sm ${mutedTextColor}`;
                 countInfo.textContent = `Showing all ${allNotes.length} matching notes`;
                 this.container.appendChild(countInfo);
             }
@@ -812,7 +780,7 @@ export class NoteApp {
             if (allNotes.length === 0) {
                 const noResults = document.createElement('div');
                 const emptyStateClasses = this.themeManager.getEmptyStateClasses();
-                noResults.className = `${emptyStateClasses.container} ${emptyStateClasses.text}`;
+                noResults.className = `w-full text-center py-8 ${emptyStateClasses.text}`;
                 noResults.textContent = 'No matching notes found';
                 this.container.appendChild(noResults);
                 
@@ -1019,10 +987,16 @@ export class NoteApp {
     renderSearchResult(dateKey, id, note, formattedDate) {
         // Create result container with styling matching regular notes
         const resultContainer = document.createElement('div');
-        resultContainer.className = 'flex mb-4 p-4 rounded-lg shadow relative group ' +
-            (note.completed ?
-                (note.canceled ? 'bg-red-50' : 'bg-gray-50') :
-                'bg-white');
+        const baseClasses = 'flex mb-4 p-4 rounded-lg shadow relative group';
+        let bgClass;
+        if (note.completed) {
+            bgClass = note.canceled ? 
+                this.themeManager.getColor('note', 'cancelled') : 
+                this.themeManager.getColor('note', 'completed');
+        } else {
+            bgClass = this.themeManager.getColor('background', 'card');
+        }
+        resultContainer.className = `${baseClasses} ${bgClass}`;
         resultContainer.dataset.noteId = id;
 
         // Left sidebar with number, timer and ID fields (matching regular notes)
@@ -1033,7 +1007,7 @@ export class NoteApp {
         const numberDisplay = document.createElement('div');
         if (note.canceled) {
             numberDisplay.textContent = "Cancelled";
-            numberDisplay.className = 'text-red-600 font-bold mb-2';
+            numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} font-bold mb-2`;
         } else {
             // Compute display index for non-canceled notes
             const saved = JSON.parse(localStorage.getItem(dateKey) || '{}');
@@ -1044,16 +1018,21 @@ export class NoteApp {
             const idx = nonCanceledIds.indexOf(String(id));
             const displayIndex = idx !== -1 ? idx + 1 : nonCanceledIds.length + 1;
             numberDisplay.textContent = String(displayIndex);
-            numberDisplay.className = 'text-gray-600 font-bold mb-2';
+            numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} font-bold mb-2`;
         }
         leftSidebar.appendChild(numberDisplay);
 
         // Timer display
         const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'font-mono text-base mb-3 ' + 
-            (note.completed ? 
-                (note.canceled ? 'text-red-600' : 'text-green-600') : 
-                'text-gray-600');
+        let timerColorClass;
+        if (note.completed) {
+            timerColorClass = note.canceled ? 
+                this.themeManager.getStatusClasses('error') : 
+                this.themeManager.getStatusClasses('success');
+        } else {
+            timerColorClass = this.themeManager.getColor('timer', 'inactive');
+        }
+        timerDisplay.className = `font-mono text-base mb-3 ${timerColorClass}`;
         timerDisplay.textContent = '00:00:00';
         leftSidebar.appendChild(timerDisplay);
         const timer = new Timer(note.startTimestamp, note.endTimestamp);
@@ -1063,7 +1042,9 @@ export class NoteApp {
 
         // Date label (placed after timer)
         const dateLabel = document.createElement('div');
-        dateLabel.className = 'font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded mb-3';
+        const dateLabelBg = this.themeManager.getColor('background', 'secondary');
+        const dateLabelText = this.themeManager.getColor('text', 'muted');
+        dateLabel.className = `font-mono text-xs ${dateLabelText} ${dateLabelBg} px-2 py-1 rounded mb-3`;
         dateLabel.textContent = formattedDate;
         leftSidebar.appendChild(dateLabel);
 
@@ -1084,11 +1065,14 @@ export class NoteApp {
             
             const displayText = value.length > 5 ? value.slice(-5) : value;
             const textSpan = document.createElement('span');
-            textSpan.className = 'font-mono text-sm text-gray-700';
+            const textColor = this.themeManager.getColor('text', 'secondary');
+            textSpan.className = `font-mono text-sm ${textColor}`;
             textSpan.textContent = displayText;
             
             const copyBtn = document.createElement('button');
-            copyBtn.className = 'text-gray-600 hover:text-gray-800 transition-colors';
+            const btnTextColor = this.themeManager.getColor('text', 'tertiary');
+            const btnHoverColor = this.themeManager.getColor('text', 'secondary');
+            copyBtn.className = `${btnTextColor} hover:${btnHoverColor} transition-colors`;
             copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg>';
             copyBtn.title = `Copy ${labelText}`;
             const originalIcon = copyBtn.innerHTML;
@@ -1111,7 +1095,8 @@ export class NoteApp {
                     document.body.removeChild(textarea);
                 }
                 // Show feedback with checkmark
-                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                const successColor = this.themeManager.getStatusClasses('success');
+                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ${successColor}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
                 setTimeout(() => {
                     copyBtn.innerHTML = originalIcon;
                 }, 1000);
@@ -1185,10 +1170,10 @@ export class NoteApp {
                 if (noteElement) {
                     noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     noteElement.classList.add('ring-2');
-                    noteElement.classList.add(this.themeManager.getFocusClasses().ring.replace('focus:', '').replace('ring-2 ', ''));
+                    // Add subtle highlight instead of focus ring
+                    noteElement.classList.add('ring-1', 'ring-gray-300');
                     setTimeout(() => {
-                        noteElement.classList.remove('ring-2');
-                        noteElement.classList.remove(this.themeManager.getFocusClasses().ring.replace('focus:', '').replace('ring-2 ', ''));
+                        noteElement.classList.remove('ring-1', 'ring-gray-300', 'ring-2');
                     }, 2000);
                 }
             }, 100);
@@ -1210,16 +1195,16 @@ export class NoteApp {
             sectionDiv.className = 'flex flex-col';
 
             const label = document.createElement('div');
-            label.className = 'font-bold mb-1 text-gray-700';
+            const labelTextColor = this.themeManager.getColor('text', 'secondary');
+            label.className = `font-bold mb-1 ${labelTextColor}`;
             label.textContent = section.label;
 
             const textarea = document.createElement('textarea');
             textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
-            textarea.className = this.themeManager.combineClasses(
-                'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border',
-                this.themeManager.getColor('border', 'secondary'),
-                this.themeManager.getColor('text', 'muted')
-            );
+            const disabledBg = this.themeManager.getColor('background', 'secondary');
+            const disabledText = this.themeManager.getColor('text', 'muted');
+            const borderColor = this.themeManager.getColor('border', 'primary');
+            textarea.className = `w-full p-2 border ${borderColor} rounded text-base min-h-5 resize-none overflow-hidden ${disabledText} ${disabledBg}`;
             textarea.value = section.value || '';
             textarea.disabled = true;
             
@@ -1252,7 +1237,11 @@ export class NoteApp {
         const stickyContainer = document.getElementById('stickyTimerContainer') || document.createElement('div');
         if (!document.getElementById('stickyTimerContainer')) {
             stickyContainer.id = 'stickyTimerContainer';
-            stickyContainer.className = 'hidden fixed top-0 left-0 right-0 bg-white shadow-md p-3 z-50 transition-all duration-300';
+            stickyContainer.className = this.themeManager.combineClasses(
+                'hidden fixed top-0 left-0 right-0 shadow-md p-3 z-50 transition-all duration-300',
+                this.themeManager.getColor('background', 'primary'),
+                this.themeManager.getColor('border', 'primary')
+            );
             document.body.appendChild(stickyContainer);
         } else {
             stickyContainer.innerHTML = '';
@@ -1260,11 +1249,17 @@ export class NoteApp {
         
         // Create the main container for the off-platform section
         const offPlatformSection = document.createElement('div');
-        offPlatformSection.className = 'mb-5 bg-white p-4 rounded-lg shadow off-platform-section';
+        offPlatformSection.className = this.themeManager.combineClasses(
+            'mb-5 p-4 rounded-lg shadow off-platform-section',
+            this.themeManager.getColor('background', 'card')
+        );
         
         // Create header
         const header = document.createElement('h2');
-        header.className = 'text-lg font-semibold text-gray-700 mb-3';
+        header.className = this.themeManager.combineClasses(
+            'text-lg font-semibold mb-3',
+            this.themeManager.getColor('text', 'secondary')
+        );
         header.textContent = 'Off-platform time';
         offPlatformSection.appendChild(header);
         
@@ -1319,6 +1314,13 @@ export class NoteApp {
             const stickyContainer = document.getElementById('stickyTimerContainer');
             if (!stickyContainer) return;
             
+            // Ensure sticky container has correct theme classes
+            stickyContainer.className = this.themeManager.combineClasses(
+                'hidden fixed top-0 left-0 right-0 shadow-md p-3 z-50 transition-all duration-300',
+                this.themeManager.getColor('background', 'primary'),
+                this.themeManager.getColor('border', 'primary')
+            );
+            
             if (isAnyTimerRunning()) {
                 // Find the active timer
                 const activeCategory = Object.keys(this.offPlatformTimer.timers).find(
@@ -1335,7 +1337,10 @@ export class NoteApp {
                     
                     // Add category label
                     const categoryLabel = document.createElement('div');
-                    categoryLabel.className = 'font-medium text-gray-700';
+                    categoryLabel.className = this.themeManager.combineClasses(
+                        'font-medium',
+                        this.themeManager.getColor('text', 'secondary')
+                    );
                     
                     // Convert camelCase to readable format
                     let readableCategory = activeCategory
@@ -1346,7 +1351,10 @@ export class NoteApp {
                     
                     // Add timer display
                     const timerDisplay = document.createElement('div');
-                    timerDisplay.className = 'font-mono text-xl font-semibold text-green-600';
+                    timerDisplay.className = this.themeManager.combineClasses(
+                        'font-mono text-xl font-semibold',
+                        this.themeManager.getColor('status', 'success')
+                    );
                     timerDisplay.textContent = this.offPlatformTimer.formatTime(
                         this.offPlatformTimer.getSeconds(activeCategory)
                     );
@@ -1568,34 +1576,50 @@ export class NoteApp {
             case 'editButton':
                 element.className = this.themeManager.combineClasses(
                     'absolute top-2 right-2 w-6 h-6 rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity',
-                    this.themeManager.getNestedColor('button', 'primary', 'bg'),
-                    this.themeManager.getNestedColor('button', 'primary', 'hover'),
-                    this.themeManager.getNestedColor('button', 'primary', 'text')
+                    this.themeManager.getPrimaryButtonClasses('sm')
                 );
                 break;
             case 'startButton':
-                element.className = this.themeManager.combineClasses(
-                    'w-full py-1 px-2 rounded text-sm transition-colors border',
-                    this.themeManager.getNestedColor('button', 'success', 'bg'),
-                    this.themeManager.getNestedColor('button', 'success', 'hover'),
-                    this.themeManager.getNestedColor('button', 'success', 'text'),
-                    this.themeManager.getNestedColor('button', 'success', 'border')
-                );
+                const startButtonClasses = this.themeManager.getButtonClasses('success', 'sm');
+                element.className = `w-full ${startButtonClasses}`;
                 break;
             case 'stopButton':
-                element.className = this.themeManager.combineClasses(
-                    'w-full py-1 px-2 rounded text-sm transition-colors border',
-                    this.themeManager.getNestedColor('button', 'danger', 'bg'),
-                    this.themeManager.getNestedColor('button', 'danger', 'hover'),
-                    this.themeManager.getNestedColor('button', 'danger', 'text'),
-                    this.themeManager.getNestedColor('button', 'danger', 'border')
-                );
+                const stopButtonClasses = this.themeManager.getButtonClasses('danger', 'sm');
+                element.className = `w-full ${stopButtonClasses}`;
                 break;
         }
     }
     
     // Update theme for all off-platform timer elements
     updateOffPlatformTimerThemes() {
+        // Update the main off-platform section container
+        const offPlatformSection = document.querySelector('.off-platform-section');
+        if (offPlatformSection) {
+            offPlatformSection.className = this.themeManager.combineClasses(
+                'mb-5 p-4 rounded-lg shadow off-platform-section',
+                this.themeManager.getColor('background', 'card')
+            );
+        }
+        
+        // Update the sticky timer container
+        const stickyContainer = document.getElementById('stickyTimerContainer');
+        if (stickyContainer) {
+            stickyContainer.className = this.themeManager.combineClasses(
+                'hidden fixed top-0 left-0 right-0 shadow-md p-3 z-50 transition-all duration-300',
+                this.themeManager.getColor('background', 'primary'),
+                this.themeManager.getColor('border', 'primary')
+            );
+        }
+        
+        // Update the header
+        const header = offPlatformSection?.querySelector('h2');
+        if (header) {
+            header.className = this.themeManager.combineClasses(
+                'text-lg font-semibold mb-3',
+                this.themeManager.getColor('text', 'secondary')
+            );
+        }
+        
         // Find all timer card elements and re-apply theme
         const timerElements = document.querySelectorAll('[data-timer-card-type]');
         timerElements.forEach(element => {
@@ -1624,11 +1648,17 @@ export class NoteApp {
         
         // Create dialog
         const dialog = document.createElement('div');
-        dialog.className = 'bg-white rounded-lg shadow-lg p-6 w-full max-w-md';
+        dialog.className = this.themeManager.combineClasses(
+            'rounded-lg shadow-lg p-6 w-full max-w-md',
+            this.themeManager.getColor('background', 'card')
+        );
         
         // Dialog header
         const header = document.createElement('h3');
-        header.className = 'text-lg font-semibold text-gray-800 mb-4';
+        header.className = this.themeManager.combineClasses(
+            'text-lg font-semibold mb-4',
+            this.themeManager.getColor('text', 'primary')
+        );
         header.textContent = `Edit ${label} Timer`;
         
         // Create form for time input
@@ -1673,15 +1703,15 @@ export class NoteApp {
         
         // Labels
         const hoursLabel = document.createElement('span');
-        hoursLabel.className = 'text-gray-600';
+        hoursLabel.className = this.themeManager.getColor('text', 'tertiary');
         hoursLabel.textContent = 'hrs';
         
         const minutesLabel = document.createElement('span');
-        minutesLabel.className = 'text-gray-600';
+        minutesLabel.className = this.themeManager.getColor('text', 'tertiary');
         minutesLabel.textContent = 'min';
         
         const secondsLabel = document.createElement('span');
-        secondsLabel.className = 'text-gray-600';
+        secondsLabel.className = this.themeManager.getColor('text', 'tertiary');
         secondsLabel.textContent = 'sec';
         
         // Populate time input container
@@ -1699,7 +1729,7 @@ export class NoteApp {
         // Cancel button
         const cancelButton = document.createElement('button');
         cancelButton.type = 'button';
-        cancelButton.className = 'px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded transition-colors';
+        cancelButton.className = this.themeManager.getButtonClasses('secondary');
         cancelButton.textContent = 'Cancel';
         cancelButton.addEventListener('click', () => {
             // If it was running, restart it
@@ -1712,7 +1742,7 @@ export class NoteApp {
         // Save button
         const saveButton = document.createElement('button');
         saveButton.type = 'button';
-        saveButton.className = this.themeManager.getPrimaryButtonClasses();
+        saveButton.className = this.themeManager.getButtonClasses('primary');
         saveButton.textContent = 'Save';
         saveButton.addEventListener('click', () => {
             // Extract values

@@ -25,18 +25,35 @@ describe('Note class', () => {
     
     // Mock theme manager
     mockThemeManager = {
+      currentTheme: 'light',
       getColor: jest.fn((category, key) => {
         if (category === 'note' && key === 'completed') return 'bg-gray-50';
         if (category === 'note' && key === 'cancelled') return 'bg-red-50';
         if (category === 'background' && key === 'primary') return 'bg-white';
+        if (category === 'background' && key === 'card') return 'bg-white';
+        if (category === 'background' && key === 'tertiary') return 'bg-gray-100';
         if (category === 'text' && key === 'tertiary') return 'text-gray-600';
+        if (category === 'text' && key === 'primary') return 'text-gray-900';
+        if (category === 'text' && key === 'muted') return 'text-gray-500';
         if (category === 'status' && key === 'success') return 'text-green-600';
+        if (category === 'status' && key === 'error') return 'text-red-600';
         if (category === 'note' && key === 'cancelledText') return 'text-red-600';
         if (category === 'note' && key === 'cancelledNumber') return 'text-red-600';
+        if (category === 'timer' && key === 'inactive') return 'text-gray-700';
+        if (category === 'border' && key === 'secondary') return 'border-gray-300';
         return 'default-class';
       }),
-      combineClasses: jest.fn((...classes) => classes.join(' ')),
-      getPrimaryButtonClasses: jest.fn(() => 'btn-primary')
+      combineClasses: jest.fn((...classes) => classes.filter(Boolean).join(' ')),
+      getPrimaryButtonClasses: jest.fn(() => 'btn-primary'),
+      getFocusClasses: jest.fn(() => ({
+        combined: 'focus:outline-none'
+      })),
+      getStatusClasses: jest.fn((status) => {
+        if (status === 'success') return 'text-green-600';
+        if (status === 'error') return 'text-red-600';
+        if (status === 'info') return 'text-blue-600';
+        return 'default-status-class';
+      })
     };
   });
 
@@ -198,6 +215,256 @@ describe('Note class', () => {
       expect(note.container.className).toContain('bg-white'); // default background
       expect(note.container.className).not.toContain('border-2'); // no special border
       expect(note.container.className).not.toContain('opacity-75'); // no opacity change
+    });
+  });
+
+  describe('theme switching and state transitions', () => {
+    let mockCallbacks;
+    let note;
+
+    beforeEach(() => {
+      mockCallbacks = {
+        enableEditing: jest.fn(),
+        completeEditing: jest.fn(),
+        deleteNote: jest.fn(),
+        markEditing: jest.fn()
+      };
+    });
+
+    afterEach(() => {
+      if (note && note.container && note.container.parentNode) {
+        note.container.parentNode.removeChild(note.container);
+      }
+    });
+
+    test('note transitions from active to completed state correctly', () => {
+      // Create active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Verify initial state
+      expect(note.completed).toBe(false);
+      expect(note.container.className).toContain('bg-white');
+      expect(note.elements.failingIssues.placeholder).toBe('Type failing issues...');
+      expect(note.elements.failingIssues.disabled).toBe(false);
+      
+      // Transition to completed
+      note.updateToCompletedState(false);
+      
+      // Verify completed state
+      expect(note.completed).toBe(true);
+      expect(note.canceled).toBe(false);
+      expect(note.container.className).toContain('bg-gray-50');
+      expect(note.container.className).not.toContain('bg-white');
+      expect(note.elements.failingIssues.placeholder).toBe('');
+      expect(note.elements.failingIssues.disabled).toBe(true);
+    });
+
+    test('note transitions from completed back to editing state correctly', () => {
+      // Create note first in new state
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Transition to completed state first
+      note.updateToCompletedState(false);
+      
+      // Verify initial completed state
+      expect(note.completed).toBe(true);
+      expect(note.container.className).toContain('bg-gray-50');
+      expect(note.elements.failingIssues.placeholder).toBe('');
+      expect(note.elements.failingIssues.disabled).toBe(true);
+      
+      // Transition back to editing
+      note.updateToEditingState();
+      
+      // Verify editing state
+      expect(note.completed).toBe(false);
+      expect(note.container.className).toContain('bg-white');
+      expect(note.container.className).not.toContain('bg-gray-50');
+      expect(note.elements.failingIssues.placeholder).toBe('Type failing issues...');
+      expect(note.elements.failingIssues.disabled).toBe(false);
+    });
+
+    test('note transitions from completed to cancelled state correctly', () => {
+      // Create active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Transition to cancelled
+      note.updateToCompletedState(true);
+      
+      // Verify cancelled state
+      expect(note.completed).toBe(true);
+      expect(note.canceled).toBe(true);
+      expect(note.container.className).toContain('bg-red-50');
+      expect(note.elements.failingIssues.placeholder).toBe('');
+      expect(note.elements.failingIssues.disabled).toBe(true);
+    });
+
+    test('theme switching works correctly for active notes', () => {
+      // Create note in light theme
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Switch theme manager to dark mode
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
+        if (category === 'text' && key === 'primary') return 'text-gray-100';
+        return 'default-dark-class';
+      });
+      
+      // Update styling
+      note.updateStyling();
+      
+      // Verify dark theme classes are applied (should use bg-neutral-800 for note container)
+      expect(note.container.className).toContain('bg-neutral-800');
+      expect(note.container.className).not.toContain('bg-white');
+      expect(note.container.className).not.toContain('bg-neutral-700');
+    });
+
+    test('theme switching works correctly for completed notes', () => {
+      // Create completed note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      note.updateToCompletedState(false);
+      
+      // Switch theme manager to dark mode
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'note' && key === 'completed') return 'bg-neutral-700';
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'background' && key === 'tertiary') return 'bg-neutral-600';
+        if (category === 'text' && key === 'muted') return 'text-gray-400';
+        return 'default-dark-class';
+      });
+      
+      // Update styling
+      note.updateStyling();
+      
+      // Verify dark theme classes are applied (completed notes use bg-neutral-700)
+      expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('bg-gray-50');
+      expect(note.container.className).not.toContain('bg-neutral-800');
+    });
+
+    test('comprehensive background class cleanup during state transitions', () => {
+      // Create note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Manually add various background classes to simulate potential conflicts
+      note.container.classList.add('bg-gray-50', 'bg-red-50', 'bg-neutral-700', 'bg-neutral-800');
+      
+      // Update styling should clean up all conflicting classes
+      note.updateStyling();
+      
+      // Verify only the correct background class remains (should be bg-white for active notes in light theme)
+      expect(note.container.className).toContain('bg-white');
+      expect(note.container.className).not.toContain('bg-gray-50');
+      expect(note.container.className).not.toContain('bg-red-50');
+      expect(note.container.className).not.toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('bg-neutral-800');
+    });
+
+    test('input and textarea styling updates correctly with state changes', () => {
+      // Create active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Verify initial state
+      expect(note.elements.projectID.disabled).toBe(false);
+      expect(note.elements.failingIssues.disabled).toBe(false);
+      
+      // Transition to completed
+      note.updateToCompletedState(false);
+      
+      // Verify disabled state
+      expect(note.elements.projectID.disabled).toBe(true);
+      expect(note.elements.failingIssues.disabled).toBe(true);
+      
+      // Transition back to editing
+      note.updateToEditingState();
+      
+      // Verify enabled state
+      expect(note.elements.projectID.disabled).toBe(false);
+      expect(note.elements.failingIssues.disabled).toBe(false);
+    });
+
+    test('timer display color updates correctly with state changes', () => {
+      // Create active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      const timerDisplay = note.timer.displayElement;
+      
+      // Initially should have inactive timer color
+      expect(timerDisplay.className).toContain('text-gray-700');
+      
+      // Complete the note
+      note.updateToCompletedState(false);
+      
+      // Should have success color
+      expect(timerDisplay.className).toContain('text-green-600');
+      expect(timerDisplay.className).not.toContain('text-gray-700');
+      
+      // Cancel the note
+      note.updateToCompletedState(true);
+      
+      // Should have error color
+      expect(timerDisplay.className).toContain('text-red-600');
+      expect(timerDisplay.className).not.toContain('text-green-600');
+    });
+
+    test('placeholder restoration works correctly', () => {
+      // Create active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Verify placeholders exist
+      expect(note.elements.failingIssues.placeholder).toBe('Type failing issues...');
+      expect(note.elements.projectID.placeholder).toBe('Enter ID');
+      
+      // Complete note (placeholders should be hidden)
+      note.updateToCompletedState(false);
+      expect(note.elements.failingIssues.placeholder).toBe('');
+      expect(note.elements.projectID.placeholder).toBe('');
+      
+      // Edit note (placeholders should be restored)
+      note.updateToEditingState();
+      expect(note.elements.failingIssues.placeholder).toBe('Type failing issues...');
+      expect(note.elements.projectID.placeholder).toBe('Enter ID');
+    });
+
+    test('dark mode editing notes should have different background than completed notes', () => {
+      // Create note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Switch to dark mode
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'note' && key === 'completed') return 'bg-neutral-700';
+        if (category === 'status' && key === 'success') return 'text-green-600';
+        return 'default-dark-class';
+      });
+      
+      // Complete the note first
+      note.updateToCompletedState(false);
+      expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('bg-neutral-800');
+      
+      // Edit the note - should switch to darker background (bg-neutral-800)
+      note.updateToEditingState();
+      expect(note.container.className).toContain('bg-neutral-800');
+      expect(note.container.className).not.toContain('bg-neutral-700');
+      
+      // Complete again - should go back to lighter background (bg-neutral-700)
+      note.updateToCompletedState(false);
+      expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('bg-neutral-800');
     });
   });
 }); 

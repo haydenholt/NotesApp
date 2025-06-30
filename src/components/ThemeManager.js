@@ -90,7 +90,7 @@ export class ThemeManager {
                     input: {
                         bg: 'bg-white',
                         border: 'border-gray-300',
-                        borderFocus: 'focus:border-blue-500',
+                        borderFocus: '',
                         text: 'text-gray-900',
                         placeholder: 'placeholder-gray-500'
                     },
@@ -198,7 +198,7 @@ export class ThemeManager {
                     input: {
                         bg: 'bg-neutral-700',
                         border: 'border-neutral-600',
-                        borderFocus: 'focus:border-blue-400',
+                        borderFocus: '',
                         text: 'text-gray-100',
                         placeholder: 'placeholder-gray-400'
                     },
@@ -330,7 +330,6 @@ export class ThemeManager {
             // Borders
             '--border-primary': this.tailwindToCSS(theme.border.primary),
             '--border-secondary': this.tailwindToCSS(theme.border.secondary),
-            '--border-focus': this.tailwindToCSS(theme.border.focus),
             
             // Navigation
             '--nav-bg': this.tailwindToCSS(theme.navigation.bg),
@@ -505,7 +504,7 @@ export class ThemeManager {
             inputColors.borderFocus,
             inputColors.text,
             inputColors.placeholder,
-            'rounded px-3 py-2 focus:outline-none focus:ring-2'
+            'rounded px-3 py-2 focus:outline-none'
         );
     }
     
@@ -679,15 +678,13 @@ export class ThemeManager {
     }
     
     /**
-     * Helper method to get focus ring classes
+     * Helper method to get focus ring classes - very subtle focus styling
      */
     getFocusClasses() {
-        const focusBorder = this.getColor('border', 'focus');
-        const focusRing = focusBorder.replace('border-', 'ring-');
         return {
-            ring: `focus:ring-2 ${focusRing}`,
-            border: `focus:outline-none ${focusBorder}`,
-            combined: `focus:outline-none focus:ring-2 ${focusRing} ${focusBorder}`
+            ring: `focus:ring-0`,
+            border: `focus:outline-none`,
+            combined: `focus:outline-none`
         };
     }
     
@@ -707,7 +704,7 @@ export class ThemeManager {
             buttonColors.hover,
             buttonColors.text,
             sizeClasses[size] || sizeClasses.default,
-            'rounded font-medium transition-colors focus:outline-none focus:ring-2',
+            'rounded font-medium transition-colors focus:outline-none',
             this.getFocusClasses().ring
         );
     }
@@ -728,7 +725,7 @@ export class ThemeManager {
             buttonColors.hover,
             buttonColors.text,
             sizeClasses[size] || sizeClasses.default,
-            'rounded font-medium transition-colors focus:outline-none focus:ring-2',
+            'rounded font-medium transition-colors focus:outline-none',
             this.getFocusClasses().ring
         );
     }
@@ -943,7 +940,7 @@ export class ThemeManager {
         if (primaryTextColor) {
             element.classList.remove(primaryTextColor);
         }
-        const classesToAdd = [states.disabled.text, states.disabled.background].filter(cls => cls);
+        const classesToAdd = [states.disabled.text, states.disabled.background].filter(cls => cls && cls.trim() !== '');
         if (classesToAdd.length > 0) {
             element.classList.add(...classesToAdd);
         }
@@ -955,7 +952,7 @@ export class ThemeManager {
     applyEnabledState(element) {
         const states = this.getFormStateClasses();
         element.disabled = false;
-        const classesToRemove = [this.getColor('text', 'muted'), this.getColor('background', 'secondary')].filter(cls => cls);
+        const classesToRemove = [this.getColor('text', 'muted'), this.getColor('background', 'secondary')].filter(cls => cls && cls.trim() !== '');
         if (classesToRemove.length > 0) {
             element.classList.remove(...classesToRemove);
         }

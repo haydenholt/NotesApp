@@ -3,12 +3,30 @@ import Note from '../../src/app/Note.js';
 
 // Mock ThemeManager
 const mockThemeManager = {
-  combineClasses: jest.fn((...classes) => classes.filter(Boolean).join(' ')),
+  combineClasses: jest.fn((...classes) => classes.filter(cls => cls && cls.trim() !== '').join(' ')),
   getColor: jest.fn((category, colorKey) => {
     const colors = {
-      background: { card: 'bg-white', primary: 'bg-white' },
-      border: { primary: 'border-gray-200' },
-      text: { primary: 'text-gray-900', secondary: 'text-gray-700', tertiary: 'text-gray-600' },
+      background: { 
+        card: 'bg-white', 
+        primary: 'bg-white', 
+        secondary: 'bg-gray-50', 
+        tertiary: 'bg-gray-100' 
+      },
+      border: { 
+        primary: 'border-gray-200', 
+        secondary: 'border-gray-300',
+        focus: 'border-blue-500' 
+      },
+      text: { 
+        primary: 'text-gray-900', 
+        secondary: 'text-gray-700', 
+        tertiary: 'text-gray-600',
+        muted: 'text-gray-500' 
+      },
+      timer: {
+        active: 'text-green-600',
+        inactive: 'text-gray-700'
+      },
       note: { 
         completed: 'bg-gray-50', 
         cancelled: 'bg-red-50', 
@@ -16,7 +34,7 @@ const mockThemeManager = {
         cancelledNumber: 'text-red-600' 
       }
     };
-    return colors[category]?.[colorKey] || '';
+    return colors[category]?.[colorKey] || 'mock-fallback-class';
   }),
   getStatusClasses: jest.fn((status) => {
     const statusColors = {
@@ -27,7 +45,20 @@ const mockThemeManager = {
     };
     return statusColors[status] || statusColors.info;
   }),
-  getButtonClasses: jest.fn().mockReturnValue('bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors'),
+  getButtonClasses: jest.fn((type = 'primary', size = 'default') => {
+    const typeClasses = {
+      primary: 'bg-blue-500 hover:bg-blue-600 text-white',
+      secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700',
+      success: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-200',
+      danger: 'bg-red-100 hover:bg-red-100 text-red-700 border-red-100'
+    };
+    const sizeClasses = {
+      sm: 'py-1 px-2 text-sm',
+      default: 'py-2 px-4',
+      lg: 'py-3 px-6 text-lg'
+    };
+    return `${typeClasses[type] || typeClasses.primary} ${sizeClasses[size] || sizeClasses.default} rounded transition-colors`;
+  }),
   getInputClasses: jest.fn().mockReturnValue('bg-white border-gray-300 focus:border-blue-500 text-gray-900 placeholder-gray-500 rounded px-3 py-2 focus:outline-none focus:ring-2'),
   getEmptyStateClasses: jest.fn().mockReturnValue({
     text: 'italic text-gray-500',
@@ -65,9 +96,9 @@ const mockThemeManager = {
     nonFails: 'bg-yellow-200'
   }),
   getFocusClasses: jest.fn().mockReturnValue({
-    ring: 'focus:ring-2 ring-blue-500',
-    border: 'focus:outline-none border-blue-500',
-    combined: 'focus:outline-none focus:ring-2 ring-blue-500 border-blue-500'
+    ring: 'focus:ring-0',
+    border: 'focus:outline-none',
+    combined: 'focus:outline-none'
   }),
   getPrimaryButtonClasses: jest.fn((size = 'default') => {
     const sizeClasses = {
@@ -1938,8 +1969,8 @@ describe('NoteApp', () => {
     expect(note.classList.contains('bg-white')).toBe(true);
     expect(note.classList.contains('bg-red-50')).toBe(false);
     
-    // Verify timer color changed
-    expect(timerDisplay.classList.contains('text-gray-600')).toBe(true);
+    // Verify timer color changed (using theme-aware inactive color)
+    expect(timerDisplay.classList.contains('text-gray-700')).toBe(true);
     expect(timerDisplay.classList.contains('text-red-600')).toBe(false);
     
     // The note object should still remember it was canceled
@@ -2351,6 +2382,341 @@ describe('NoteApp', () => {
     // Clean up spies
     showCancelConfirmationSpy.mockRestore();
     completeNoteEditingSpy.mockRestore();
+  });
+
+  describe('Note editing state transitions with theme switching', () => {
+    test('should properly handle theme switching during note editing transitions', () => {
+      // Create and complete a note first
+      const note = document.querySelector('#notesContainer > div');
+      const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+      failingIssuesTextarea.value = 'Test content for theme switching';
+      failingIssuesTextarea.dispatchEvent(new Event('input'));
+      
+      // Complete the note
+      const ctrlEnterEvent = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        bubbles: true
+      });
+      failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
+      
+      // Verify note is completed
+      expect(note.classList.contains('bg-gray-50')).toBe(true);
+      expect(failingIssuesTextarea.disabled).toBe(true);
+      
+      // Now edit the note
+      const editButton = note.querySelector('button[title="Edit note"]');
+      editButton.click();
+      
+      // Verify note is in editing state with correct background
+      expect(note.classList.contains('bg-white')).toBe(true);
+      expect(note.classList.contains('bg-gray-50')).toBe(false);
+      expect(failingIssuesTextarea.disabled).toBe(false);
+      
+      // Switch to dark theme
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
+        if (category === 'background' && key === 'tertiary') return 'bg-neutral-600';
+        if (category === 'note' && key === 'completed') return 'bg-neutral-700';
+        if (category === 'text' && key === 'primary') return 'text-gray-100';
+        if (category === 'text' && key === 'muted') return 'text-gray-400';
+        return mockThemeManager.getColor.mock.results[0]?.returnValue || 'default-class';
+      });
+      
+      // Get the note object and update styling for dark theme
+      const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
+      noteObj.updateStyling();
+      
+      // Verify editing state styling in dark theme (should use bg-neutral-800 for active notes)
+      expect(note.classList.contains('bg-neutral-800')).toBe(true);
+      expect(note.classList.contains('bg-white')).toBe(false);
+      expect(note.classList.contains('bg-gray-50')).toBe(false);
+      expect(note.classList.contains('bg-neutral-700')).toBe(false);
+      
+      // Complete the note again
+      const saveButton = note.querySelector('button[title="Save note"]');
+      saveButton.click();
+      
+      // Verify completed state styling in dark theme (should use bg-neutral-700 for completed notes)
+      expect(note.classList.contains('bg-neutral-700')).toBe(true);
+      expect(note.classList.contains('bg-neutral-800')).toBe(false);
+      expect(failingIssuesTextarea.disabled).toBe(true);
+    });
+
+    test('should handle rapid theme switching during editing', () => {
+      // Create a note and start editing
+      const note = document.querySelector('#notesContainer > div');
+      const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+      failingIssuesTextarea.value = 'Test content';
+      failingIssuesTextarea.dispatchEvent(new Event('input'));
+      
+      const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
+      
+      // Rapidly switch between light and dark themes
+      for (let i = 0; i < 5; i++) {
+        // Switch to dark
+        mockThemeManager.currentTheme = 'dark';
+        mockThemeManager.getColor.mockImplementation((category, key) => {
+          if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+          return 'dark-class';
+        });
+        noteObj.updateStyling();
+        expect(note.classList.contains('bg-neutral-800')).toBe(true);
+        
+        // Switch to light
+        mockThemeManager.currentTheme = 'light';
+        mockThemeManager.getColor.mockImplementation((category, key) => {
+          if (category === 'background' && key === 'primary') return 'bg-white';
+          return 'light-class';
+        });
+        noteObj.updateStyling();
+        expect(note.classList.contains('bg-white')).toBe(true);
+        expect(note.classList.contains('bg-neutral-800')).toBe(false);
+      }
+    });
+
+    test('should preserve functionality after comprehensive background class cleanup', () => {
+      // Create a note
+      const note = document.querySelector('#notesContainer > div');
+      const failingIssuesTextarea = note.querySelector('textarea[placeholder="Type failing issues..."]');
+      
+      // Manually pollute the note with various background classes
+      note.classList.add(
+        'bg-gray-50', 'bg-red-50', 'bg-neutral-700', 'bg-neutral-800',
+        'bg-blue-100', 'bg-green-100', 'bg-yellow-50'
+      );
+      
+      // Add content to start timer
+      failingIssuesTextarea.value = 'Test content';
+      failingIssuesTextarea.dispatchEvent(new Event('input'));
+      
+      // Get note object and update styling (should clean up all classes)
+      const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
+      noteObj.updateStyling();
+      
+      // Verify only the correct background class remains
+      expect(note.classList.contains('bg-white')).toBe(true);
+      expect(note.classList.contains('bg-gray-50')).toBe(false);
+      expect(note.classList.contains('bg-red-50')).toBe(false);
+      expect(note.classList.contains('bg-neutral-700')).toBe(false);
+      expect(note.classList.contains('bg-neutral-800')).toBe(false);
+      
+      // Verify note functionality is preserved
+      expect(failingIssuesTextarea.disabled).toBe(false);
+      expect(noteObj.completed).toBe(false);
+      
+      // Complete the note
+      const ctrlEnterEvent = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        bubbles: true
+      });
+      failingIssuesTextarea.dispatchEvent(ctrlEnterEvent);
+      
+      // Verify completion worked correctly
+      expect(noteObj.completed).toBe(true);
+      expect(failingIssuesTextarea.disabled).toBe(true);
+    });
+
+    test('should handle edge case of switching themes with null/undefined classes', () => {
+      const note = document.querySelector('#notesContainer > div');
+      const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
+      
+      // Mock theme manager to return null/undefined/empty values
+      mockThemeManager.getColor.mockImplementation(() => null);
+      mockThemeManager.getStatusClasses.mockImplementation(() => null);
+      
+      // This should not crash
+      expect(() => noteObj.updateStyling()).not.toThrow();
+      
+      // Mock theme manager to return empty strings
+      mockThemeManager.getColor.mockImplementation(() => '');
+      mockThemeManager.getStatusClasses.mockImplementation(() => '');
+      
+      // This should not crash
+      expect(() => noteObj.updateStyling()).not.toThrow();
+      
+      // Mock theme manager to return undefined
+      mockThemeManager.getColor.mockImplementation(() => undefined);
+      mockThemeManager.getStatusClasses.mockImplementation(() => undefined);
+      
+      // This should not crash
+      expect(() => noteObj.updateStyling()).not.toThrow();
+    });
+
+    test('should handle placeholder management during theme switches', () => {
+      // Create completed note with saved state
+      global.localStorage.getItem = jest.fn(() => JSON.stringify({
+        '1': {
+          failingIssues: 'Completed content',
+          completed: true,
+          canceled: false
+        }
+      }));
+      
+      // Clear and recreate to load from localStorage
+      noteApp.container.innerHTML = '';
+      noteApp.notes = [];
+      noteApp.loadNotes();
+      
+      const note = document.querySelector('#notesContainer > div');
+      const failingIssuesTextarea = note.querySelector('textarea');
+      const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
+      
+      // Verify completed state - no placeholders
+      expect(failingIssuesTextarea.placeholder).toBe('');
+      expect(noteObj.completed).toBe(true);
+      
+      // Edit the note
+      const editButton = note.querySelector('button[title="Edit note"]');
+      editButton.click();
+      
+      // Verify placeholders are restored
+      expect(failingIssuesTextarea.placeholder).toBe('Type failing issues...');
+      expect(noteObj.completed).toBe(false);
+      
+      // Switch themes while editing
+      mockThemeManager.currentTheme = 'dark';
+      noteObj.updateStyling();
+      
+      // Verify placeholders are still there after theme switch
+      expect(failingIssuesTextarea.placeholder).toBe('Type failing issues...');
+      
+      // Complete the note again
+      const saveButton = note.querySelector('button[title="Save note"]');
+      saveButton.click();
+      
+      // Verify placeholders are hidden
+      expect(failingIssuesTextarea.placeholder).toBe('');
+      expect(noteObj.completed).toBe(true);
+    });
+  });
+
+  describe('Off-platform timer theme switching', () => {
+    test('should update off-platform timer background when switching themes', () => {
+      // Create off-platform section
+      noteApp.createOffPlatformSection();
+      
+      const offPlatformSection = document.querySelector('.off-platform-section');
+      expect(offPlatformSection).not.toBeNull();
+      
+      // Verify getColor was called for background.card during creation
+      expect(mockThemeManager.getColor).toHaveBeenCalledWith('background', 'card');
+      
+      // Store initial className to verify it changes after theme switch
+      const initialClassName = offPlatformSection.className;
+      expect(initialClassName).toContain('off-platform-section');
+      
+      // Switch to dark theme
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'text' && key === 'secondary') return 'text-gray-200';
+        return 'default-dark-class';
+      });
+      
+      // Trigger theme update
+      noteApp.updateOffPlatformTimerThemes();
+      
+      // Should now have dark theme colors
+      expect(offPlatformSection.className).toContain('bg-neutral-700');
+      
+      // Verify the className changed from the initial state
+      expect(offPlatformSection.className).not.toBe(initialClassName);
+    });
+
+    test('should update sticky timer container theme when switching themes', () => {
+      // Create off-platform section which creates sticky container
+      noteApp.createOffPlatformSection();
+      
+      const stickyContainer = document.getElementById('stickyTimerContainer');
+      expect(stickyContainer).not.toBeNull();
+      
+      // Switch to dark theme
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'border' && key === 'primary') return 'border-neutral-600';
+        return 'default-dark-class';
+      });
+      
+      // Trigger theme update
+      noteApp.updateOffPlatformTimerThemes();
+      
+      // Should have dark theme colors
+      expect(stickyContainer.className).toContain('bg-neutral-800');
+      expect(stickyContainer.className).toContain('border-neutral-600');
+    });
+
+    test('should update timer card themes when switching', () => {
+      // Create off-platform section
+      noteApp.createOffPlatformSection();
+      
+      // Find timer card elements
+      const timerCards = document.querySelectorAll('[data-timer-card-type="card"]');
+      const timeDisplays = document.querySelectorAll('[data-timer-card-type="timeDisplay"]');
+      const labels = document.querySelectorAll('[data-timer-card-type="label"]');
+      
+      expect(timerCards.length).toBeGreaterThan(0);
+      expect(timeDisplays.length).toBeGreaterThan(0);
+      expect(labels.length).toBeGreaterThan(0);
+      
+      // Switch to dark theme
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'secondary') return 'bg-neutral-700';
+        if (category === 'text' && key === 'primary') return 'text-gray-100';
+        if (category === 'text' && key === 'tertiary') return 'text-gray-300';
+        if (category === 'border' && key === 'light') return 'border-neutral-600';
+        return 'default-dark-class';
+      });
+      
+      // Trigger theme update
+      noteApp.updateOffPlatformTimerThemes();
+      
+      // Verify timer cards updated
+      timerCards.forEach(card => {
+        expect(card.className).toContain('bg-neutral-700');
+      });
+      
+      timeDisplays.forEach(display => {
+        expect(display.className).toContain('text-gray-100');
+      });
+      
+      labels.forEach(label => {
+        expect(label.className).toContain('text-gray-300');
+      });
+    });
+
+    test('should handle theme change event for off-platform timers', () => {
+      // Create off-platform section
+      noteApp.createOffPlatformSection();
+      
+      const offPlatformSection = document.querySelector('.off-platform-section');
+      const stickyContainer = document.getElementById('stickyTimerContainer');
+      
+      // Set up dark theme mock
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
+        if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'border' && key === 'primary') return 'border-neutral-600';
+        return 'default-dark-class';
+      });
+      
+      // Simulate theme change event
+      const themeChangeEvent = new CustomEvent('themeChanged', {
+        detail: { theme: 'dark' }
+      });
+      document.dispatchEvent(themeChangeEvent);
+      
+      // Both containers should be updated
+      expect(offPlatformSection.className).toContain('bg-neutral-700');
+      expect(stickyContainer.className).toContain('bg-neutral-800');
+    });
   });
 
 

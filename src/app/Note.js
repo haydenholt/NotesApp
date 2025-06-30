@@ -50,8 +50,8 @@ export class Note {
             (canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
             this.themeManager.getColor('background', 'primary');
         // Add reduced opacity and light border for completed notes to make them more distinct
-        const completedStyling = completed && !canceled ? 'border border-gray-300' : '';
-        const cancelledStyling = completed && canceled ? 'border-2 border-red-200 opacity-75' : '';
+        const completedStyling = completed && !canceled ? `border ${this.themeManager.getColor('border', 'secondary')}` : '';
+        const cancelledStyling = completed && canceled ? `border-2 ${this.themeManager.getColor('status', 'error')} opacity-75` : '';
         noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass} ${completedStyling} ${cancelledStyling}`;
         noteContainer.dataset.noteId = number;
 
@@ -114,12 +114,17 @@ export class Note {
         }
         leftSidebar.appendChild(numberDisplay);
 
-        // Timer display - FIX: Use the same class for all completed notes
+        // Timer display with theme-aware colors
         const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'font-mono text-base mb-3 ' + 
-            (completed ? 
-                (canceled ? this.themeManager.getColor('note', 'cancelledText') : this.themeManager.getColor('status', 'success')) : 
-                this.themeManager.getColor('text', 'tertiary'));
+        let timerColorClass;
+        if (completed) {
+            timerColorClass = canceled ? 
+                this.themeManager.getStatusClasses('error') : 
+                this.themeManager.getStatusClasses('success');
+        } else {
+            timerColorClass = this.themeManager.getColor('timer', 'inactive');
+        }
+        timerDisplay.className = `font-mono text-base mb-3 ${timerColorClass}`;
         timerDisplay.textContent = '00:00:00';
         leftSidebar.appendChild(timerDisplay);
 
@@ -129,42 +134,78 @@ export class Note {
         
         // Attempt ID field
         const attemptIDLabel = document.createElement('label');
-        attemptIDLabel.className = 'text-xs text-gray-500';
+        attemptIDLabel.className = this.themeManager.combineClasses(
+            'text-xs',
+            this.themeManager.getColor('text', 'muted')
+        );
         attemptIDLabel.textContent = 'Attempt ID:';
         
         const attemptIDInput = document.createElement('input');
-        attemptIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-        (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
+        const attemptIDClasses = this.themeManager.combineClasses(
+            'w-full rounded px-2 py-1 text-sm border',
+            this.themeManager.getColor('border', 'secondary'),
+            this.themeManager.getFocusClasses().combined,
+            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+        );
+        attemptIDInput.className = attemptIDClasses;
         attemptIDInput.style.direction = 'rtl';
         attemptIDInput.placeholder = completed ? '' : 'Enter ID';
         attemptIDInput.value = attemptID;
         attemptIDInput.disabled = completed;
         
+        // Store original placeholder for later use
+        attemptIDInput.dataset.originalPlaceholder = 'Enter ID';
+        
         // Project ID field
         const projectIDLabel = document.createElement('label');
-        projectIDLabel.className = 'text-xs text-gray-500 mt-1';
+        projectIDLabel.className = this.themeManager.combineClasses(
+            'text-xs mt-1',
+            this.themeManager.getColor('text', 'muted')
+        );
         projectIDLabel.textContent = 'Project ID:';
         
         const projectIDInput = document.createElement('input');
-        projectIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-                                  (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
+        const projectIDClasses = this.themeManager.combineClasses(
+            'w-full rounded px-2 py-1 text-sm border',
+            this.themeManager.getColor('border', 'secondary'),
+            this.themeManager.getFocusClasses().combined,
+            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+        );
+        projectIDInput.className = projectIDClasses;
         projectIDInput.style.direction = 'rtl';
         projectIDInput.placeholder = completed ? '' : 'Enter ID';
         projectIDInput.value = projectID;
         projectIDInput.disabled = completed;
         
+        // Store original placeholder for later use
+        projectIDInput.dataset.originalPlaceholder = 'Enter ID';
+        
         // Operation ID field
         const operationIDLabel = document.createElement('label');
-        operationIDLabel.className = 'text-xs text-gray-500 mt-1';
+        operationIDLabel.className = this.themeManager.combineClasses(
+            'text-xs mt-1',
+            this.themeManager.getColor('text', 'muted')
+        );
         operationIDLabel.textContent = 'Operation ID:';
         
         const operationIDInput = document.createElement('input');
-        operationIDInput.className = 'w-full border border-gray-300 rounded px-2 py-1 text-sm ' + 
-                                  (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
+        const operationIDClasses = this.themeManager.combineClasses(
+            'w-full rounded px-2 py-1 text-sm border',
+            this.themeManager.getColor('border', 'secondary'),
+            this.themeManager.getFocusClasses().combined,
+            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+        );
+        operationIDInput.className = operationIDClasses;
         operationIDInput.style.direction = 'rtl';
         operationIDInput.placeholder = completed ? '' : 'Enter ID';
         operationIDInput.value = operationID;
         operationIDInput.disabled = completed;
+        
+        // Store original placeholder for later use
+        operationIDInput.dataset.originalPlaceholder = 'Enter ID';
         
         idFieldsContainer.appendChild(projectIDLabel);
         idFieldsContainer.appendChild(projectIDInput);
@@ -193,17 +234,29 @@ export class Note {
             sectionDiv.className = 'flex flex-col';
 
             const label = document.createElement('div');
-            label.className = 'font-bold mb-1 text-gray-700';
+            label.className = this.themeManager.combineClasses(
+                'font-bold mb-1',
+                this.themeManager.getColor('text', 'secondary')
+            );
             label.textContent = section.label;
 
             const textarea = document.createElement('textarea');
             // Set the original font family
             textarea.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
-            textarea.className = 'w-full p-2 border border-gray-300 rounded text-base min-h-5 resize-none overflow-hidden ' + 
-                     (completed ? 'bg-gray-100 text-gray-500' : 'bg-white text-black');
+            const textareaClasses = this.themeManager.combineClasses(
+                'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border',
+                this.themeManager.getColor('border', 'secondary'),
+                this.themeManager.getFocusClasses().combined,
+                completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+            );
+            textarea.className = textareaClasses;
             textarea.placeholder = completed ? '' : `Type ${section.label.toLowerCase().replace(':', '')}...`;
             textarea.value = section.value;
             textarea.disabled = completed;
+            
+            // Store original placeholder for later use
+            textarea.dataset.originalPlaceholder = `Type ${section.label.toLowerCase().replace(':', '')}...`;
             
             // Add bottom margin if not completed
             if (!completed) {
@@ -385,6 +438,161 @@ export class Note {
     }
 
     /**
+     * Update the note's visual state when transitioning to completed
+     */
+    updateToCompletedState(isCanceled = false) {
+        // Update completed state
+        this.completed = true;
+        this.canceled = isCanceled;
+        
+        // Update placeholders (hide them)
+        Object.values(this.elements).forEach(element => {
+            if (element.placeholder !== undefined) {
+                element.placeholder = '';
+            }
+        });
+        
+        // Update styling to match completed state
+        this.updateStyling();
+    }
+    
+    /**
+     * Update the note's visual state when transitioning to editing
+     */
+    updateToEditingState() {
+        // Update completed state
+        this.completed = false;
+        // Note: preserve this.canceled state
+        
+        // Restore placeholders
+        Object.values(this.elements).forEach(element => {
+            if (element.dataset.originalPlaceholder) {
+                element.placeholder = element.dataset.originalPlaceholder;
+            }
+        });
+        
+        // Update styling to match editing state
+        this.updateStyling();
+    }
+    
+    /**
+     * Update all styling based on current state
+     */
+    updateStyling() {
+        // Update background
+        const backgroundClass = this.completed ?
+            (this.canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
+            this.themeManager.getColor('background', 'primary');
+        
+        // Remove all possible background classes more comprehensively
+        // First remove hardcoded classes
+        this.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50', 'bg-neutral-700', 'bg-neutral-800');
+        
+        // Remove theme-aware background classes for both light and dark themes
+        const allBackgroundVariants = ['primary', 'secondary', 'tertiary', 'card', 'overlay'];
+        const allNoteVariants = ['completed', 'cancelled'];
+        
+        // Get classes for both light and dark themes to ensure complete cleanup
+        const currentTheme = this.themeManager.currentTheme;
+        ['light', 'dark'].forEach(themeName => {
+            // Temporarily switch theme to get the classes
+            this.themeManager.currentTheme = themeName;
+            
+            // Remove background classes
+            allBackgroundVariants.forEach(variant => {
+                const cls = this.themeManager.getColor('background', variant);
+                if (cls && cls.trim() !== '') {
+                    this.container.classList.remove(cls);
+                }
+            });
+            
+            // Remove note state classes
+            allNoteVariants.forEach(variant => {
+                const cls = this.themeManager.getColor('note', variant);
+                if (cls && cls.trim() !== '') {
+                    this.container.classList.remove(cls);
+                }
+            });
+        });
+        
+        // Restore original theme
+        this.themeManager.currentTheme = currentTheme;
+        
+        // Add correct background for current theme
+        if (backgroundClass && backgroundClass.trim() !== '') {
+            this.container.classList.add(backgroundClass);
+        }
+        
+        // Update input and textarea styling - reconstruct classes completely
+        Object.values(this.elements).forEach(element => {
+            // Update disabled state
+            element.disabled = this.completed;
+            
+            if (element.tagName === 'INPUT') {
+                // Reconstruct input classes
+                const classes = [
+                    'w-full rounded px-2 py-1 text-sm border',
+                    this.themeManager.getColor('border', 'secondary'),
+                    this.themeManager.getFocusClasses().combined,
+                    this.completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                    this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+                ].filter(cls => cls && cls.trim() !== '');
+                
+                element.className = classes.join(' ');
+                // Preserve direction
+                element.style.direction = 'rtl';
+            } else if (element.tagName === 'TEXTAREA') {
+                // Reconstruct textarea classes
+                const baseClasses = 'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border';
+                const paddingClass = this.completed ? '' : 'pb-6';
+                const classes = [
+                    baseClasses,
+                    paddingClass,
+                    this.themeManager.getColor('border', 'secondary'),
+                    this.themeManager.getFocusClasses().combined,
+                    this.completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                    this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+                ].filter(cls => cls && cls.trim() !== '');
+                
+                element.className = classes.join(' ');
+                // Preserve font family
+                element.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
+            }
+        });
+        
+        // Update timer display color
+        const timerDisplay = this.timer.displayElement;
+        
+        // Remove all possible timer color classes
+        const statusClasses = ['success', 'error', 'info'].map(status => 
+            this.themeManager.getStatusClasses(status)
+        ).filter(cls => cls && cls.trim() !== '');
+        
+        // Remove hardcoded classes first
+        timerDisplay.classList.remove('text-gray-600', 'text-green-600', 'text-red-600', 'text-gray-700');
+        
+        // Remove theme-aware status classes
+        if (statusClasses.length > 0) {
+            timerDisplay.classList.remove(...statusClasses);
+        }
+        
+        // Add correct timer color
+        let timerColorClass;
+        if (this.completed) {
+            timerColorClass = this.canceled ? 
+                this.themeManager.getStatusClasses('error') : 
+                this.themeManager.getStatusClasses('success');
+        } else {
+            timerColorClass = this.themeManager.getColor('timer', 'inactive');
+        }
+        
+        // Only add the class if it's valid
+        if (timerColorClass && timerColorClass.trim() !== '') {
+            timerDisplay.classList.add(timerColorClass);
+        }
+    }
+
+    /**
      * Show cancel confirmation inline within this note.
      */
     showCancelConfirmation() {
@@ -418,7 +626,7 @@ export class Note {
         confirmationDiv.appendChild(buttonContainer);
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.className = `px-3 py-1 ${this.themeManager.getNestedColor('button', 'secondary', 'bg')} ${this.themeManager.getNestedColor('button', 'secondary', 'hover')} ${this.themeManager.getNestedColor('button', 'secondary', 'text')} rounded`;
+        cancelBtn.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded';
         cancelBtn.textContent = 'No, Keep Note';
         cancelBtn.addEventListener('click', () => {
             container.removeChild(confirmationDiv);
@@ -427,7 +635,7 @@ export class Note {
         buttonContainer.appendChild(cancelBtn);
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.className = `px-3 py-1 ${this.themeManager.getNestedColor('button', 'danger', 'bg')} ${this.themeManager.getNestedColor('button', 'danger', 'hover')} ${this.themeManager.getNestedColor('button', 'danger', 'text')} rounded`;
+        confirmBtn.className = 'px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded';
         confirmBtn.textContent = 'Yes, Cancel Note';
         confirmBtn.addEventListener('click', () => {
             this._completeNoteEditing(number, true);
