@@ -34,6 +34,7 @@ describe('Note class', () => {
         if (category === 'background' && key === 'tertiary') return 'bg-gray-100';
         if (category === 'text' && key === 'tertiary') return 'text-gray-600';
         if (category === 'text' && key === 'primary') return 'text-gray-900';
+        if (category === 'text' && key === 'secondary') return 'text-gray-600';
         if (category === 'text' && key === 'muted') return 'text-gray-500';
         if (category === 'status' && key === 'success') return 'text-green-600';
         if (category === 'status' && key === 'error') return 'text-red-600';
@@ -53,7 +54,12 @@ describe('Note class', () => {
         if (status === 'error') return 'text-red-600';
         if (status === 'info') return 'text-blue-600';
         return 'default-status-class';
-      })
+      }),
+      getTextareaClasses: jest.fn((state) => {
+        if (state === 'disabled') return 'bg-gray-100 text-gray-500 border-gray-300';
+        return 'bg-white text-gray-900 border-gray-300';
+      }),
+      getInputClasses: jest.fn(() => 'bg-white text-gray-900 border-gray-300')
     };
   });
 
@@ -469,6 +475,56 @@ describe('Note class', () => {
       expect(note.container.className).toContain('bg-neutral-700');
       expect(note.container.className).toContain('opacity-75');
       expect(note.container.className).not.toContain('bg-neutral-800');
+    });
+
+    test('section labels update styling when theme changes', () => {
+      // Create note in light theme
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Get the section labels
+      const labels = note.container.querySelectorAll('.font-bold.mb-1');
+      expect(labels).toHaveLength(3); // "Failing issues:", "Non-failing issues:", "Discussion:"
+      
+      // Initially should have light theme text color
+      labels.forEach(label => {
+        expect(label.className).toContain('text-gray-600');
+      });
+      
+      // Switch to dark mode
+      mockThemeManager.currentTheme = 'dark';
+      mockThemeManager.getColor.mockImplementation((category, key) => {
+        if (category === 'text' && key === 'secondary') return 'text-gray-300';
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
+        return 'default-dark-class';
+      });
+      
+      // Trigger theme change
+      note.updateLabelStyles();
+      
+      // Labels should now have dark theme text color
+      labels.forEach(label => {
+        expect(label.className).toContain('text-gray-300');
+        expect(label.className).not.toContain('text-gray-600');
+      });
+    });
+
+    test('theme change event triggers label style updates', () => {
+      // Create note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      
+      // Mock the updateLabelStyles method to verify it gets called
+      const updateLabelStylesSpy = jest.spyOn(note, 'updateLabelStyles');
+      
+      // Trigger theme change event
+      const themeChangeEvent = new CustomEvent('themeChanged');
+      document.dispatchEvent(themeChangeEvent);
+      
+      // Verify that updateLabelStyles was called
+      expect(updateLabelStylesSpy).toHaveBeenCalled();
+      
+      updateLabelStylesSpy.mockRestore();
     });
   });
 

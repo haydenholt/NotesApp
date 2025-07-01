@@ -229,6 +229,7 @@ export class Note {
         ];
 
         const sectionElements = {};
+        const sectionLabels = {};
 
         sections.forEach(section => {
             const sectionDiv = document.createElement('div');
@@ -240,6 +241,9 @@ export class Note {
                 this.themeManager.getColor('text', 'secondary')
             );
             label.textContent = section.label;
+            
+            // Store reference to the label for theme updates
+            sectionLabels[section.key] = label;
 
             const textarea = document.createElement('textarea');
             // Set the original font family
@@ -429,6 +433,7 @@ export class Note {
         this.timer = timer;
         this.container = noteContainer;
         this.elements = { ...sectionElements, attemptID: attemptIDInput, projectID: projectIDInput, operationID: operationIDInput };
+        this.labels = sectionLabels;
         this.editButton = editButton;
         this.saveButton = saveButton;
         this.completed = completed;
@@ -444,6 +449,7 @@ export class Note {
             this.updateTimerDisplay();
             this.updateTextFieldStyles();
             this.updateButtonStyles();
+            this.updateLabelStyles();
         };
         document.addEventListener('themeChanged', this.themeChangeHandler);
     }
@@ -540,6 +546,22 @@ export class Note {
                 newClasses
             );
         }
+    }
+    
+    updateLabelStyles() {
+        Object.values(this.labels).forEach(label => {
+            // Remove old text color classes
+            const oldClasses = Array.from(label.classList).filter(cls => 
+                cls.includes('text-')
+            );
+            oldClasses.forEach(cls => label.classList.remove(cls));
+            
+            // Apply new theme-aware classes
+            label.className = this.themeManager.combineClasses(
+                'font-bold mb-1',
+                this.themeManager.getColor('text', 'secondary')
+            );
+        });
     }
 
     /**
