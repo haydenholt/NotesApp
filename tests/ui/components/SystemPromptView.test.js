@@ -1,5 +1,5 @@
-import { SystemPromptView } from '../../src/components/SystemPromptView.js';
-import { ThemeManager } from '../../src/components/ThemeManager.js';
+import { SystemPromptView } from '../../../src/ui/components/SystemPromptView.js';
+import { ThemeManager } from '../../../src/ui/components/ThemeManager.js';
 
 describe('SystemPromptView Component', () => {
     let container;

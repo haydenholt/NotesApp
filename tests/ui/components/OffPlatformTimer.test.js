@@ -1,4 +1,4 @@
-import { OffPlatformTimer } from '../../src/app/OffPlatformTimer.js';
+import { OffPlatformTimer } from '../../../src/ui/components/OffPlatformTimer.js';
 
 describe('OffPlatformTimer', () => {
   let timer;

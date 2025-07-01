@@ -1,13 +1,13 @@
 /**
  * Main entry point for the Timer Notes application
  */
-import NoteApp from './app/NoteApp.js';
-import DiffTool from './components/DiffTool.js';
-import ViewManager from './components/ViewManager.js';
-import NavigationManager from './components/NavigationManager.js';
-import PayAnalysis from './app/PayAnalysis.js';
-import HelpOverlay from './components/HelpOverlay.js';
-import ThemeManager from './components/ThemeManager.js';
+import NoteApp from './core/NoteApp.js';
+import DiffTool from './ui/components/DiffTool.js';
+import ViewManager from './ui/components/ViewManager.js';
+import NavigationManager from './ui/components/NavigationManager.js';
+import PayAnalysis from './ui/components/PayAnalysis.js';
+import HelpOverlay from './ui/components/HelpOverlay.js';
+import ThemeManager from './ui/components/ThemeManager.js';
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize theme manager first

@@ -1,4 +1,4 @@
-import ViewManager from '../../src/components/ViewManager.js';
+import ViewManager from '../../../src/ui/components/ViewManager.js';
 
 describe('ViewManager', () => {
   let viewManager;

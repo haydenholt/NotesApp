@@ -1,4 +1,4 @@
-import NavigationManager from '../../src/components/NavigationManager.js';
+import NavigationManager from '../../../src/ui/components/NavigationManager.js';
 
 // Mock ViewManager
 const mockViewManager = {

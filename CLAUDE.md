@@ -15,7 +15,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is a vanilla JavaScript web application with a modular component-based architecture centered around note-taking with time tracking capabilities.
+This is a vanilla JavaScript web application with a **clean, modular architecture** centered around note-taking with time tracking capabilities. The application follows a clear separation of concerns with business logic, state management, and UI components properly organized.
+
+### Project Structure
+
+```
+src/
+├── core/              # 🧠 Business Logic & Data
+│   ├── NoteApp.js          # Main application orchestrator
+│   ├── controllers/        # Business logic controllers
+│   ├── data/              # Data repositories and services
+│   ├── state/             # State management
+│   └── utils/             # Core utilities
+├── ui/                # 🎨 User Interface
+│   ├── components/         # Reusable UI components
+│   └── views/             # Specialized view components
+└── main.js            # 🚀 Application entry point
+```
 
 ### Core Application Structure
 
@@ -28,32 +44,54 @@ This is a vanilla JavaScript web application with a modular component-based arch
 - Four main views: Notes (default), Diff Tool (Ctrl+D), System Prompt Generator (Ctrl+P), Pay Analysis (Ctrl+Y)
 - Views are hidden/shown using CSS classes, not routing
 
-**Core Components:**
+### Business Logic Layer (`src/core/`)
 
-1. **NoteApp** (`src/app/NoteApp.js`):
-   - Main note-taking interface with time tracking
-   - Manages notes per date with localStorage persistence
-   - Integrates Timer and OffPlatformTimer components
-   - Handles search functionality and date filtering
+**Main Controller (`src/core/NoteApp.js`):**
+- Orchestrates all business logic controllers and views
+- Event-driven architecture with clean separation of concerns
 
-2. **Timer/Time Tracking System**:
-   - `Timer.js` - Individual note timers that start when content is entered
-   - `OffPlatformTimer.js` - Tracks time for training, sheetwork, blocked time
-   - Date-specific timer state management
+**Controllers (`src/core/controllers/`):**
+- `NoteController.js` - Note CRUD operations and business logic
+- `TimerController.js` - Timer management across notes and off-platform
+- `SearchController.js` - Search functionality and result management
+- `StatisticsController.js` - Analytics, fail rates, and data aggregation
 
-3. **PayAnalysis** (`src/app/PayAnalysis.js`):
-   - Weekly earnings calculator with calendar interface
-   - Aggregates both on-platform (notes) and off-platform time
-   - Fixed rate of $60/hour
+**Data Layer (`src/core/data/`):**
+- `NotesRepository.js` - localStorage abstraction for notes
+- `TimerRepository.js` - localStorage abstraction for timers
+- `ExportService.js` - CSV export and data transformation
 
-4. **DiffTool** (`src/components/DiffTool.js`):
-   - Text comparison with token-based diff highlighting
-   - Debounced auto-comparison on text changes
-   - Multiple diff modes for different comparison granularities
+**State Management (`src/core/state/`):**
+- `AppState.js` - Application-level state (current date, search mode)
+- `NotesState.js` - In-memory note state management
+- `TimerState.js` - Timer state with live updates
 
-5. **SystemPromptView** (`src/components/SystemPromptView.js`):
-   - LLM prompt generators for code setup and prompt/response evaluation
-   - Template-based prompt generation with clipboard integration
+**Utilities (`src/core/utils/`):**
+- `TimeFormatter.js` - Time formatting and duration calculations
+- `DateUtils.js` - Date manipulation and validation
+- `DOMHelpers.js` - DOM utilities and common operations
+
+### User Interface Layer (`src/ui/`)
+
+**Components (`src/ui/components/`):**
+- `Note.js` - Individual note component with auto-theming
+- `Timer.js` - Individual note timers that start when content is entered
+- `OffPlatformTimer.js` - Tracks time for training, sheetwork, blocked time
+- `ThemeManager.js` - Centralized theme management
+- `DiffTool.js` - Text comparison with token-based diff highlighting
+- `PayAnalysis.js` - Weekly earnings calculator with calendar interface
+- `SystemPromptView.js` - LLM prompt generators
+- `ViewManager.js` - View switching logic
+- `HelpOverlay.js` - Help system
+- `NavigationManager.js` - Keyboard navigation
+
+**Views (`src/ui/views/`):**
+- `NoteListView.js` - Daily note list rendering and interaction
+- `SearchResultsView.js` - Search results display
+- `StatisticsView.js` - Stats panels and project fail rates
+- `DateNavigationView.js` - Date picker and navigation buttons
+- `OffPlatformView.js` - Off-platform timer cards and sticky display
+- `ModalView.js` - Generic modal dialog system
 
 ### Data Persistence
 
@@ -61,12 +99,6 @@ This is a vanilla JavaScript web application with a modular component-based arch
 - Notes are stored per date with keys like `notes_2024-01-15`
 - Timer states stored separately with date-specific keys
 - No backend or database - fully client-side application
-
-### Key Features & Integrations
-
-- **Keyboard Shortcuts**: Extensive keyboard controls (Ctrl+Enter, Ctrl+X, F1, etc.)
-- **Writing Tool Integration**: Designed to work with Quillbot and Grammarly browser extensions
-- **Progressive Web App**: Can be installed as standalone app via Edge "Install as app" feature
 
 ### Testing Structure
 
@@ -85,12 +117,13 @@ This is a vanilla JavaScript web application with a modular component-based arch
 
 ## Theme Management
 
-**ThemeManager** (`src/components/ThemeManager.js`) provides centralized theming with light/dark modes.
+**ThemeManager** (`src/ui/components/ThemeManager.js`) provides centralized theming with light/dark modes.
 
 ### Key Rules
 - **Always** use ThemeManager methods for colors: `this.themeManager.getPrimaryButtonClasses()`
 - **Never** hardcode color classes: ~~`bg-blue-500`~~, ~~`text-gray-600`~~
 - Components accept `themeManager` in constructor and provide fallbacks when null
+- **Auto-theming**: All UI components automatically update when theme changes via event listeners
 
 ### Common Methods
 - Buttons: `getPrimaryButtonClasses()`, `getSecondaryButtonClasses()`
@@ -103,81 +136,65 @@ This is a vanilla JavaScript web application with a modular component-based arch
 constructor(containerId, themeManager = null) {
     this.themeManager = themeManager;
     // Use: this.themeManager?.getPrimaryButtonClasses() || 'fallback-classes'
+    
+    // For auto-theming components, add theme change listener:
+    document.addEventListener('themeChanged', () => {
+        this.updateTheme();
+    });
 }
 ```
 
-# Using Gemini CLI for Large Codebase Analysis
+### Event-Driven Theme Updates
+- All components listen for `themeChanged` events
+- Views automatically re-render with new theme
+- Individual notes update styling without page reload
+- Scroll position preserved during theme changes
 
-When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive
-context window. Use `gemini --model gemini-2.5-flash -p ` to leverage Google Gemini's large context capacity.
+## Refactored Architecture Benefits
 
-## File and Directory Inclusion Syntax
+### Clean Separation of Concerns
+- **Business Logic** (`src/core/`) - Pure JavaScript logic, no DOM dependencies
+- **User Interface** (`src/ui/`) - All DOM manipulation and styling
+- **Testable**: Controllers can be unit tested without DOM setup
+- **Maintainable**: Changes isolated to specific domains
 
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to WHERE you run the
-  gemini command:
+### Event-Driven Communication
+- Controllers communicate via events, not direct method calls
+- Views listen for data changes and re-render automatically
+- Loose coupling between components allows easy extension
 
-### Examples:
+### Modular Design
+- Each component has a single responsibility
+- Easy to add new controllers, views, or features
+- Clear dependency graph makes debugging simpler
 
-**Single file analysis:**
-gemini --model gemini-2.5-flash -p  "@src/main.py Explain this file's purpose and structure"
+### Performance Optimizations
+- Notes only update theme elements that changed
+- Views clear properly to prevent memory leaks
+- Event listeners are cleaned up when components are destroyed
 
-Multiple files:
-gemini --model gemini-2.5-flash -p  "@package.json @src/index.js Analyze the dependencies used in the code"
+## File Location Guide
 
-Entire directory:
-gemini --model gemini-2.5-flash -p  "@src/ Summarize the architecture of this codebase"
+### When Adding New Features
 
-Multiple directories:
-gemini --model gemini-2.5-flash -p  "@src/ @tests/ Analyze test coverage for the source code"
+**Business Logic Changes:**
+- Controllers: `src/core/controllers/`
+- Data access: `src/core/data/`
+- State management: `src/core/state/`
+- Utilities: `src/core/utils/`
 
-Current directory and subdirectories:
-gemini --model gemini-2.5-flash -p  "@./ Give me an overview of this entire project"
+**UI Changes:**
+- Reusable components: `src/ui/components/`
+- Specialized displays: `src/ui/views/`
+- Theme-related: Use ThemeManager methods
 
-# Or use --all_files flag:
-gemini --all_files -p "Analyze the project structure and dependencies"
+**Testing:**
+- Tests mirror the src structure in `tests/`
+- Update test imports to match new file locations
 
-Implementation Verification Examples
-
-Check if a feature is implemented:
-gemini --model gemini-2.5-flash -p  "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
-
-Verify authentication implementation:
-gemini --model gemini-2.5-flash -p  "@src/ @middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"
-
-Check for specific patterns:
-gemini --model gemini-2.5-flash -p  "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"
-
-Verify error handling:
-gemini --model gemini-2.5-flash -p  "@src/ @api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"
-
-Check for rate limiting:
-gemini --model gemini-2.5-flash -p  "@backend/ @middleware/ Is rate limiting implemented for the API? Show the implementation details"
-
-Verify caching strategy:
-gemini --model gemini-2.5-flash -p  "@src/ @lib/ @services/ Is Redis caching implemented? List all cache-related functions and their usage"
-
-Check for specific security measures:
-gemini --model gemini-2.5-flash -p  "@src/ @api/ Are SQL injection protections implemented? Show how user inputs are sanitized"
-
-Verify test coverage for features:
-gemini --model gemini-2.5-flash -p  "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
-
-When to Use Gemini CLI
-
-Use gemini --model gemini-2.5-flash -p  when:
-- Analyzing entire codebases or large directories
-- Comparing multiple large files
-- Need to understand project-wide patterns or architecture
-- Current context window is insufficient for the task
-- Working with files totaling more 1000 lines.
-- Verifying if specific features, patterns, or security measures are implemented
-- Checking for the presence of certain coding patterns across the entire codebase
-
-Important Notes
-
-- Paths in @ syntax are relative to your current working directory when invoking gemini
-- The CLI will include file contents directly in the context
-- No need for --yolo flag for read-only analysis
-- Gemini's context window can handle entire codebases that would overflow Claude's context
-- When checking implementations, be specific about what you're looking for to get accurate results
-- This model is not as intelligent as you are. It should be used for specific subtasks that require ingesting large amounts of code where the answer can be easily verified.
+### Common File Paths
+- Main app controller: `src/core/NoteApp.js`
+- Note management: `src/core/controllers/NoteController.js`
+- Individual notes: `src/ui/components/Note.js`
+- Theme system: `src/ui/components/ThemeManager.js`
+- Time utilities: `src/core/utils/TimeFormatter.js`

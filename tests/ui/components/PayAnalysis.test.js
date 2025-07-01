@@ -1,8 +1,8 @@
-import PayAnalysis from '../../src/app/PayAnalysis.js';
-import OffPlatformTimer from '../../src/app/OffPlatformTimer.js';
+import PayAnalysis from '../../../src/ui/components/PayAnalysis.js';
+import OffPlatformTimer from '../../../src/ui/components/OffPlatformTimer.js';
 
 // Mock dependencies
-jest.mock('../../src/app/OffPlatformTimer.js');
+jest.mock('../../../src/ui/components/OffPlatformTimer.js');
 
 // Mock ThemeManager
 const mockThemeManager = {

@@ -1,4 +1,4 @@
-import Timer from '../components/Timer.js';
+import Timer from './Timer.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -54,6 +54,7 @@ export class Note {
         const cancelledStyling = completed && canceled ? `border-2 ${this.themeManager.getColor('status', 'error')} opacity-60` : '';
         noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass} ${completedStyling} ${cancelledStyling}`;
         noteContainer.dataset.noteId = number;
+        noteContainer._noteInstance = this; // Store reference for cleanup
 
         // Create action buttons
         const actionsDiv = document.createElement('div');
@@ -435,6 +436,110 @@ export class Note {
 
         // Focus first textarea if new
         if (!completed) sectionElements.failingIssues.focus();
+        
+        // Listen for theme changes
+        this.themeChangeHandler = () => {
+            this.updateStyling();
+            this.updateNumberDisplay();
+            this.updateTimerDisplay();
+            this.updateTextFieldStyles();
+            this.updateButtonStyles();
+        };
+        document.addEventListener('themeChanged', this.themeChangeHandler);
+    }
+    
+    // Add cleanup method
+    destroy() {
+        if (this.themeChangeHandler) {
+            document.removeEventListener('themeChanged', this.themeChangeHandler);
+        }
+        if (this.timer) {
+            this.timer.stop();
+        }
+    }
+    
+    updateNumberDisplay() {
+        const numberDisplay = this.container.querySelector('.font-bold.mb-2');
+        if (!numberDisplay) return;
+        
+        // Remove all color classes
+        numberDisplay.classList.remove('text-gray-600', 'text-red-600');
+        
+        if (this.canceled) {
+            const cancelledTextColor = this.themeManager.getColor('note', 'cancelledText');
+            numberDisplay.classList.add(cancelledTextColor);
+        } else {
+            const tertiaryTextColor = this.themeManager.getColor('text', 'tertiary');
+            numberDisplay.classList.add(tertiaryTextColor);
+        }
+    }
+    
+    updateTimerDisplay() {
+        if (!this.timer || !this.timer.displayElement) return;
+        
+        // Remove all possible timer color classes
+        const oldClasses = Array.from(this.timer.displayElement.classList).filter(cls => 
+            cls.startsWith('text-') || cls.includes('green') || cls.includes('gray') || cls.includes('red')
+        );
+        oldClasses.forEach(cls => this.timer.displayElement.classList.remove(cls));
+        
+        // Apply new color based on state
+        let colorClass;
+        if (this.completed) {
+            colorClass = this.canceled ? 
+                this.themeManager.getStatusClasses('error') : 
+                this.themeManager.getStatusClasses('success');
+        } else if (this.timer.hasStarted) {
+            colorClass = this.themeManager.getColor('timer', 'active');
+        } else {
+            colorClass = this.themeManager.getColor('timer', 'inactive');
+        }
+        
+        this.timer.displayElement.classList.add(colorClass);
+    }
+    
+    updateTextFieldStyles() {
+        Object.values(this.elements).forEach(element => {
+            if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+                // Remove old classes
+                const oldClasses = Array.from(element.classList).filter(cls => 
+                    cls.includes('bg-') || cls.includes('text-') || cls.includes('border-')
+                );
+                oldClasses.forEach(cls => element.classList.remove(cls));
+                
+                // Apply new classes based on state
+                if (this.completed) {
+                    const disabledClasses = this.themeManager.getTextareaClasses('disabled');
+                    element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
+                    element.className += ' ' + disabledClasses;
+                } else {
+                    if (element.tagName === 'TEXTAREA') {
+                        const textareaClasses = this.themeManager.getTextareaClasses();
+                        element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
+                        element.className += ' ' + textareaClasses;
+                    } else {
+                        const inputClasses = this.themeManager.getInputClasses();
+                        element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
+                        element.className += ' ' + inputClasses;
+                    }
+                }
+            }
+        });
+    }
+    
+    updateButtonStyles() {
+        if (this.editButton) {
+            const oldClasses = Array.from(this.editButton.classList).filter(cls => 
+                cls.includes('bg-') || cls.includes('hover:bg-') || cls.includes('text-')
+            );
+            oldClasses.forEach(cls => this.editButton.classList.remove(cls));
+            
+            const newClasses = this.themeManager.getPrimaryButtonClasses('sm');
+            this.editButton.className = this.themeManager.combineClasses(
+                'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
+                newClasses
+            );
+        }
     }
 
     /**
@@ -444,6 +549,10 @@ export class Note {
         // Update completed state
         this.completed = true;
         this.canceled = isCanceled;
+        
+        // Update button visibility - edit button should show for completed notes
+        this.editButton.style.display = 'block';
+        this.saveButton.style.display = 'none';
         
         // Update placeholders (hide them)
         Object.values(this.elements).forEach(element => {
@@ -463,6 +572,10 @@ export class Note {
         // Update completed state
         this.completed = false;
         // Note: preserve this.canceled state
+        
+        // Update button visibility - save button should show for editing notes
+        this.editButton.style.display = 'none';
+        this.saveButton.style.display = 'block';
         
         // Restore placeholders
         Object.values(this.elements).forEach(element => {

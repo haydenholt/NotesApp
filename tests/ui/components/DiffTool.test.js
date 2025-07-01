@@ -1,4 +1,4 @@
-import DiffTool from '../../src/components/DiffTool.js';
+import DiffTool from '../../../src/ui/components/DiffTool.js';
 
 describe('DiffTool', () => {
   let diffTool;

@@ -1,4 +1,4 @@
-import Note from '../../src/app/Note.js';
+import { Note } from '../../../src/ui/components/Note.js';
 import { JSDOM } from 'jsdom';
 
 describe('Note class', () => {
@@ -469,6 +469,199 @@ describe('Note class', () => {
       expect(note.container.className).toContain('bg-neutral-700');
       expect(note.container.className).toContain('opacity-75');
       expect(note.container.className).not.toContain('bg-neutral-800');
+    });
+  });
+
+  describe('button visibility state management', () => {
+    let mockCallbacks;
+    let note;
+
+    beforeEach(() => {
+      mockCallbacks = {
+        enableEditing: jest.fn(),
+        completeEditing: jest.fn(),
+        deleteNote: jest.fn(),
+        markEditing: jest.fn()
+      };
+      
+      // Reset localStorage mock for each test
+      global.localStorage = {
+        getItem: jest.fn(() => '{}'),
+        setItem: jest.fn()
+      };
+    });
+
+    afterEach(() => {
+      if (note && note.container && note.container.parentNode) {
+        note.container.parentNode.removeChild(note.container);
+      }
+    });
+
+    test('edit button shows for completed notes at construction', () => {
+      // Set up localStorage mock to return a completed note
+      const mockLocalStorage = {
+        getItem: jest.fn((key) => {
+          if (key === '2024-01-15') {
+            return JSON.stringify({
+              1: {
+                failingIssues: 'Test issue',
+                completed: true,
+                canceled: false,
+                startTimestamp: Date.now() - 10000,
+                endTimestamp: Date.now()
+              }
+            });
+          }
+          return '{}';
+        }),
+        setItem: jest.fn()
+      };
+      
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true
+      });
+
+      // Create note that should be completed at construction
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+
+      // Edit button should be visible for completed notes
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+    });
+
+    test('edit button is hidden for new notes at construction', () => {
+      // Set up localStorage mock to return empty object
+      const mockLocalStorage = {
+        getItem: jest.fn(() => '{}'),
+        setItem: jest.fn()
+      };
+      
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true
+      });
+      
+      // Create new note (no localStorage data)
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+
+      // Edit button should be hidden for new notes
+      expect(note.editButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('none');
+    });
+
+    test('updateToCompletedState shows edit button and hides save button', () => {
+      // Create new active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+
+      // Initially edit button should be hidden
+      expect(note.editButton.style.display).toBe('none');
+
+      // Complete the note
+      note.updateToCompletedState(false);
+
+      // Edit button should now be visible, save button hidden
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+      expect(note.completed).toBe(true);
+    });
+
+    test('updateToCompletedState with cancellation shows edit button', () => {
+      // Create new active note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+
+      // Complete the note as cancelled
+      note.updateToCompletedState(true);
+
+      // Edit button should be visible even for cancelled notes
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+      expect(note.completed).toBe(true);
+      expect(note.canceled).toBe(true);
+    });
+
+    test('updateToEditingState shows save button and hides edit button', () => {
+      // Start with a completed note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      note.updateToCompletedState(false);
+
+      // Verify initial completed state
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+
+      // Transition to editing
+      note.updateToEditingState();
+
+      // Save button should now be visible, edit button hidden
+      expect(note.editButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('block');
+      expect(note.completed).toBe(false);
+    });
+
+    test('button state is consistent during multiple state transitions', () => {
+      // Create new note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+
+      // Initial state: new note
+      expect(note.editButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('none');
+
+      // Complete note
+      note.updateToCompletedState(false);
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+
+      // Edit note
+      note.updateToEditingState();
+      expect(note.editButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('block');
+
+      // Complete again
+      note.updateToCompletedState(false);
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+
+      // Cancel note
+      note.updateToCompletedState(true);
+      expect(note.editButton.style.display).toBe('block');
+      expect(note.saveButton.style.display).toBe('none');
+      expect(note.canceled).toBe(true);
+    });
+
+    test('edit button click handler correctly manages button visibility', () => {
+      // Create completed note
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      note.updateToCompletedState(false);
+
+      // Click edit button
+      note.editButton.click();
+
+      // Should call enableEditing and update button visibility
+      expect(mockCallbacks.enableEditing).toHaveBeenCalledWith(1);
+      expect(note.editButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('block');
+    });
+
+    test('save button click handler correctly manages button visibility', () => {
+      // Create note in editing state
+      note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
+      document.body.appendChild(note.container);
+      note.updateToEditingState();
+
+      // Click save button
+      note.saveButton.click();
+
+      // Should call completeEditing and update button visibility
+      expect(mockCallbacks.completeEditing).toHaveBeenCalledWith(1);
+      expect(note.saveButton.style.display).toBe('none');
+      expect(note.editButton.style.display).toBe('block');
     });
   });
 }); 

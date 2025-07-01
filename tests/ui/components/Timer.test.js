@@ -1,4 +1,4 @@
-import Timer from '../../src/components/Timer.js';
+import Timer from '../../../src/ui/components/Timer.js';
 
 describe('Timer', () => {
   let timer;

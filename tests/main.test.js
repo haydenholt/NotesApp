@@ -13,23 +13,23 @@ const mockNavigationManager = jest.fn();
 const mockPayAnalysis = jest.fn();
 
 // Mock the components at the module system level
-jest.mock('../src/app/NoteApp.js', () => {
+jest.mock('../src/core/NoteApp.js', () => {
   return mockNoteApp;
 });
 
-jest.mock('../src/components/DiffTool.js', () => {
+jest.mock('../src/ui/components/DiffTool.js', () => {
   return mockDiffTool;
 });
 
-jest.mock('../src/components/ViewManager.js', () => {
+jest.mock('../src/ui/components/ViewManager.js', () => {
   return mockViewManager;
 });
 
-jest.mock('../src/components/NavigationManager.js', () => {
+jest.mock('../src/ui/components/NavigationManager.js', () => {
   return mockNavigationManager;
 });
 
-jest.mock('../src/app/PayAnalysis.js', () => {
+jest.mock('../src/ui/components/PayAnalysis.js', () => {
   return mockPayAnalysis;
 });
 
