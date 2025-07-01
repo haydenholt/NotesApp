@@ -83,132 +83,101 @@ This is a vanilla JavaScript web application with a modular component-based arch
 - Date handling uses 'sv-SE' locale format (YYYY-MM-DD)
 - Timer display follows you as you scroll (sticky positioning)
 
-## Theme Management System
+## Theme Management
 
-This application uses a centralized theme management system for consistent styling and easy theme switching.
+**ThemeManager** (`src/components/ThemeManager.js`) provides centralized theming with light/dark modes.
 
-### Architecture
+### Key Rules
+- **Always** use ThemeManager methods for colors: `this.themeManager.getPrimaryButtonClasses()`
+- **Never** hardcode color classes: ~~`bg-blue-500`~~, ~~`text-gray-600`~~
+- Components accept `themeManager` in constructor and provide fallbacks when null
 
-**ThemeManager** (`src/components/ThemeManager.js`) is the single source of truth for all application colors and styling. It provides:
-- Light and dark theme definitions
-- Semantic color methods for consistent UI elements
-- CSS custom property management
-- Theme persistence in localStorage
+### Common Methods
+- Buttons: `getPrimaryButtonClasses()`, `getSecondaryButtonClasses()`
+- Forms: `getInputClasses()`, `getTextareaClasses()`, `getSelectClasses()`
+- Layout: `getCardClasses()`, `getTableClasses()`, `getStatusClasses(status)`
+- Utilities: `combineClasses()`, `getColor(category, key)`
 
-### Theming Best Practices
-
-**✅ DO - Use ThemeManager Methods:**
+### Integration Pattern
 ```javascript
-// Constructor should accept themeManager
-constructor(containerId, themeManager) {
+constructor(containerId, themeManager = null) {
     this.themeManager = themeManager;
-}
-
-// Use semantic methods for styling
-button.className = this.themeManager.getPrimaryButtonClasses();
-input.className = this.themeManager.getInputClasses();
-textarea.className = this.themeManager.getTextareaClasses('code');
-
-// For complex styling, combine with utility classes
-const classes = this.themeManager.combineClasses(
-    'w-full h-64 mb-4', // Layout/utility classes
-    this.themeManager.getTextareaClasses() // Theme-aware classes
-);
-
-// Get individual color properties when needed
-const borderColor = this.themeManager.getColor('border', 'primary');
-const focusClasses = this.themeManager.getFocusClasses().combined;
-```
-
-**❌ DON'T - Use Hardcoded Color Classes:**
-```javascript
-// Never use hardcoded color classes
-button.className = 'bg-blue-500 hover:bg-blue-600 text-white';
-input.className = 'focus:ring-blue-500 border-gray-300';
-div.className = 'text-gray-700 bg-gray-100';
-```
-
-### Available ThemeManager Methods
-
-**Button Styling:**
-- `getPrimaryButtonClasses(size)` - Primary action buttons
-- `getSecondaryButtonClasses(size)` - Secondary buttons  
-- `getButtonClasses(type, size)` - Generic button method
-
-**Form Elements:**
-- `getInputClasses(variant)` - Text inputs
-- `getTextareaClasses(variant)` - Textareas with variants (default, large, code)
-- `getSelectClasses()` - Select dropdowns
-- `getFocusClasses()` - Focus states (ring, border, combined)
-
-**Layout Components:**
-- `getCardClasses(variant)` - Cards and containers
-- `getStatCardClasses(accentColor)` - Statistics cards with accent borders
-- `getTableClasses()` - Table styling
-- `getCalendarClasses()` - Calendar components
-- `getProgressBarClasses()` - Progress indicators
-
-**Navigation & Status:**
-- `getNavButtonClasses(isActive)` - Navigation buttons
-- `getStatusClasses(status)` - Status indicators (info, success, warning, error)
-- `getDiffClasses()` - Code diff highlighting
-
-**Utility Methods:**
-- `getColor(category, colorKey)` - Individual color properties
-- `getColors(category)` - Color category objects
-- `combineClasses(...classes)` - Safely combine class strings
-
-### Theme Integration Pattern
-
-**Component Structure:**
-```javascript
-export class MyComponent {
-    constructor(containerId, themeManager = null) {
-        this.themeManager = themeManager;
-        this.container = document.getElementById(containerId);
-        this.render();
-    }
-    
-    render() {
-        // Get theme classes upfront for template literals
-        const buttonClasses = this.themeManager?.getPrimaryButtonClasses() || 'bg-gray-600 hover:bg-gray-700';
-        const inputClasses = this.themeManager?.getInputClasses() || 'border-gray-300';
-        
-        this.container.innerHTML = `
-            <button class="${buttonClasses}">Save</button>
-            <input class="${inputClasses}" type="text">
-        `;
-    }
+    // Use: this.themeManager?.getPrimaryButtonClasses() || 'fallback-classes'
 }
 ```
 
-**Initialization in main.js:**
-```javascript
-const themeManager = new ThemeManager();
-const myComponent = new MyComponent('containerId', themeManager);
-```
+# Using Gemini CLI for Large Codebase Analysis
 
-### CSS Custom Properties
+When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive
+context window. Use `gemini --model gemini-2.5-flash -p ` to leverage Google Gemini's large context capacity.
 
-For HTML elements, theme-aware CSS custom properties are available:
-- `--bg-primary`, `--bg-secondary`, `--bg-tertiary`
-- `--text-primary`, `--text-secondary`, `--text-muted`
-- `--border-primary`, `--border-focus`
-- `--btn-primary-bg`, `--btn-primary-text`
+## File and Directory Inclusion Syntax
 
-### Theme Switching
+Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to WHERE you run the
+  gemini command:
 
-Theme changes automatically propagate to all components through:
-1. CSS custom property updates
-2. ThemeManager event dispatch (`themeChanged`)
-3. Components re-render or update styling as needed
+### Examples:
 
-### Adding New Themed Components
+**Single file analysis:**
+gemini --model gemini-2.5-flash -p  "@src/main.py Explain this file's purpose and structure"
 
-1. Accept `themeManager` in constructor
-2. Use semantic ThemeManager methods for all styling
-3. Provide fallback classes for when themeManager is null
-4. Never use hardcoded color classes like `bg-blue-500` or `text-gray-600`
-5. Test both light and dark themes
+Multiple files:
+gemini --model gemini-2.5-flash -p  "@package.json @src/index.js Analyze the dependencies used in the code"
 
-This architecture ensures theme changes only require updating ThemeManager configuration, and all components automatically inherit new styling.
+Entire directory:
+gemini --model gemini-2.5-flash -p  "@src/ Summarize the architecture of this codebase"
+
+Multiple directories:
+gemini --model gemini-2.5-flash -p  "@src/ @tests/ Analyze test coverage for the source code"
+
+Current directory and subdirectories:
+gemini --model gemini-2.5-flash -p  "@./ Give me an overview of this entire project"
+
+# Or use --all_files flag:
+gemini --all_files -p "Analyze the project structure and dependencies"
+
+Implementation Verification Examples
+
+Check if a feature is implemented:
+gemini --model gemini-2.5-flash -p  "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
+
+Verify authentication implementation:
+gemini --model gemini-2.5-flash -p  "@src/ @middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"
+
+Check for specific patterns:
+gemini --model gemini-2.5-flash -p  "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"
+
+Verify error handling:
+gemini --model gemini-2.5-flash -p  "@src/ @api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"
+
+Check for rate limiting:
+gemini --model gemini-2.5-flash -p  "@backend/ @middleware/ Is rate limiting implemented for the API? Show the implementation details"
+
+Verify caching strategy:
+gemini --model gemini-2.5-flash -p  "@src/ @lib/ @services/ Is Redis caching implemented? List all cache-related functions and their usage"
+
+Check for specific security measures:
+gemini --model gemini-2.5-flash -p  "@src/ @api/ Are SQL injection protections implemented? Show how user inputs are sanitized"
+
+Verify test coverage for features:
+gemini --model gemini-2.5-flash -p  "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
+
+When to Use Gemini CLI
+
+Use gemini --model gemini-2.5-flash -p  when:
+- Analyzing entire codebases or large directories
+- Comparing multiple large files
+- Need to understand project-wide patterns or architecture
+- Current context window is insufficient for the task
+- Working with files totaling more 1000 lines.
+- Verifying if specific features, patterns, or security measures are implemented
+- Checking for the presence of certain coding patterns across the entire codebase
+
+Important Notes
+
+- Paths in @ syntax are relative to your current working directory when invoking gemini
+- The CLI will include file contents directly in the context
+- No need for --yolo flag for read-only analysis
+- Gemini's context window can handle entire codebases that would overflow Claude's context
+- When checking implementations, be specific about what you're looking for to get accurate results
+- This model is not as intelligent as you are. It should be used for specific subtasks that require ingesting large amounts of code where the answer can be easily verified.
