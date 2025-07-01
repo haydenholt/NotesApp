@@ -104,6 +104,17 @@ export class NotesRepository {
             }
         }
         
+        // Sort results by date (most recent first), then by note ID within each date (highest first)
+        results.sort((a, b) => {
+            // First compare dates (descending order - most recent first)
+            const dateCompare = b.dateKey.localeCompare(a.dateKey);
+            if (dateCompare !== 0) {
+                return dateCompare;
+            }
+            // If dates are equal, compare note IDs (descending order - highest first)
+            return parseInt(b.id, 10) - parseInt(a.id, 10);
+        });
+        
         return results;
     }
 

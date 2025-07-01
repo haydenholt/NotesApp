@@ -393,6 +393,87 @@ describe('NotesRepository', () => {
             expect(testDateResults.map(r => r.id)).toEqual(['3', '2', '1']);
         });
 
+        it('should sort results by date in descending order (most recent first)', () => {
+            // Clear existing data
+            localStorage.clear();
+            
+            // Add notes across multiple dates
+            const oldNotes = {
+                1: { projectID: 'SEARCHTEST', attemptID: '', operationID: '' }
+            };
+            const midNotes = {
+                1: { projectID: 'SEARCHTEST', attemptID: '', operationID: '' }
+            };
+            const recentNotes = {
+                1: { projectID: 'SEARCHTEST', attemptID: '', operationID: '' }
+            };
+            
+            localStorage.setItem('2024-01-10', JSON.stringify(oldNotes));
+            localStorage.setItem('2024-01-20', JSON.stringify(midNotes));
+            localStorage.setItem('2024-01-15', JSON.stringify(recentNotes));
+
+            const results = NotesRepository.searchNotes('SEARCHTEST');
+            
+            expect(results).toHaveLength(3);
+            expect(results.map(r => r.dateKey)).toEqual(['2024-01-20', '2024-01-15', '2024-01-10']);
+        });
+
+        it('should sort by date first, then by note ID within each date', () => {
+            // Clear existing data
+            localStorage.clear();
+            
+            // Add notes across multiple dates with multiple notes per date
+            const date1Notes = {
+                1: { projectID: 'SORTTEST', attemptID: '', operationID: '' },
+                3: { projectID: 'SORTTEST', attemptID: '', operationID: '' },
+                2: { projectID: 'SORTTEST', attemptID: '', operationID: '' }
+            };
+            const date2Notes = {
+                5: { projectID: 'SORTTEST', attemptID: '', operationID: '' },
+                4: { projectID: 'SORTTEST', attemptID: '', operationID: '' },
+                6: { projectID: 'SORTTEST', attemptID: '', operationID: '' }
+            };
+            
+            localStorage.setItem('2024-02-01', JSON.stringify(date1Notes));
+            localStorage.setItem('2024-02-15', JSON.stringify(date2Notes));
+
+            const results = NotesRepository.searchNotes('SORTTEST');
+            
+            expect(results).toHaveLength(6);
+            
+            // Check overall order
+            expect(results.map(r => ({ date: r.dateKey, id: r.id }))).toEqual([
+                { date: '2024-02-15', id: '6' },
+                { date: '2024-02-15', id: '5' },
+                { date: '2024-02-15', id: '4' },
+                { date: '2024-02-01', id: '3' },
+                { date: '2024-02-01', id: '2' },
+                { date: '2024-02-01', id: '1' }
+            ]);
+        });
+
+        it('should maintain sort order with mixed numeric note IDs', () => {
+            // Clear existing data
+            localStorage.clear();
+            
+            // Add notes with various numeric IDs
+            const testNotes = {
+                10: { projectID: 'NUMTEST', attemptID: '', operationID: '' },
+                2: { projectID: 'NUMTEST', attemptID: '', operationID: '' },
+                100: { projectID: 'NUMTEST', attemptID: '', operationID: '' },
+                21: { projectID: 'NUMTEST', attemptID: '', operationID: '' },
+                3: { projectID: 'NUMTEST', attemptID: '', operationID: '' }
+            };
+            
+            localStorage.setItem('2024-03-01', JSON.stringify(testNotes));
+
+            const results = NotesRepository.searchNotes('NUMTEST');
+            
+            expect(results).toHaveLength(5);
+            // Should be sorted numerically, not alphabetically
+            expect(results.map(r => r.id)).toEqual(['100', '21', '10', '3', '2']);
+        });
+
         it('should handle missing ID fields gracefully', () => {
             const testNotes = {
                 1: { projectID: null, attemptID: undefined },

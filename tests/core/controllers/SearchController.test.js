@@ -12,8 +12,13 @@ jest.mock('../../../src/core/data/NotesRepository.js', () => ({
 jest.mock('../../../src/core/utils/DateUtils.js', () => ({
   DateUtils: {
     formatDate: jest.fn((dateStr) => {
-      if (dateStr === '2024-01-15') return 'Jan 15, 2024';
-      return 'Invalid Date';
+      const dateMap = {
+        '2024-01-15': 'Jan 15, 2024',
+        '2024-03-10': 'Mar 10, 2024',
+        '2024-03-15': 'Mar 15, 2024',
+        '2024-03-20': 'Mar 20, 2024'
+      };
+      return dateMap[dateStr] || 'Invalid Date';
     })
   }
 }));
@@ -122,6 +127,71 @@ describe('SearchController', () => {
       expect(searchController.searchResults).toHaveLength(1);
       expect(searchController.searchResults[0].formattedDate).toBe('Jan 15, 2024');
       expect(searchController.searchResults[0].displayIndex).toBeDefined();
+    });
+
+    test('should preserve sorting order from NotesRepository', () => {
+      // Mock NotesRepository to return pre-sorted results
+      const sortedResults = [
+        {
+          dateKey: '2024-03-20',
+          id: '5',
+          note: { projectID: 'TEST', completed: true, canceled: false }
+        },
+        {
+          dateKey: '2024-03-20',
+          id: '3',
+          note: { projectID: 'TEST', completed: true, canceled: false }
+        },
+        {
+          dateKey: '2024-03-15',
+          id: '10',
+          note: { projectID: 'TEST', completed: true, canceled: false }
+        },
+        {
+          dateKey: '2024-03-15',
+          id: '2',
+          note: { projectID: 'TEST', completed: true, canceled: false }
+        },
+        {
+          dateKey: '2024-03-10',
+          id: '1',
+          note: { projectID: 'TEST', completed: true, canceled: false }
+        }
+      ];
+      
+      NotesRepository.searchNotes.mockReturnValue(sortedResults);
+      
+      // Mock getNotesForDate for display index calculation
+      NotesRepository.getNotesForDate.mockImplementation((dateKey) => {
+        if (dateKey === '2024-03-20') {
+          return {
+            '5': { completed: true, canceled: false },
+            '3': { completed: true, canceled: false }
+          };
+        } else if (dateKey === '2024-03-15') {
+          return {
+            '10': { completed: true, canceled: false },
+            '2': { completed: true, canceled: false }
+          };
+        } else if (dateKey === '2024-03-10') {
+          return {
+            '1': { completed: true, canceled: false }
+          };
+        }
+        return {};
+      });
+
+      const results = searchController.searchNotes('TEST');
+
+      // Verify that the order is preserved
+      expect(results).toHaveLength(5);
+      expect(results.map(r => ({ date: r.dateKey, id: r.id }))).toEqual([
+        { date: '2024-03-20', id: '5' },
+        { date: '2024-03-20', id: '3' },
+        { date: '2024-03-15', id: '10' },
+        { date: '2024-03-15', id: '2' },
+        { date: '2024-03-10', id: '1' }
+      ]);
     });
   });
 
