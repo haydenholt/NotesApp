@@ -180,8 +180,8 @@ export class ThemeManager {
                 
                 // Note states
                 note: {
-                    completed: 'bg-neutral-700',
-                    cancelled: 'bg-neutral-800',
+                    completed: 'bg-neutral-700',     // Same as active notes but with border distinction
+                    cancelled: 'bg-neutral-800',     // Darker for cancelled notes
                     cancelledText: 'text-red-400',
                     cancelledNumber: 'text-red-400'
                 },

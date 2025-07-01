@@ -2429,11 +2429,11 @@ describe('NoteApp', () => {
       const noteObj = noteApp.notes.find(n => n.container.dataset.noteId === note.dataset.noteId);
       noteObj.updateStyling();
       
-      // Verify editing state styling in dark theme (should use bg-neutral-800 for active notes)
-      expect(note.classList.contains('bg-neutral-800')).toBe(true);
+      // Verify editing state styling in dark theme (should use bg-neutral-700 for active notes to match text fields)
+      expect(note.classList.contains('bg-neutral-700')).toBe(true);
       expect(note.classList.contains('bg-white')).toBe(false);
       expect(note.classList.contains('bg-gray-50')).toBe(false);
-      expect(note.classList.contains('bg-neutral-700')).toBe(false);
+      expect(note.classList.contains('bg-neutral-800')).toBe(false);
       
       // Complete the note again
       const saveButton = note.querySelector('button[title="Save note"]');
@@ -2459,21 +2459,21 @@ describe('NoteApp', () => {
         // Switch to dark
         mockThemeManager.currentTheme = 'dark';
         mockThemeManager.getColor.mockImplementation((category, key) => {
-          if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+          if (category === 'background' && key === 'card') return 'bg-neutral-700';
           return 'dark-class';
         });
         noteObj.updateStyling();
-        expect(note.classList.contains('bg-neutral-800')).toBe(true);
+        expect(note.classList.contains('bg-neutral-700')).toBe(true);
         
         // Switch to light
         mockThemeManager.currentTheme = 'light';
         mockThemeManager.getColor.mockImplementation((category, key) => {
-          if (category === 'background' && key === 'primary') return 'bg-white';
+          if (category === 'background' && key === 'card') return 'bg-white';
           return 'light-class';
         });
         noteObj.updateStyling();
         expect(note.classList.contains('bg-white')).toBe(true);
-        expect(note.classList.contains('bg-neutral-800')).toBe(false);
+        expect(note.classList.contains('bg-neutral-700')).toBe(false);
       }
     });
 

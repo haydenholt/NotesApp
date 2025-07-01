@@ -318,10 +318,10 @@ describe('Note class', () => {
       // Update styling
       note.updateStyling();
       
-      // Verify dark theme classes are applied (should use bg-neutral-800 for note container)
-      expect(note.container.className).toContain('bg-neutral-800');
+      // Verify dark theme classes are applied (should use bg-neutral-700 for active note container)
+      expect(note.container.className).toContain('bg-neutral-700');
       expect(note.container.className).not.toContain('bg-white');
-      expect(note.container.className).not.toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('bg-neutral-800');
     });
 
     test('theme switching works correctly for completed notes', () => {
@@ -446,24 +446,28 @@ describe('Note class', () => {
       mockThemeManager.currentTheme = 'dark';
       mockThemeManager.getColor.mockImplementation((category, key) => {
         if (category === 'background' && key === 'primary') return 'bg-neutral-800';
+        if (category === 'background' && key === 'card') return 'bg-neutral-700';
         if (category === 'note' && key === 'completed') return 'bg-neutral-700';
         if (category === 'status' && key === 'success') return 'text-green-600';
         return 'default-dark-class';
       });
       
-      // Complete the note first
+      // Complete the note first - should use completed background (bg-neutral-700, same as active) with opacity
       note.updateToCompletedState(false);
       expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).toContain('opacity-75');
       expect(note.container.className).not.toContain('bg-neutral-800');
       
-      // Edit the note - should switch to darker background (bg-neutral-800)
+      // Edit the note - should still use card background (bg-neutral-700) without opacity
       note.updateToEditingState();
-      expect(note.container.className).toContain('bg-neutral-800');
-      expect(note.container.className).not.toContain('bg-neutral-700');
+      expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).not.toContain('opacity-75');
+      expect(note.container.className).not.toContain('bg-neutral-800');
       
-      // Complete again - should go back to lighter background (bg-neutral-700)
+      // Complete again - should stay with completed background (bg-neutral-700) with opacity
       note.updateToCompletedState(false);
       expect(note.container.className).toContain('bg-neutral-700');
+      expect(note.container.className).toContain('opacity-75');
       expect(note.container.className).not.toContain('bg-neutral-800');
     });
   });

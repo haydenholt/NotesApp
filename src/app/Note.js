@@ -48,10 +48,10 @@ export class Note {
         const noteContainer = document.createElement('div');
         const backgroundClass = completed ?
             (canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
-            this.themeManager.getColor('background', 'primary');
-        // Add reduced opacity and light border for completed notes to make them more distinct
-        const completedStyling = completed && !canceled ? `border ${this.themeManager.getColor('border', 'secondary')}` : '';
-        const cancelledStyling = completed && canceled ? `border-2 ${this.themeManager.getColor('status', 'error')} opacity-75` : '';
+            this.themeManager.getColor('background', 'card');
+        // Add subtle styling for completed notes
+        const completedStyling = completed && !canceled ? `opacity-75 border ${this.themeManager.getColor('border', 'secondary')}` : '';
+        const cancelledStyling = completed && canceled ? `border-2 ${this.themeManager.getColor('status', 'error')} opacity-60` : '';
         noteContainer.className = `flex mb-4 p-4 rounded-lg shadow relative group ${backgroundClass} ${completedStyling} ${cancelledStyling}`;
         noteContainer.dataset.noteId = number;
 
@@ -145,7 +145,7 @@ export class Note {
             'w-full rounded px-2 py-1 text-sm border',
             this.themeManager.getColor('border', 'secondary'),
             this.themeManager.getFocusClasses().combined,
-            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
             completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
         );
         attemptIDInput.className = attemptIDClasses;
@@ -170,7 +170,7 @@ export class Note {
             'w-full rounded px-2 py-1 text-sm border',
             this.themeManager.getColor('border', 'secondary'),
             this.themeManager.getFocusClasses().combined,
-            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
             completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
         );
         projectIDInput.className = projectIDClasses;
@@ -195,7 +195,7 @@ export class Note {
             'w-full rounded px-2 py-1 text-sm border',
             this.themeManager.getColor('border', 'secondary'),
             this.themeManager.getFocusClasses().combined,
-            completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+            completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
             completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
         );
         operationIDInput.className = operationIDClasses;
@@ -247,7 +247,7 @@ export class Note {
                 'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border',
                 this.themeManager.getColor('border', 'secondary'),
                 this.themeManager.getFocusClasses().combined,
-                completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
                 completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
             );
             textarea.className = textareaClasses;
@@ -479,10 +479,10 @@ export class Note {
      * Update all styling based on current state
      */
     updateStyling() {
-        // Update background
+        // Update background - use card background for active notes to match text fields
         const backgroundClass = this.completed ?
             (this.canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
-            this.themeManager.getColor('background', 'primary');
+            this.themeManager.getColor('background', 'card');
         
         // Remove all possible background classes more comprehensively
         // First remove hardcoded classes
@@ -523,6 +523,20 @@ export class Note {
             this.container.classList.add(backgroundClass);
         }
         
+        // Remove old opacity and border classes
+        this.container.classList.remove('opacity-75', 'opacity-60', 'border', 'border-2');
+        
+        // Add subtle styling for completed notes
+        if (this.completed && !this.canceled) {
+            this.container.classList.add('opacity-75', 'border');
+            const borderClass = this.themeManager.getColor('border', 'secondary');
+            if (borderClass) this.container.classList.add(borderClass);
+        } else if (this.completed && this.canceled) {
+            this.container.classList.add('opacity-60', 'border-2');
+            const errorClass = this.themeManager.getColor('status', 'error');
+            if (errorClass) this.container.classList.add(errorClass);
+        }
+        
         // Update input and textarea styling - reconstruct classes completely
         Object.values(this.elements).forEach(element => {
             // Update disabled state
@@ -534,7 +548,7 @@ export class Note {
                     'w-full rounded px-2 py-1 text-sm border',
                     this.themeManager.getColor('border', 'secondary'),
                     this.themeManager.getFocusClasses().combined,
-                    this.completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                    this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
                     this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
                 ].filter(cls => cls && cls.trim() !== '');
                 
@@ -550,7 +564,7 @@ export class Note {
                     paddingClass,
                     this.themeManager.getColor('border', 'secondary'),
                     this.themeManager.getFocusClasses().combined,
-                    this.completed ? this.themeManager.getColor('background', 'tertiary') : this.themeManager.getColor('background', 'card'),
+                    this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
                     this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
                 ].filter(cls => cls && cls.trim() !== '');
                 
