@@ -29,15 +29,59 @@ describe('TimerRepository', () => {
         jest.clearAllMocks();
     });
 
-    describe('getTimerKey', () => {
-        it('should generate correct timer key', () => {
-            const key = TimerRepository.getTimerKey('2024-01-15', 'projectTraining');
-            expect(key).toBe('timer_2024-01-15_projectTraining');
+    describe('getOffPlatformKey', () => {
+        it('should generate correct off-platform key', () => {
+            const key = TimerRepository.getOffPlatformKey('2024-01-15');
+            expect(key).toBe('offPlatform_2024-01-15');
+        });
+    });
+
+    describe('getOffPlatformData', () => {
+        it('should return default structure for non-existent data', () => {
+            mockLocalStorage.getItem.mockReturnValue(null);
+            
+            const data = TimerRepository.getOffPlatformData('2024-01-15');
+            
+            expect(data).toEqual({
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 0 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            });
         });
 
-        it('should handle different categories', () => {
-            expect(TimerRepository.getTimerKey('2024-01-15', 'sheetwork')).toBe('timer_2024-01-15_sheetwork');
-            expect(TimerRepository.getTimerKey('2024-01-15', 'blocked')).toBe('timer_2024-01-15_blocked');
+        it('should return saved data for existing key', () => {
+            const savedData = {
+                timers: {
+                    projectTraining: { startTime: 1000000, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 200 },
+                    blocked: { startTime: null, totalSeconds: 100 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(savedData));
+
+            const data = TimerRepository.getOffPlatformData('2024-01-15');
+            
+            expect(data).toEqual(savedData);
+        });
+
+        it('should handle corrupted JSON gracefully', () => {
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+            mockLocalStorage.getItem.mockReturnValue('invalid json');
+
+            const data = TimerRepository.getOffPlatformData('2024-01-15');
+            
+            expect(data).toEqual({
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 0 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            });
+            expect(consoleSpy).toHaveBeenCalledWith('Error loading off-platform data:', '2024-01-15', expect.any(Error));
+            
+            consoleSpy.mockRestore();
         });
     });
 
@@ -54,15 +98,21 @@ describe('TimerRepository', () => {
         });
 
         it('should return saved state for existing timer', () => {
-            const savedState = {
-                startTime: Date.now(),
-                totalTime: 300
+            const savedData = {
+                timers: {
+                    projectTraining: { startTime: 1000000, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
             };
-            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(savedState));
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(savedData));
 
             const state = TimerRepository.getTimerState('2024-01-15', 'projectTraining');
             
-            expect(state).toEqual(savedState);
+            expect(state).toEqual({
+                startTime: 1000000,
+                totalTime: 300
+            });
         });
 
         it('should handle corrupted JSON gracefully', () => {
@@ -75,7 +125,7 @@ describe('TimerRepository', () => {
                 startTime: null,
                 totalTime: 0
             });
-            expect(consoleSpy).toHaveBeenCalledWith('Error loading timer state:', '2024-01-15', 'projectTraining', expect.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('Error loading off-platform data:', '2024-01-15', expect.any(Error));
             
             consoleSpy.mockRestore();
         });
@@ -84,29 +134,22 @@ describe('TimerRepository', () => {
     describe('saveTimerState', () => {
         it('should save timer state successfully', () => {
             const state = {
-                startTime: Date.now(),
+                startTime: 1000000,
                 totalTime: 150
             };
 
             const result = TimerRepository.saveTimerState('2024-01-15', 'projectTraining', state);
             
             expect(result).toBe(true);
-            expect(mockLocalStorage.setItem).toHaveBeenCalledWith('timer_2024-01-15_projectTraining', JSON.stringify(state));
+            expect(mockLocalStorage.setItem).toHaveBeenCalledWith('offPlatform_2024-01-15', expect.stringContaining('"projectTraining"'));
         });
 
         it('should handle save errors gracefully', () => {
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
             
             // Mock localStorage.setItem to throw an error
-            const mockSetItem = jest.fn(() => {
+            mockLocalStorage.setItem.mockImplementation(() => {
                 throw new Error('Storage quota exceeded');
-            });
-            Object.defineProperty(window, 'localStorage', {
-                value: {
-                    ...localStorage,
-                    setItem: mockSetItem
-                },
-                writable: true
             });
 
             const result = TimerRepository.saveTimerState('2024-01-15', 'projectTraining', {});
@@ -120,24 +163,23 @@ describe('TimerRepository', () => {
 
     describe('getAllTimerStatesForDate', () => {
         it('should return states for all categories', () => {
-            // Set up some timer states
-            const projectState = { startTime: null, totalTime: 100 };
-            const sheetworkState = { startTime: Date.now(), totalTime: 200 };
-            const blockedState = { startTime: null, totalTime: 300 };
+            // Set up off-platform data
+            const offPlatformData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 100 },
+                    sheetwork: { startTime: 1000000, totalSeconds: 200 },
+                    blocked: { startTime: null, totalSeconds: 300 }
+                }
+            };
             
-            mockLocalStorage.getItem.mockImplementation((key) => {
-                if (key === 'timer_2024-01-15_projectTraining') return JSON.stringify(projectState);
-                if (key === 'timer_2024-01-15_sheetwork') return JSON.stringify(sheetworkState);
-                if (key === 'timer_2024-01-15_blocked') return JSON.stringify(blockedState);
-                return null;
-            });
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(offPlatformData));
 
             const states = TimerRepository.getAllTimerStatesForDate('2024-01-15');
             
             expect(states).toEqual({
-                projectTraining: projectState,
-                sheetwork: sheetworkState,
-                blocked: blockedState
+                projectTraining: { startTime: null, totalTime: 100 },
+                sheetwork: { startTime: 1000000, totalTime: 200 },
+                blocked: { startTime: null, totalTime: 300 }
             });
         });
 
@@ -174,9 +216,28 @@ describe('TimerRepository', () => {
         });
 
         it('should preserve total time when starting', () => {
-            // Set up existing state with total time
-            const existingState = { startTime: null, totalTime: 500 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(existingState));
+            // Set up existing off-platform data with total time
+            const existingData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 500 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            
+            // First call is from startTimer -> getTimerState -> getOffPlatformData
+            // Second call is from final state check -> getTimerState -> getOffPlatformData  
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(existingData));
+            
+            // After startTimer saves, we need the updated data for the final check
+            const updatedData = {
+                timers: {
+                    projectTraining: { startTime: 1000000, totalSeconds: 500 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(updatedData));
 
             const result = TimerRepository.startTimer('2024-01-15', 'projectTraining');
             
@@ -198,9 +259,27 @@ describe('TimerRepository', () => {
         });
 
         it('should stop running timer and add elapsed time', () => {
-            // Set up running timer that started 1000 seconds ago
-            const runningState = { startTime: 1000000, totalTime: 300 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(runningState));
+            // Set up running timer that started 1000 seconds ago (2000000 - 1000000 = 1000 seconds)
+            const runningData = {
+                timers: {
+                    projectTraining: { startTime: 1000000, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            
+            // First call from stopTimer -> getTimerState -> getOffPlatformData
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(runningData));
+            
+            // After stopTimer saves, we need the updated data for the final check
+            const stoppedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 1300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(stoppedData));
 
             const result = TimerRepository.stopTimer('2024-01-15', 'projectTraining');
             
@@ -213,8 +292,14 @@ describe('TimerRepository', () => {
 
         it('should handle stopping already stopped timer', () => {
             // Set up stopped timer
-            const stoppedState = { startTime: null, totalTime: 300 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(stoppedState));
+            const stoppedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(stoppedData));
 
             const result = TimerRepository.stopTimer('2024-01-15', 'projectTraining');
             
@@ -257,8 +342,26 @@ describe('TimerRepository', () => {
 
         it('should preserve running state when editing running timer', () => {
             // Set up running timer
-            const runningState = { startTime: 2000000, totalTime: 100 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(runningState));
+            const runningData = {
+                timers: {
+                    projectTraining: { startTime: 2000000, totalSeconds: 100 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            
+            // First call from setTimer -> getTimerState -> getOffPlatformData
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(runningData));
+            
+            // After setTimer saves, we need the updated data for the final check
+            const updatedData = {
+                timers: {
+                    projectTraining: { startTime: 3000000, totalSeconds: 600 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(updatedData));
 
             const result = TimerRepository.setTimer('2024-01-15', 'projectTraining', 0, 10, 0);
             
@@ -271,8 +374,26 @@ describe('TimerRepository', () => {
 
         it('should keep stopped state when editing stopped timer', () => {
             // Set up stopped timer
-            const stoppedState = { startTime: null, totalTime: 100 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(stoppedState));
+            const stoppedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 100 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            
+            // First call from setTimer -> getTimerState -> getOffPlatformData
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(stoppedData));
+            
+            // After setTimer saves, we need the updated data for the final check
+            const updatedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValueOnce(JSON.stringify(updatedData));
 
             const result = TimerRepository.setTimer('2024-01-15', 'projectTraining', 0, 5, 0);
             
@@ -294,8 +415,14 @@ describe('TimerRepository', () => {
         });
 
         it('should return total time for stopped timer', () => {
-            const stoppedState = { startTime: null, totalTime: 300 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(stoppedState));
+            const stoppedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 300 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(stoppedData));
 
             const seconds = TimerRepository.getCurrentSeconds('2024-01-15', 'projectTraining');
             
@@ -303,9 +430,15 @@ describe('TimerRepository', () => {
         });
 
         it('should return total time plus elapsed for running timer', () => {
-            // Timer started 1000 seconds ago with 500 total time
-            const runningState = { startTime: 4000000, totalTime: 500 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(runningState));
+            // Timer started 1000 seconds ago with 500 total time (5000000 - 4000000 = 1000 seconds)
+            const runningData = {
+                timers: {
+                    projectTraining: { startTime: 4000000, totalSeconds: 500 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(runningData));
 
             const seconds = TimerRepository.getCurrentSeconds('2024-01-15', 'projectTraining');
             
@@ -321,8 +454,14 @@ describe('TimerRepository', () => {
 
     describe('isRunning', () => {
         it('should return true for running timer', () => {
-            const runningState = { startTime: Date.now(), totalTime: 100 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(runningState));
+            const runningData = {
+                timers: {
+                    projectTraining: { startTime: Date.now(), totalSeconds: 100 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(runningData));
 
             const running = TimerRepository.isRunning('2024-01-15', 'projectTraining');
             
@@ -330,8 +469,14 @@ describe('TimerRepository', () => {
         });
 
         it('should return false for stopped timer', () => {
-            const stoppedState = { startTime: null, totalTime: 100 };
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(stoppedState));
+            const stoppedData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 100 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(stoppedData));
 
             const running = TimerRepository.isRunning('2024-01-15', 'projectTraining');
             
@@ -356,13 +501,15 @@ describe('TimerRepository', () => {
 
         it('should return sum of all category times', () => {
             // Set up different states for each category
-            const projectState = { startTime: null, totalTime: 300 };
-            const sheetworkState = { startTime: 5000000, totalTime: 200 }; // Running for 1000 seconds
-            const blockedState = { startTime: null, totalTime: 150 };
+            const offPlatformData = {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 300 },
+                    sheetwork: { startTime: 5000000, totalSeconds: 200 }, // Running for 1000 seconds (6000000 - 5000000)
+                    blocked: { startTime: null, totalSeconds: 150 }
+                }
+            };
             
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(projectState));
-            localStorage.setItem('timer_2024-01-15_sheetwork', JSON.stringify(sheetworkState));
-            localStorage.setItem('timer_2024-01-15_blocked', JSON.stringify(blockedState));
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(offPlatformData));
 
             const total = TimerRepository.getTotalSecondsForDate('2024-01-15');
             
@@ -377,13 +524,15 @@ describe('TimerRepository', () => {
 
         it('should handle mix of running and stopped timers', () => {
             // One running, two stopped
-            const projectState = { startTime: 5500000, totalTime: 100 }; // Running for 500 seconds
-            const sheetworkState = { startTime: null, totalTime: 200 };
-            const blockedState = { startTime: null, totalTime: 300 };
+            const offPlatformData = {
+                timers: {
+                    projectTraining: { startTime: 5500000, totalSeconds: 100 }, // Running for 500 seconds (6000000 - 5500000)
+                    sheetwork: { startTime: null, totalSeconds: 200 },
+                    blocked: { startTime: null, totalSeconds: 300 }
+                }
+            };
             
-            localStorage.setItem('timer_2024-01-15_projectTraining', JSON.stringify(projectState));
-            localStorage.setItem('timer_2024-01-15_sheetwork', JSON.stringify(sheetworkState));
-            localStorage.setItem('timer_2024-01-15_blocked', JSON.stringify(blockedState));
+            mockLocalStorage.getItem.mockReturnValue(JSON.stringify(offPlatformData));
 
             const total = TimerRepository.getTotalSecondsForDate('2024-01-15');
             

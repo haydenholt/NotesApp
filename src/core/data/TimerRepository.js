@@ -1,13 +1,48 @@
 export class TimerRepository {
-    static getTimerKey(dateKey, category) {
-        return `timer_${dateKey}_${category}`;
+    static getOffPlatformKey(dateKey) {
+        return `offPlatform_${dateKey}`;
+    }
+
+    static getOffPlatformData(dateKey) {
+        try {
+            const key = this.getOffPlatformKey(dateKey);
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : {
+                timers: {
+                    projectTraining: {
+                        startTime: null,
+                        totalSeconds: 0
+                    },
+                    sheetwork: {
+                        startTime: null,
+                        totalSeconds: 0
+                    },
+                    blocked: {
+                        startTime: null,
+                        totalSeconds: 0
+                    }
+                }
+            };
+        } catch (error) {
+            console.error('Error loading off-platform data:', dateKey, error);
+            return {
+                timers: {
+                    projectTraining: { startTime: null, totalSeconds: 0 },
+                    sheetwork: { startTime: null, totalSeconds: 0 },
+                    blocked: { startTime: null, totalSeconds: 0 }
+                }
+            };
+        }
     }
 
     static getTimerState(dateKey, category) {
         try {
-            const key = this.getTimerKey(dateKey, category);
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : {
+            const offPlatformData = this.getOffPlatformData(dateKey);
+            const timer = offPlatformData.timers[category];
+            return timer ? {
+                startTime: timer.startTime,
+                totalTime: timer.totalSeconds
+            } : {
                 startTime: null,
                 totalTime: 0
             };
@@ -22,8 +57,13 @@ export class TimerRepository {
 
     static saveTimerState(dateKey, category, state) {
         try {
-            const key = this.getTimerKey(dateKey, category);
-            localStorage.setItem(key, JSON.stringify(state));
+            const offPlatformData = this.getOffPlatformData(dateKey);
+            offPlatformData.timers[category] = {
+                startTime: state.startTime,
+                totalSeconds: state.totalTime
+            };
+            const key = this.getOffPlatformKey(dateKey);
+            localStorage.setItem(key, JSON.stringify(offPlatformData));
             return true;
         } catch (error) {
             console.error('Error saving timer state:', dateKey, category, error);

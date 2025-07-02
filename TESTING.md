@@ -29,32 +29,162 @@ npm run test:coverage
 ## Test Structure
 
 Tests are organized in the `tests` directory and mirror the structure of the `src` directory:
-- `tests/components/` contains tests for components in `src/components/`
-- `tests/app/` contains tests for application logic in `src/app/`
+
+```
+tests/
+├── core/                   # Business Logic & Data Tests
+│   ├── controllers/        # Controller tests
+│   ├── data/              # Repository and service tests
+│   ├── state/             # State management tests
+│   └── utils/             # Utility function tests
+└── ui/                    # User Interface Tests
+    ├── components/        # UI component tests
+    └── views/            # View component tests
+```
+
 - Test files are named after the module they test, with `.test.js` suffix
+- Integration tests may be placed at the appropriate directory level
 
 ## Writing Tests
 
-### Test File Template
+### Test File Templates
 
+#### UI Component Test
 ```javascript
-import ComponentToTest from '../../src/components/ComponentToTest.js';
+import ComponentToTest from '../../../src/ui/components/ComponentToTest.js';
 
 describe('ComponentToTest', () => {
+  let container;
   let componentInstance;
+  let mockThemeManager;
   
   beforeEach(() => {
-    // Setup for each test
-    componentInstance = new ComponentToTest();
+    // Setup DOM container
+    container = document.createElement('div');
+    container.id = 'test-container';
+    document.body.appendChild(container);
+    
+    // Mock ThemeManager if needed
+    mockThemeManager = {
+      getPrimaryButtonClasses: jest.fn(() => 'mock-button-classes'),
+      getInputClasses: jest.fn(() => 'mock-input-classes')
+    };
+    
+    // Create component instance
+    componentInstance = new ComponentToTest('test-container', mockThemeManager);
   });
   
   afterEach(() => {
-    // Cleanup after each test
+    // Cleanup DOM
+    document.body.removeChild(container);
   });
   
-  test('should do something specific', () => {
-    // Test specific functionality
-    expect(componentInstance.someMethod()).toBe(expectedValue);
+  test('should render with theme classes', () => {
+    expect(mockThemeManager.getPrimaryButtonClasses).toHaveBeenCalled();
+  });
+});
+```
+
+#### Controller Test
+```javascript
+import ControllerToTest from '../../../src/core/controllers/ControllerToTest.js';
+
+describe('ControllerToTest', () => {
+  let controller;
+  let mockRepository;
+  let mockState;
+  
+  beforeEach(() => {
+    // Mock dependencies
+    mockRepository = {
+      save: jest.fn(),
+      load: jest.fn(() => ({}))
+    };
+    
+    mockState = {
+      update: jest.fn(),
+      get: jest.fn()
+    };
+    
+    // Create controller instance
+    controller = new ControllerToTest(mockRepository, mockState);
+  });
+  
+  test('should save data through repository', async () => {
+    const testData = { id: 1, content: 'test' };
+    await controller.save(testData);
+    
+    expect(mockRepository.save).toHaveBeenCalledWith(testData);
+  });
+});
+```
+
+#### Repository Test
+```javascript
+import RepositoryToTest from '../../../src/core/data/RepositoryToTest.js';
+
+describe('RepositoryToTest', () => {
+  let repository;
+  
+  beforeEach(() => {
+    // Clear localStorage
+    localStorage.clear();
+    
+    // Create repository instance
+    repository = new RepositoryToTest();
+  });
+  
+  afterEach(() => {
+    localStorage.clear();
+  });
+  
+  test('should save and retrieve data from localStorage', () => {
+    const testData = { id: 1, content: 'test note' };
+    const key = '2024-01-15';
+    
+    repository.save(key, testData);
+    const retrieved = repository.load(key);
+    
+    expect(retrieved).toEqual(testData);
+  });
+  
+  test('should return null for non-existent key', () => {
+    const result = repository.load('non-existent');
+    expect(result).toBeNull();
+  });
+});
+```
+
+#### State Management Test
+```javascript
+import StateToTest from '../../../src/core/state/StateToTest.js';
+
+describe('StateToTest', () => {
+  let state;
+  
+  beforeEach(() => {
+    state = new StateToTest();
+  });
+  
+  test('should update state and notify listeners', () => {
+    const mockListener = jest.fn();
+    state.subscribe(mockListener);
+    
+    const newData = { key: 'value' };
+    state.update(newData);
+    
+    expect(state.get()).toEqual(newData);
+    expect(mockListener).toHaveBeenCalledWith(newData);
+  });
+  
+  test('should unsubscribe listeners', () => {
+    const mockListener = jest.fn();
+    const unsubscribe = state.subscribe(mockListener);
+    
+    unsubscribe();
+    state.update({ key: 'value' });
+    
+    expect(mockListener).not.toHaveBeenCalled();
   });
 });
 ```
@@ -65,13 +195,22 @@ For DOM interaction tests, use the `@testing-library/dom` utilities:
 
 ```javascript
 import { fireEvent } from '@testing-library/dom';
+import Component from '../../../src/ui/components/Component.js';
+import ThemeManager from '../../../src/ui/components/ThemeManager.js';
 
-test('should respond to button click', () => {
+test('should respond to button click with themed styling', () => {
   // Setup DOM
-  document.body.innerHTML = `<button id="testButton">Click Me</button>`;
+  document.body.innerHTML = '<div id="container"></div>';
   
-  // Setup event listener
-  const button = document.getElementById('testButton');
+  // Create ThemeManager instance
+  const themeManager = new ThemeManager();
+  
+  // Create component with theme
+  const component = new Component('container', themeManager);
+  component.render();
+  
+  // Find button with theme classes
+  const button = document.querySelector(`.${themeManager.getPrimaryButtonClasses().split(' ')[0]}`);
   const mockCallback = jest.fn();
   button.addEventListener('click', mockCallback);
   
@@ -80,6 +219,28 @@ test('should respond to button click', () => {
   
   // Verify callback was called
   expect(mockCallback).toHaveBeenCalled();
+});
+
+test('should update theme when theme changes', () => {
+  document.body.innerHTML = '<div id="container"></div>';
+  
+  const themeManager = new ThemeManager();
+  const component = new Component('container', themeManager);
+  component.render();
+  
+  // Get initial theme classes
+  const button = document.querySelector('button');
+  const initialClasses = button.className;
+  
+  // Change theme
+  themeManager.setTheme('dark');
+  
+  // Trigger theme change event
+  document.dispatchEvent(new Event('themeChanged'));
+  
+  // Verify classes updated
+  expect(button.className).not.toBe(initialClasses);
+  expect(button.className).toContain(themeManager.getPrimaryButtonClasses());
 });
 ```
 

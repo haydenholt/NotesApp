@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test:coverage` - Generate coverage report
 
 **Local Development:**
-- `python3 -m http.server 8001` - Start local server at http://localhost:8001
+- `npm start:claude` - Start local server at http://localhost:8002
 - No build or compilation needed - vanilla JavaScript application
 
 ## Architecture Overview
@@ -96,9 +96,60 @@ src/
 ### Data Persistence
 
 - **localStorage** is the primary data store
-- Notes are stored per date with keys like `notes_2024-01-15`
-- Timer states stored separately with date-specific keys
+- Notes are stored per date with keys like `2024-01-15`
+- Off-platform timer states stored with keys like `offPlatform_2024-01-15`
 - No backend or database - fully client-side application
+
+#### Official localStorage Format
+
+**Note Storage:**
+```javascript
+// Key: "2025-01-01" (ISO date format)
+{
+  "1": {                              // Note ID (sequential numbers)
+    "discussion": "Note content text",
+    "startTimestamp": 1740514138715,   // Unix timestamp in milliseconds
+    "endTimestamp": 1740514141826,
+    "completed": true,                 // Boolean completion status
+    "projectID": "optional_project",   // Optional project identifier
+    "attemptID": "optional_attempt",   // Optional attempt identifier  
+    "operationID": "optional_op",      // Optional operation identifier
+    "additionalTime": 0,               // Additional time in seconds
+    "hasStarted": true,                // Boolean if note has been started
+    "canceled": false,                 // Boolean cancellation status
+    "failingIssues": "text",          // Optional failing issues
+    "nonFailingIssues": "text",       // Optional non-failing issues
+    "seconds": 226                     // Duration in seconds (legacy field)
+  }
+}
+```
+
+**Off-Platform Timer Storage:**
+```javascript
+// Key: "offPlatform_2025-01-01" (offPlatform_ + ISO date)
+{
+  "timers": {
+    "projectTraining": {
+      "startTime": null,              // Unix timestamp when started, null when stopped
+      "totalSeconds": 0               // Total accumulated seconds
+    },
+    "sheetwork": {
+      "startTime": null,
+      "totalSeconds": 0
+    },
+    "blocked": {
+      "startTime": null,
+      "totalSeconds": 0
+    }
+  }
+}
+```
+
+**Theme Storage:**
+```javascript
+// Key: "app_theme"
+// Value: "light" | "dark"
+```
 
 ### Testing Structure
 

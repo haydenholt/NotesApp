@@ -8,6 +8,7 @@ import NavigationManager from './ui/components/NavigationManager.js';
 import PayAnalysis from './ui/components/PayAnalysis.js';
 import HelpOverlay from './ui/components/HelpOverlay.js';
 import ThemeManager from './ui/components/ThemeManager.js';
+import { BackupService } from './core/utils/BackupService.js';
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize theme manager first
@@ -20,6 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const navigationManager = new NavigationManager(viewManager);
     const payAnalysis = new PayAnalysis(themeManager);
     const helpOverlay = new HelpOverlay(themeManager);
+    
+    // Initialize backup service
+    const backupService = new BackupService();
+    backupService.initialize();
 
     // Set up theme toggle
     const themeToggle = document.getElementById('themeToggle');
@@ -52,4 +57,5 @@ document.addEventListener('DOMContentLoaded', () => {
     window.navigationManager = navigationManager;
     window.payAnalysis = payAnalysis;
     window.helpOverlay = helpOverlay;
+    window.backupService = backupService;
 });
