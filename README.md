@@ -85,33 +85,5 @@ This will start:
 - **Ctrl+Shift+V**: Paste clipboard content as formatted bullet point `- [content]`
 - **F1**: Cancel the current active note and copy cancellation message to clipboard
 
-## Writing Tool Integration
-
-Timer Notes is fully compatible with popular writing enhancement tools:
-- **Quillbot**: Use for paraphrasing and grammar checking
-- **Grammarly**: Get real-time writing suggestions and corrections
-
-## Testing
-
-Run the test suite:
-```bash
-npm test                # Run all tests
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Generate coverage report
-```
-
-## Development
-
-The application uses a clean, modular architecture:
-- **Business Logic** (`src/core/`) - Controllers, data management, and state
-- **User Interface** (`src/ui/`) - Components and views with theme support
-- **Tests** (`tests/`) - Comprehensive test coverage
-
-Build CSS (if modifying Tailwind styles):
-```bash
-npm run build:css          # Build once
-npm run build:css:watch    # Watch for changes
-```
-
 ## Screenshot
 ![alt text](public/images/screenshot_2.png)
