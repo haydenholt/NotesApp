@@ -1,3 +1,9 @@
+import { TextEncoder, TextDecoder } from 'util';
+
+// Add polyfills for Node.js environment
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
 // Mock the global Diff object for tests
 global.Diff = {
   diffLines: jest.fn((original, modified) => {

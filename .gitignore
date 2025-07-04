@@ -29,4 +29,7 @@ Thumbs.db
 
 # Distribution files
 dist/
-build/ 
+build/
+
+# Backups
+backups/ 

@@ -4,6 +4,9 @@
   "description": "A web-based note-taking application with time tracking and text comparison features",
   "main": "src/main.js",
   "scripts": {
+    "start": "node start-with-backup.js",
+    "start:claude": "python3 -m http.server 8002",
+    "dev": "python3 -m http.server 8080",
     "build:css": "npx tailwindcss -i ./src/input.css -o ./dist/output.css",
     "build:css:watch": "npx tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
     "test": "jest",
