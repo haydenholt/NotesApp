@@ -977,6 +977,20 @@ export class ThemeManager {
         const summaryBg = this.currentTheme === 'dark' ? 'bg-neutral-700' : 'bg-gray-50';
         const summaryBorder = this.currentTheme === 'dark' ? 'border-neutral-600' : 'border-gray-200';
         
+        // Use darker, more saturated colors for dark mode
+        const addedLine = this.currentTheme === 'dark' 
+            ? 'bg-green-900 border-l-2 border-green-500 pl-2' 
+            : 'bg-green-50 border-l-2 border-green-300 pl-2';
+        const addedText = this.currentTheme === 'dark' 
+            ? 'bg-green-700 text-green-100 font-medium' 
+            : 'bg-green-200 font-medium';
+        const removedLine = this.currentTheme === 'dark' 
+            ? 'bg-red-900 border-l-2 border-red-500 pl-2' 
+            : 'bg-red-50 border-l-2 border-red-300 pl-2';
+        const removedText = this.currentTheme === 'dark' 
+            ? 'bg-red-700 text-red-100 font-medium line-through' 
+            : 'bg-red-200 font-medium line-through';
+        
         return {
             noDiff: this.combineClasses(
                 this.getColor('background', 'secondary'),
@@ -998,12 +1012,12 @@ export class ThemeManager {
                 this.getColor('text', 'secondary')
             ),
             added: {
-                line: 'bg-green-50 border-l-2 border-green-300 pl-2',
-                text: 'bg-green-200 font-medium'
+                line: addedLine,
+                text: addedText
             },
             removed: {
-                line: 'bg-red-50 border-l-2 border-red-300 pl-2',
-                text: 'bg-red-200 font-medium line-through'
+                line: removedLine,
+                text: removedText
             }
         };
     }

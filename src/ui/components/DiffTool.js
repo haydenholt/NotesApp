@@ -20,6 +20,7 @@ export class DiffTool {
             const scrollPosition = event.detail?.scrollPosition ?? (window.pageYOffset || document.documentElement.scrollTop);
             
             this.updateButtonStyling();
+            this.updateDiffDisplay();
             
             // Restore scroll position after styling updates
             requestAnimationFrame(() => {
@@ -57,6 +58,14 @@ export class DiffTool {
                 'py-2 px-4 rounded-md font-medium text-sm transition-colors focus:outline-none'
             );
             this.clearButton.className = classes;
+        }
+    }
+    
+    updateDiffDisplay() {
+        // Re-render the diff content with updated theme classes
+        // Only if there's currently content to update
+        if (this.resultContainer && this.resultContainer.innerHTML.trim() !== '') {
+            this.compareTexts();
         }
     }
     
@@ -289,10 +298,13 @@ export class DiffTool {
         let output = '<div class="font-mono text-sm leading-relaxed whitespace-pre-wrap">';
         
         changes.forEach(change => {
+            const diffClasses = this.themeManager?.getDiffClasses();
             if (change.added) {
-                output += `<span class="bg-green-200 font-medium px-1">${this.escapeHtml(change.value)}</span>`;
+                const addedText = diffClasses?.added.text || 'bg-green-200 font-medium';
+                output += `<span class="${addedText} px-1">${this.escapeHtml(change.value)}</span>`;
             } else if (change.removed) {
-                output += `<span class="bg-red-200 font-medium line-through px-1">${this.escapeHtml(change.value)}</span>`;
+                const removedText = diffClasses?.removed.text || 'bg-red-200 font-medium line-through';
+                output += `<span class="${removedText} px-1">${this.escapeHtml(change.value)}</span>`;
             } else {
                 output += this.escapeHtml(change.value);
             }
@@ -311,10 +323,13 @@ export class DiffTool {
         let output = '<div class="font-mono text-sm leading-relaxed whitespace-pre-wrap">';
         
         changes.forEach(change => {
+            const diffClasses = this.themeManager?.getDiffClasses();
             if (change.added) {
-                output += `<span class="bg-green-200 font-medium">${this.escapeHtml(change.value)}</span>`;
+                const addedText = diffClasses?.added.text || 'bg-green-200 font-medium';
+                output += `<span class="${addedText}">${this.escapeHtml(change.value)}</span>`;
             } else if (change.removed) {
-                output += `<span class="bg-red-200 font-medium line-through">${this.escapeHtml(change.value)}</span>`;
+                const removedText = diffClasses?.removed.text || 'bg-red-200 font-medium line-through';
+                output += `<span class="${removedText}">${this.escapeHtml(change.value)}</span>`;
             } else {
                 output += this.escapeHtml(change.value);
             }
@@ -342,10 +357,13 @@ export class DiffTool {
         let output = '<div class="font-mono text-sm leading-relaxed whitespace-pre-wrap">';
         
         changes.forEach(change => {
+            const diffClasses = this.themeManager?.getDiffClasses();
             if (change.added) {
-                output += `<span class="bg-green-200 font-medium">${this.escapeHtml(change.value)}</span>`;
+                const addedText = diffClasses?.added.text || 'bg-green-200 font-medium';
+                output += `<span class="${addedText}">${this.escapeHtml(change.value)}</span>`;
             } else if (change.removed) {
-                output += `<span class="bg-red-200 font-medium line-through">${this.escapeHtml(change.value)}</span>`;
+                const removedText = diffClasses?.removed.text || 'bg-red-200 font-medium line-through';
+                output += `<span class="${removedText}">${this.escapeHtml(change.value)}</span>`;
             } else {
                 output += this.escapeHtml(change.value);
             }
