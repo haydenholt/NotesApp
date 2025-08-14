@@ -38,8 +38,10 @@ export class SystemPromptView {
         const customTemplates = templates.filter(t => !t.isBuiltIn);
         const builtInTemplates = templates.filter(t => t.isBuiltIn);
         
+        const allTemplates = [...builtInTemplates, ...customTemplates];
+        
         return `
-            <div class="${cardClasses} shadow-sm rounded-md p-6 mb-6">
+            <div class="max-w-4xl mx-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-lg font-medium text-gray-700">System Prompt Templates</h2>
                     <button id="createTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
@@ -47,9 +49,8 @@ export class SystemPromptView {
                     </button>
                 </div>
                 
-                <div class="space-y-8">
-                    ${builtInTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
-                    ${customTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
+                <div class="space-y-6">
+                    ${allTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
                 </div>
             </div>
         `;
@@ -59,24 +60,21 @@ export class SystemPromptView {
         const isEvaluationTemplate = template.isEvaluationTemplate;
         
         return `
-            <div class="border border-gray-300 rounded-md p-6 bg-gray-50">
+            <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 mb-6">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="text-lg font-medium text-gray-800">${template.name}</h3>
-                            ${template.isBuiltIn ? '<span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Built-in</span>' : '<span class="inline-block px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Custom</span>'}
                         </div>
                         ${template.description ? `<p class="text-sm text-gray-600 mt-1">${template.description}</p>` : ''}
                     </div>
                     <div class="flex gap-2">
-                        ${!template.isBuiltIn ? `
-                            <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
-                                ✏️
-                            </button>
-                            <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">
-                                🗑️
-                            </button>
-                        ` : ''}
+                        <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
+                            ✎
+                        </button>
+                        <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">
+                            ×
+                        </button>
                     </div>
                 </div>
 
@@ -141,8 +139,7 @@ export class SystemPromptView {
                                 class="w-full ${heightClass} p-3 ${fieldClass} ${focusClasses} text-sm" 
                                 placeholder="${placeholder.description || placeholder.name}..."
                                 data-template-id="${template.id}"
-                                data-placeholder-name="${placeholder.name}">
-                            ${isTextarea ? `</textarea>` : ''}
+                                data-placeholder-name="${placeholder.name}">${isTextarea ? `</textarea>` : ''}
                         </div>
                     `;
                 }).join('')}
@@ -169,9 +166,9 @@ export class SystemPromptView {
         
         return `
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" id="templateEditorOverlay">
-                <div class="${cardClasses} shadow-2xl rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" id="templateEditor">
+                <div class="${cardClasses} rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl" id="templateEditor">
                     <!-- Header -->
-                    <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-gray-800">${isEditing ? 'Edit Template' : 'Create New Template'}</h2>
                         <button id="closeEditorBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -203,29 +200,33 @@ export class SystemPromptView {
                         </div>
                         
                         <!-- Placeholders Section -->
-                        <div>
-                            <div class="flex justify-between items-center mb-4">
-                                <div>
-                                    <h3 class="text-sm font-semibold text-gray-700">Placeholders</h3>
-                                    <p class="text-xs text-gray-500 mt-1">Define input fields that users will fill in</p>
-                                </div>
+                        <div class="border-t border-gray-200 pt-6">
+                            <div class="mb-4">
+                                <h3 class="text-sm font-semibold text-gray-700">Placeholders</h3>
+                                <p class="text-xs text-gray-500 mt-1">Define input fields that users will fill in</p>
+                            </div>
+                            <div id="placeholderList" class="space-y-4 mb-4">
+                                ${isEditing && template.placeholders ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
+                            </div>
+                            <div class="flex justify-center">
                                 <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
                                     + Add Placeholder
                                 </button>
                             </div>
-                            <div id="placeholderList" class="space-y-3">
-                                ${isEditing ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
-                            </div>
                         </div>
                         
                         <!-- Template Content -->
-                        <div>
-                            <label for="templateContent" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <div class="border-t border-gray-200 pt-6">
+                            <label for="templateContent" class="block text-sm font-semibold text-gray-700">
                                 Template Content <span class="text-red-500">*</span>
                             </label>
-                            <div class="mb-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <h4 class="text-sm font-medium text-yellow-800 mb-2">Example Template:</h4>
-                                <pre class="text-xs text-yellow-700 whitespace-pre-wrap font-mono">You are a {{ROLE_PLACEHOLDER}} who specializes in {{SPECIALTY_PLACEHOLDER}}.
+                            <div class="mb-3">
+                                <p class="text-xs text-yellow-600 mt-2">Use {{PLACEHOLDER_NAME}} syntax to insert user inputs. Make sure placeholder names match exactly what you define above.</p>
+                            </div>
+                            <textarea id="templateContent" 
+                                      class="w-full min-h-96 p-4 ${textareaClasses} ${focusClasses} text-sm font-mono resize-y" 
+                                      style="height: 384px;" 
+                                      placeholder="You are a {{ROLE_PLACEHOLDER}} who specializes in {{SPECIALTY_PLACEHOLDER}}.
 
 Your task is to {{TASK_PLACEHOLDER}}.
 
@@ -235,17 +236,12 @@ Requirements:
 - Keep responses under 500 words
 
 Input to process:
-{{INPUT_PLACEHOLDER}}</pre>
-                                <p class="text-xs text-yellow-600 mt-2">Use {{PLACEHOLDER_NAME}} syntax to insert user inputs. Make sure placeholder names match exactly what you define above.</p>
-                            </div>
-                            <textarea id="templateContent" 
-                                      class="w-full h-64 p-4 ${textareaClasses} ${focusClasses} text-sm font-mono resize-y" 
-                                      placeholder="Enter your template content using {{PLACEHOLDER_NAME}} syntax..." 
-                                      required>${isEditing ? template.template : ''}</textarea>
+{{INPUT_PLACEHOLDER}}" 
+                                      required>${isEditing ? (template.isEvaluationTemplate ? template.standardTemplate : template.template) || '' : ''}</textarea>
                         </div>
                         
                         <!-- Actions -->
-                        <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                        <div class="flex justify-end gap-3 pt-8 mt-8 border-t border-gray-200">
                             <button id="cancelEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-3 px-6 rounded-lg transition-colors text-sm">
                                 Cancel
                             </button>
@@ -261,7 +257,7 @@ Input to process:
     
     renderPlaceholderEditor(placeholder, index, inputClasses, secondaryButtonClasses, focusClasses) {
         return `
-            <div class="flex gap-3 items-end p-4 bg-gray-50 rounded-lg border border-gray-200" data-placeholder-index="${index}">
+            <div class="flex gap-3 items-end p-4" data-placeholder-index="${index}">
                 <div class="flex-1">
                     <label class="block text-xs font-semibold text-gray-700 mb-2">Placeholder Name</label>
                     <input type="text" class="placeholderName w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
@@ -367,8 +363,39 @@ Input to process:
         const editorOverlay = document.getElementById('templateEditorOverlay');
         
         if (editorOverlay) {
+            let dragStartTime = 0;
+            let isDragging = false;
+            
+            // Track when user starts any kind of interaction within the modal
+            const templateEditor = document.getElementById('templateEditor');
+            if (templateEditor) {
+                templateEditor.addEventListener('mousedown', (e) => {
+                    dragStartTime = Date.now();
+                    isDragging = true;
+                });
+                
+                // Stop propagation to prevent overlay clicks
+                templateEditor.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+            
+            // Reset dragging state on any mouseup
+            document.addEventListener('mouseup', () => {
+                // Give a longer delay for resize operations
+                setTimeout(() => {
+                    isDragging = false;
+                    dragStartTime = 0;
+                }, 200);
+            });
+            
             editorOverlay.addEventListener('click', (e) => {
-                if (e.target === editorOverlay) {
+                // Only close if:
+                // 1. Clicking directly on the overlay
+                // 2. Not currently dragging/resizing
+                // 3. Some time has passed since last mouse interaction
+                const timeSinceInteraction = Date.now() - dragStartTime;
+                if (e.target === editorOverlay && !isDragging && timeSinceInteraction > 200) {
                     this.closeTemplateEditor();
                 }
             });
@@ -528,12 +555,29 @@ Input to process:
                 }
             }
             
-            const templateData = {
-                name: templateName,
-                description: templateDescription,
-                template: templateContent,
-                placeholders: placeholders
-            };
+            // Get the current template if we're editing
+            const currentTemplate = this.editingTemplateId ? this.templateManager.getTemplateById(this.editingTemplateId) : null;
+            const isEvaluationTemplate = currentTemplate && currentTemplate.isEvaluationTemplate;
+            
+            let templateData;
+            if (isEvaluationTemplate) {
+                // For evaluation templates, update the standardTemplate but keep the rubricTemplate
+                templateData = {
+                    name: templateName,
+                    description: templateDescription,
+                    isEvaluationTemplate: true,
+                    standardTemplate: templateContent,
+                    rubricTemplate: currentTemplate.rubricTemplate, // Keep existing rubric template
+                    placeholders: placeholders
+                };
+            } else {
+                templateData = {
+                    name: templateName,
+                    description: templateDescription,
+                    template: templateContent,
+                    placeholders: placeholders
+                };
+            }
             
             const errors = this.templateManager.validateTemplate(templateData);
             if (errors.length > 0) {
@@ -556,18 +600,56 @@ Input to process:
     }
     
     deleteTemplate(templateId) {
-        if (!confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
-            return;
-        }
+        // Find the template card
+        const deleteBtn = document.querySelector(`[data-template-id="${templateId}"].deleteTemplateBtn`);
+        if (!deleteBtn) return;
         
-        try {
-            this.templateManager.deleteTemplate(templateId);
-            this.showToast('Template deleted successfully.', 'success');
-            this.render();
-            this.initializeSystemPromptHandlers();
-        } catch (error) {
-            this.showToast(`Error deleting template: ${error.message}`, 'error');
-        }
+        const templateCard = deleteBtn.closest('.border');
+        if (!templateCard) return;
+        
+        // Check if confirmation is already showing
+        if (templateCard.querySelector('.delete-confirmation')) return;
+        
+        // Create inline confirmation
+        const confirmationDiv = document.createElement('div');
+        confirmationDiv.className = 'delete-confirmation mt-4 p-4 bg-red-50 border border-red-200 rounded-md';
+        confirmationDiv.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-medium text-red-800">Delete Template</h4>
+                    <p class="text-xs text-red-600 mt-1">This action cannot be undone.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="confirm-delete px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded">
+                        Delete
+                    </button>
+                    <button class="cancel-delete px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        templateCard.appendChild(confirmationDiv);
+        
+        // Handle confirmation actions
+        const confirmBtn = confirmationDiv.querySelector('.confirm-delete');
+        const cancelBtn = confirmationDiv.querySelector('.cancel-delete');
+        
+        confirmBtn.addEventListener('click', () => {
+            try {
+                this.templateManager.deleteTemplate(templateId);
+                this.showToast('Template deleted successfully.', 'success');
+                this.render();
+                this.initializeSystemPromptHandlers();
+            } catch (error) {
+                this.showToast(`Error deleting template: ${error.message}`, 'error');
+            }
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            templateCard.removeChild(confirmationDiv);
+        });
     }
     
     copyGeneratedPrompt(templateId) {
