@@ -1,14 +1,13 @@
 import { TimerRepository } from '../data/TimerRepository.js';
+import { TimerEntryRepository } from '../data/TimerEntryRepository.js';
 import { TimerState } from '../state/TimerState.js';
 import { TimeFormatter } from '../utils/TimeFormatter.js';
-import OffPlatformTimer from '../../ui/components/OffPlatformTimer.js';
 
 export class TimerController {
     constructor(appState, themeManager) {
         this.appState = appState;
         this.themeManager = themeManager;
         this.timerState = new TimerState();
-        this.offPlatformTimer = new OffPlatformTimer(themeManager);
         
         this.listeners = {
             timerStarted: [],
@@ -18,12 +17,12 @@ export class TimerController {
         };
         
         this.setupEventListeners();
-        this.setupOffPlatformTimer();
     }
 
     setupEventListeners() {
         this.appState.addEventListener('dateChange', ({ newDate }) => {
             this.loadTimerStateForDate(newDate);
+            this.updateTotalTime();
         });
 
         this.timerState.addEventListener('timerStarted', (data) => {
@@ -47,24 +46,11 @@ export class TimerController {
         });
     }
 
-    setupOffPlatformTimer() {
-        this.offPlatformTimer.currentDate = this.appState.getCurrentDate();
-        
-        const categories = ['projectTraining', 'sheetwork', 'blocked'];
-        categories.forEach(category => {
-            this.offPlatformTimer.onStart(category, () => {
-                this.startTimer(category);
-            });
-            
-            this.offPlatformTimer.onStop(category, () => {
-                this.stopTimer(category);
-            });
-        });
-    }
-
     loadTimerStateForDate(date) {
+        // Load both legacy and new entry data
         const categories = ['projectTraining', 'sheetwork', 'blocked'];
         
+        // Load legacy timers for compatibility
         categories.forEach(category => {
             const savedState = TimerRepository.getTimerState(date, category);
             this.timerState.setTimer(date, category, {
@@ -78,8 +64,7 @@ export class TimerController {
             }
         });
 
-        this.offPlatformTimer.currentDate = date;
-        this.offPlatformTimer.loadTimerState();
+        // Entries are handled by OffPlatformView directly now
         this.updateTotalTime();
     }
 
@@ -96,7 +81,6 @@ export class TimerController {
         });
 
         const timer = this.timerState.startTimer(timerDate, category);
-        this.offPlatformTimer.startTimer(category);
         
         return timer;
     }
@@ -104,17 +88,12 @@ export class TimerController {
     stopTimer(category, date = null) {
         const timerDate = date || this.appState.getCurrentDate();
         const timer = this.timerState.stopTimer(timerDate, category);
-        this.offPlatformTimer.stopTimer(category);
         return timer;
     }
 
     editTimer(category, hours, minutes, seconds, date = null) {
         const timerDate = date || this.appState.getCurrentDate();
         const timer = this.timerState.editTimer(timerDate, category, hours, minutes, seconds);
-        
-        const totalSeconds = TimeFormatter.parseTimeInput(hours, minutes, seconds);
-        const { hours: h, minutes: m, seconds: s } = TimeFormatter.secondsToHMS(totalSeconds);
-        this.offPlatformTimer.editTimer(category, h, m, s);
         
         return timer;
     }
@@ -136,7 +115,14 @@ export class TimerController {
 
     getTotalOffPlatformSeconds(date = null) {
         const timerDate = date || this.appState.getCurrentDate();
-        return this.timerState.getTotalSecondsForDate(timerDate);
+        
+        // Use new entry-based system
+        const entrySeconds = TimerEntryRepository.getTotalSecondsForDate(timerDate);
+        
+        // Also include any legacy timer state for backward compatibility
+        const legacySeconds = this.timerState.getTotalSecondsForDate(timerDate);
+        
+        return entrySeconds + legacySeconds;
     }
 
     getTotalOnPlatformSeconds(noteController) {
@@ -157,11 +143,14 @@ export class TimerController {
     stopAllTimers(date = null) {
         const timerDate = date || this.appState.getCurrentDate();
         this.timerState.stopAllTimersForDate(timerDate);
-        this.offPlatformTimer.stopAllTimers();
+        
+        // Stop all running entries
+        TimerEntryRepository.stopAllRunningEntries(timerDate);
     }
 
+    // Legacy method for compatibility - returns null since we no longer use OffPlatformTimer
     getOffPlatformTimer() {
-        return this.offPlatformTimer;
+        return null;
     }
 
     updateTotalTime() {
@@ -170,16 +159,14 @@ export class TimerController {
         });
     }
 
+    // Legacy method for compatibility - returns empty object
     getTimerDisplayElements() {
-        return this.offPlatformTimer.displayElements;
+        return {};
     }
 
+    // Legacy method for compatibility - no-op since displays are handled by OffPlatformView
     updateTimerDisplays() {
-        const categories = ['projectTraining', 'sheetwork', 'blocked'];
-        categories.forEach(category => {
-            this.offPlatformTimer.updateDisplay(category);
-        });
-        this.offPlatformTimer.updateTotalDisplay();
+        // Display updates are now handled by OffPlatformView and OffPlatformEntryList
     }
 
     addEventListener(event, callback) {

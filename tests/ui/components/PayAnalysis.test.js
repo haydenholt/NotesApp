@@ -1,8 +1,8 @@
 import PayAnalysis from '../../../src/ui/components/PayAnalysis.js';
-import OffPlatformTimer from '../../../src/ui/components/OffPlatformTimer.js';
+import { TimerEntryRepository } from '../../../src/core/data/TimerEntryRepository.js';
 
 // Mock dependencies
-jest.mock('../../../src/ui/components/OffPlatformTimer.js');
+jest.mock('../../../src/core/data/TimerEntryRepository.js');
 
 // Mock ThemeManager
 const mockThemeManager = {
@@ -92,19 +92,8 @@ describe('PayAnalysis', () => {
     // Reset mocks
     jest.clearAllMocks();
     
-    // Set up OffPlatformTimer mock
-    OffPlatformTimer.mockImplementation(() => {
-      return {
-        currentDate: null,
-        getTotalSeconds: jest.fn().mockReturnValue(3600), // 1 hour
-        set currentDate(date) {
-          this._currentDate = date;
-        },
-        get currentDate() {
-          return this._currentDate;
-        }
-      };
-    });
+    // Set up TimerEntryRepository mock
+    TimerEntryRepository.getTotalSecondsForDate.mockReturnValue(3600); // 1 hour default
     
     // Use fake timers
     jest.useFakeTimers();
@@ -389,17 +378,16 @@ describe('PayAnalysis', () => {
     expect(payAnalysis.getOnSecondsForDate(testDate, now)).toBe(12000);
   });
 
-  test('should retrieve off-platform time from OffPlatformTimer', () => {
+  test('should retrieve off-platform time from TimerEntryRepository', () => {
     const testDate = '2023-06-15';
+    
+    // Mock TimerEntryRepository to return 1 hour (3600 seconds)
+    TimerEntryRepository.getTotalSecondsForDate.mockReturnValue(3600);
     
     const result = payAnalysis.getOffSecondsForDate(testDate);
     
-    // Check OffPlatformTimer was instantiated and used correctly
-    expect(OffPlatformTimer).toHaveBeenCalled();
-    const mockOffPlatformTimerInstance = OffPlatformTimer.mock.instances[0];
-    
-    // Verify that the currentDate was set on the instance
-    // Setting happens during getOffSecondsForDate in PayAnalysis
+    // Check TimerEntryRepository was called with correct date
+    expect(TimerEntryRepository.getTotalSecondsForDate).toHaveBeenCalledWith(testDate);
     expect(result).toBe(3600);
   });
 
@@ -442,6 +430,9 @@ describe('PayAnalysis', () => {
       
       mockLocalStorage.store[dateKey] = JSON.stringify(mockNotes);
     }
+    
+    // Mock TimerEntryRepository to return 1 hour (3600 seconds) for any date
+    TimerEntryRepository.getTotalSecondsForDate.mockReturnValue(3600);
     
     // Generate report
     payAnalysis.generateReport();

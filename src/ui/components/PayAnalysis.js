@@ -1,4 +1,4 @@
-import OffPlatformTimer from './OffPlatformTimer.js';
+import { TimerEntryRepository } from '../../core/data/TimerEntryRepository.js';
 
 export class PayAnalysis {
     constructor(themeManager) {
@@ -252,9 +252,7 @@ export class PayAnalysis {
     }
 
     getOffSecondsForDate(dateKey) {
-        const offTimer = new OffPlatformTimer();
-        offTimer.currentDate = dateKey;
-        return offTimer.getTotalSeconds();
+        return TimerEntryRepository.getTotalSecondsForDate(dateKey);
     }
 
     // Count completed (not canceled) tasks for a date

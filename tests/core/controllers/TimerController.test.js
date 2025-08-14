@@ -96,7 +96,6 @@ describe('TimerController', () => {
             expect(controller.appState).toBe(mockAppState);
             expect(controller.themeManager).toBe(mockThemeManager);
             expect(controller.timerState).toBeDefined();
-            expect(controller.offPlatformTimer).toBeDefined();
             expect(controller.listeners).toEqual({
                 timerStarted: [],
                 timerStopped: [],
@@ -115,10 +114,8 @@ describe('TimerController', () => {
             expect(mockTimerState.addEventListener).toHaveBeenCalledWith('timerUpdated', expect.any(Function));
         });
 
-        it('should setup off-platform timer callbacks', () => {
-            expect(controller.offPlatformTimer.onStart).toHaveBeenCalledTimes(3);
-            expect(controller.offPlatformTimer.onStop).toHaveBeenCalledTimes(3);
-        });
+        // Off-platform timer callbacks are no longer set up in TimerController
+        // Entry system is handled by OffPlatformView directly
     });
 
     describe('setupEventListeners', () => {
@@ -216,12 +213,7 @@ describe('TimerController', () => {
             expect(mockTimerState.startUpdateInterval).toHaveBeenCalledWith('2024-01-16', 'projectTraining');
         });
 
-        it('should update off-platform timer', () => {
-            controller.loadTimerStateForDate('2024-01-16');
-
-            expect(controller.offPlatformTimer.currentDate).toBe('2024-01-16');
-            expect(controller.offPlatformTimer.loadTimerState).toHaveBeenCalled();
-        });
+        // Off-platform timer is no longer managed by TimerController
 
         it('should update total time', () => {
             const updateTimeSpy = jest.spyOn(controller, 'updateTotalTime');
@@ -246,7 +238,7 @@ describe('TimerController', () => {
 
             expect(stopSpy).toHaveBeenCalledWith('sheetwork', '2024-01-15');
             expect(mockTimerState.startTimer).toHaveBeenCalledWith('2024-01-15', 'projectTraining');
-            expect(controller.offPlatformTimer.startTimer).toHaveBeenCalledWith('projectTraining');
+            // Off-platform timers are no longer managed by TimerController
         });
 
         it('should use provided date or current date', () => {
@@ -263,11 +255,11 @@ describe('TimerController', () => {
     });
 
     describe('stopTimer', () => {
-        it('should stop timer using timer state and off-platform timer', () => {
+        it('should stop timer using timer state', () => {
             const result = controller.stopTimer('projectTraining');
 
             expect(mockTimerState.stopTimer).toHaveBeenCalledWith('2024-01-15', 'projectTraining');
-            expect(controller.offPlatformTimer.stopTimer).toHaveBeenCalledWith('projectTraining');
+            // Off-platform timers are no longer managed by TimerController
             expect(result).toEqual({ startTime: null, totalTime: 300, isRunning: false });
         });
 
@@ -279,16 +271,11 @@ describe('TimerController', () => {
     });
 
     describe('editTimer', () => {
-        it('should edit timer and update off-platform timer display', () => {
-            TimeFormatter.parseTimeInput.mockReturnValue(3661); // 1h 1m 1s
-            TimeFormatter.secondsToHMS.mockReturnValue({ hours: 1, minutes: 1, seconds: 1 });
-
+        it('should edit timer', () => {
             const result = controller.editTimer('projectTraining', 1, 1, 1);
 
             expect(mockTimerState.editTimer).toHaveBeenCalledWith('2024-01-15', 'projectTraining', 1, 1, 1);
-            expect(TimeFormatter.parseTimeInput).toHaveBeenCalledWith(1, 1, 1);
-            expect(TimeFormatter.secondsToHMS).toHaveBeenCalledWith(3661);
-            expect(controller.offPlatformTimer.editTimer).toHaveBeenCalledWith('projectTraining', 1, 1, 1);
+            // Off-platform timer display updates are no longer handled by TimerController
             expect(result).toEqual({ startTime: null, totalTime: 3600, isRunning: false });
         });
 
@@ -368,13 +355,13 @@ describe('TimerController', () => {
             controller.stopAllTimers();
 
             expect(mockTimerState.stopAllTimersForDate).toHaveBeenCalledWith('2024-01-15');
-            expect(controller.offPlatformTimer.stopAllTimers).toHaveBeenCalled();
+            // Off-platform timers are stopped via TimerEntryRepository.stopAllRunningEntries
         });
 
-        it('should get off-platform timer instance', () => {
+        it('should get off-platform timer instance (legacy method)', () => {
             const result = controller.getOffPlatformTimer();
 
-            expect(result).toBe(controller.offPlatformTimer);
+            expect(result).toBe(null); // Returns null for compatibility
         });
 
         it('should update total time and notify listeners', () => {
@@ -387,19 +374,17 @@ describe('TimerController', () => {
             });
         });
 
-        it('should get timer display elements', () => {
+        it('should get timer display elements (legacy method)', () => {
             const result = controller.getTimerDisplayElements();
 
-            expect(result).toBe(controller.offPlatformTimer.displayElements);
+            expect(result).toEqual({}); // Returns empty object for compatibility
         });
 
-        it('should update timer displays', () => {
+        it('should update timer displays (legacy method)', () => {
             controller.updateTimerDisplays();
 
-            expect(controller.offPlatformTimer.updateDisplay).toHaveBeenCalledWith('projectTraining');
-            expect(controller.offPlatformTimer.updateDisplay).toHaveBeenCalledWith('sheetwork');
-            expect(controller.offPlatformTimer.updateDisplay).toHaveBeenCalledWith('blocked');
-            expect(controller.offPlatformTimer.updateTotalDisplay).toHaveBeenCalled();
+            // This is now a no-op as displays are handled by OffPlatformView
+            // No expectations needed since it's a legacy compatibility method
         });
     });
 

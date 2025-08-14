@@ -1,7 +1,14 @@
+import { CustomTemplateManager } from '../../core/data/CustomTemplateManager.js';
+
 export class SystemPromptView {
     constructor(containerId, themeManager = null) {
         this.container = document.getElementById(containerId);
         this.themeManager = themeManager;
+        this.templateManager = new CustomTemplateManager();
+        this.currentTemplateId = null;
+        this.isEditorOpen = false;
+        this.editingTemplateId = null;
+        
         if (!this.container) {
             console.error("System Prompt View container not found!");
             return;
@@ -11,86 +18,247 @@ export class SystemPromptView {
     }
 
     render() {
-        // Get theme classes
         const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
-        const primaryButtonClasses = this.themeManager ? this.themeManager.getPrimaryButtonClasses() : 'bg-gray-600 hover:bg-gray-700';
-        const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
+        const primaryButtonClasses = this.themeManager ? this.themeManager.getPrimaryButtonClasses() : 'bg-blue-600 hover:bg-blue-700';
+        const secondaryButtonClasses = this.themeManager ? this.themeManager.getSecondaryButtonClasses() : 'bg-gray-500 hover:bg-gray-600';
+        const cardClasses = this.themeManager ? this.themeManager.getCardClasses() : 'bg-white border border-gray-200';
+        const inputClasses = this.themeManager ? this.themeManager.getInputClasses() : 'border border-gray-300 rounded-md';
+        const textareaClasses = this.themeManager ? this.themeManager.getTextareaClasses() : 'border border-gray-300 rounded-md';
         
         this.container.innerHTML = `
             <div class="max-w-4xl mx-auto">
+                ${this.renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses)}
+                ${this.renderCurrentTemplateSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
+                ${this.renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
+            </div>
+            ${this.renderToastNotification()}
+        `;
+    }
 
-                <!-- System Prompt for Code Setup -->
-                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
-                    <h2 class="text-lg font-medium mb-4 text-gray-700">Code Setup Prompt</h2>
-                    <textarea id="systemPromptInputCode" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste your code here..."></textarea>
-                    <div class="mt-6 flex gap-3 justify-between">
-                        <button id="copySystemPromptButton1" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Copy Setup Prompt
+    renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses) {
+        const templates = this.templateManager.getAllTemplates();
+        const customTemplates = templates.filter(t => !t.isBuiltIn);
+        
+        return `
+            <div class="${cardClasses} shadow-sm rounded-md p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-700">System Prompt Templates</h2>
+                    <div class="flex gap-2">
+                        <button id="createTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            Create New Template
                         </button>
-                        <button id="clearSystemPromptButton1" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Clear
+                        <button id="importTemplatesBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            Import
                         </button>
-                    </div>
-                </div>
-
-                <!-- System Prompt for Prompt/Response Evaluation -->
-                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-medium text-gray-700">Prompt/Response Evaluation Prompt</h2>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="rubricEvalToggle" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="rubricEvalToggle" class="text-sm text-gray-700 cursor-pointer">Rubric Eval</label>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
-                        <textarea id="systemPromptInputPrompt2" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label for="systemPromptInputResponse2_1" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
-                            <textarea id="systemPromptInputResponse2_1" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste AI's first response..."></textarea>
-                        </div>
-                        <div>
-                            <label for="systemPromptInputResponse2_2" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
-                            <textarea id="systemPromptInputResponse2_2" class="w-full h-32 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste AI's second response..."></textarea>
-                        </div>
-                    </div>
-                    <div class="flex gap-3 justify-between">
-                        <button id="copySystemPromptButton2" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Copy Evaluation Prompt
-                        </button>
-                        <button id="clearSystemPromptButton2" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Clear
+                        <button id="exportTemplatesBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" ${customTemplates.length === 0 ? 'disabled' : ''}>
+                            Export
                         </button>
                     </div>
                 </div>
+                
+                <div class="mb-4">
+                    <label for="templateSelector" class="block text-sm font-medium text-gray-700 mb-2">Select Template:</label>
+                    <select id="templateSelector" class="${inputClasses} w-full p-2 text-sm">
+                        <option value="">Choose a template...</option>
+                        <optgroup label="Built-in Templates">
+                            ${templates.filter(t => t.isBuiltIn).map(t => 
+                                `<option value="${t.id}">${t.name}</option>`
+                            ).join('')}
+                        </optgroup>
+                        ${customTemplates.length > 0 ? `
+                        <optgroup label="Custom Templates">
+                            ${customTemplates.map(t => 
+                                `<option value="${t.id}">${t.name}</option>`
+                            ).join('')}
+                        </optgroup>
+                        ` : ''}
+                    </select>
+                </div>
+                
+                ${customTemplates.length > 0 ? `
+                <div class="">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Custom Templates:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        ${customTemplates.map(t => `
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate">${t.name}</p>
+                                    <p class="text-xs text-gray-500 truncate">${t.description || 'No description'}</p>
+                                </div>
+                                <div class="flex gap-1 ml-2">
+                                    <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-xs p-1" data-template-id="${t.id}" title="Edit">
+                                        ✏️
+                                    </button>
+                                    <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-xs p-1" data-template-id="${t.id}" title="Delete">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
 
-                <!-- System Prompt for Content Comparison -->
-                <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6">
-                    <h2 class="text-lg font-medium mb-4 text-gray-700">Content Comparison Prompt</h2>
+    renderCurrentTemplateSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        if (!this.currentTemplateId) {
+            return '';
+        }
+        
+        const template = this.templateManager.getTemplateById(this.currentTemplateId);
+        if (!template) {
+            return '';
+        }
+        
+        return `
+            <div class="${cardClasses} shadow-sm rounded-md p-6 mb-6" id="currentTemplateSection">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-700">${template.name}</h2>
+                    <button id="clearTemplateBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
+                        Clear Selection
+                    </button>
+                </div>
+                
+                ${template.description ? `
+                <p class="text-sm text-gray-600 mb-4">${template.description}</p>
+                ` : ''}
+                
+                <div class="space-y-4 mb-6" id="templateInputs">
+                    ${template.placeholders.map(placeholder => {
+                        const isTextarea = placeholder.type === 'textarea';
+                        const fieldClass = isTextarea ? textareaClasses : inputClasses;
+                        const heightClass = isTextarea ? 'h-32' : 'h-10';
+                        const element = isTextarea ? 'textarea' : 'input';
+                        const typeAttr = isTextarea ? '' : 'type="text"';
+                        
+                        return `
+                            <div>
+                                <label for="placeholder_${placeholder.name}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    ${placeholder.description || placeholder.name} ${placeholder.required ? '<span class="text-red-500">*</span>' : ''}
+                                </label>
+                                <${element} id="placeholder_${placeholder.name}" 
+                                    ${typeAttr}
+                                    class="w-full ${heightClass} p-3 ${fieldClass} ${focusClasses} text-sm" 
+                                    placeholder="${placeholder.description || placeholder.name}..."
+                                    data-placeholder-name="${placeholder.name}"
+                                    ${placeholder.required ? 'required' : ''}>
+                                ${isTextarea ? `</textarea>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div class="flex gap-3 justify-between">
+                    <button id="copyTemplatePromptBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        Copy Generated Prompt
+                    </button>
+                    <button id="clearTemplateInputsBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        Clear Inputs
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        if (!this.isEditorOpen) {
+            return '';
+        }
+        
+        const template = this.editingTemplateId ? this.templateManager.getTemplateById(this.editingTemplateId) : null;
+        const isEditing = !!template;
+        
+        return `
+            <div class="${cardClasses} shadow-lg rounded-md p-6 mb-6 border-2 border-blue-200" id="templateEditor">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-700">${isEditing ? 'Edit Template' : 'Create New Template'}</h2>
+                    <button id="closeEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
+                        ✕ Close
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="templateName" class="block text-sm font-medium text-gray-700 mb-2">Template Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="templateName" class="w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
+                            placeholder="Enter template name..." value="${isEditing ? template.name : ''}" required>
+                    </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label for="systemPromptInputResponseA" class="block text-sm font-medium text-gray-700 mb-2">Response A:</label>
-                            <textarea id="systemPromptInputResponseA" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste Response A here..."></textarea>
+                    <div>
+                        <label for="templateDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="templateDescription" class="w-full h-20 p-3 ${textareaClasses} ${focusClasses} text-sm" 
+                            placeholder="Enter template description...">${isEditing ? template.description : ''}</textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-medium text-gray-700">Placeholders</label>
+                            <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
+                                + Add Placeholder
+                            </button>
                         </div>
-                        <div>
-                            <label for="systemPromptInputResponseB" class="block text-sm font-medium text-gray-700 mb-2">Response B:</label>
-                            <textarea id="systemPromptInputResponseB" class="w-full h-40 p-3 border border-gray-300 rounded-md ${focusClasses} text-sm" placeholder="Paste Response B here..."></textarea>
+                        <div id="placeholderList" class="space-y-2">
+                            ${isEditing ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
                         </div>
                     </div>
-                    <div class="flex gap-3 justify-between">
-                        <button id="copySystemPromptButton3" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Copy Comparison Prompt
+                    
+                    <div>
+                        <label for="templateContent" class="block text-sm font-medium text-gray-700 mb-2">Template Content <span class="text-red-500">*</span></label>
+                        <textarea id="templateContent" class="w-full h-48 p-3 ${textareaClasses} ${focusClasses} text-sm font-mono" 
+                            placeholder="Enter your template content using {{PLACEHOLDER_NAME}} syntax..." required>${isEditing ? template.template : ''}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Use {{PLACEHOLDER_NAME}} to insert placeholders. Make sure placeholder names match exactly.</p>
+                    </div>
+                    
+                    <div class="flex gap-3 justify-end">
+                        <button id="saveTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            ${isEditing ? 'Update Template' : 'Save Template'}
                         </button>
-                        <button id="clearSystemPromptButton3" class="bg-gray-500 hover:${primaryBg} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Clear
+                        <button id="cancelEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                            Cancel
                         </button>
                     </div>
                 </div>
             </div>
+        `;
+    }
+    
+    renderPlaceholderEditor(placeholder, index, inputClasses, secondaryButtonClasses, focusClasses) {
+        return `
+            <div class="flex gap-2 items-end p-3 bg-gray-50 rounded border" data-placeholder-index="${index}">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" class="placeholderName w-full h-8 p-2 ${inputClasses} ${focusClasses} text-xs" 
+                        value="${placeholder ? placeholder.name : ''}" placeholder="PLACEHOLDER_NAME">
+                </div>
+                <div class="flex-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" class="placeholderDescription w-full h-8 p-2 ${inputClasses} ${focusClasses} text-xs" 
+                        value="${placeholder ? placeholder.description : ''}" placeholder="Description for users">
+                </div>
+                <div class="">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                    <select class="placeholderType h-8 p-1 ${inputClasses} text-xs">
+                        <option value="input" ${placeholder && placeholder.type === 'input' ? 'selected' : ''}>Input</option>
+                        <option value="textarea" ${placeholder && placeholder.type === 'textarea' ? 'selected' : ''}>Textarea</option>
+                    </select>
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center text-xs text-gray-700">
+                        <input type="checkbox" class="placeholderRequired mr-1" ${placeholder && placeholder.required ? 'checked' : ''}>
+                        Required
+                    </label>
+                </div>
+                <button class="removePlaceholderBtn ${secondaryButtonClasses} text-white h-8 px-2 rounded text-xs">
+                    ✕
+                </button>
+            </div>
+        `;
+    }
+    
+    renderToastNotification() {
+        return `
             <div id="toast-notification" class="fixed bottom-4 right-4 p-4 rounded-md shadow-lg text-white text-sm transition-opacity duration-300 ease-in-out opacity-0 z-50">
                 <span id="toast-message"></span>
             </div>
@@ -108,18 +276,18 @@ export class SystemPromptView {
 
         toastMessageElement.textContent = message;
         const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
-        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', primaryBg); // Remove existing color classes
+        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', primaryBg);
 
         if (type === 'success') {
             toastElement.classList.add('bg-green-500');
         } else if (type === 'error') {
             toastElement.classList.add('bg-red-500');
         } else if (type === 'warning') {
-            toastElement.classList.add('bg-yellow-500'); // Or another color for warning
+            toastElement.classList.add('bg-yellow-500');
         } else if (type === 'info') {
             toastElement.classList.add(primaryBg);
         } else {
-            toastElement.classList.add('bg-gray-700'); // Default
+            toastElement.classList.add('bg-gray-700');
         }
 
         toastElement.classList.remove('opacity-0');
@@ -131,322 +299,335 @@ export class SystemPromptView {
         }, 3000);
     }
 
-    _copyEvaluationContent(originalPrompt, aiResponse, buttonElement, successMessage, systemTemplate, emptyFieldMessage) {
-        if (originalPrompt.trim() === '') {
-            this.showToast('Original prompt cannot be empty.', 'error');
-            return;
-        }
-        if (aiResponse.trim() === '') {
-            this.showToast(emptyFieldMessage || 'AI Response field cannot be empty.', 'error');
-            return;
-        }
-
-        let generatedPrompt = systemTemplate
-            .replace('{{PROMPT_PLACEHOLDER}}', originalPrompt)
-            .replace('{{RESPONSE_PLACEHOLDER}}', aiResponse);
-
-        if (!generatedPrompt || generatedPrompt.trim() === '') {
-            this.showToast('Cannot copy empty content', 'error');
-            return;
-        }
-        navigator.clipboard.writeText(generatedPrompt)
-            .then(() => {
-                this.showToast(successMessage, 'success');
-            })
-            .catch(err => {
-                this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Evaluation Prompt', true);
-            });
-    }
-
     initializeSystemPromptHandlers() {
-        // --- First System Prompt (Code Setup) --- 
-        const systemPromptInputCode = document.getElementById('systemPromptInputCode');
-        const copySystemPromptButton1 = document.getElementById('copySystemPromptButton1');
-        const clearSystemPromptButton1 = document.getElementById('clearSystemPromptButton1');
-
-        const systemPromptTemplate1 = `
-I will provide you with a prompt. Your job is to explain how to setup my environment to run the code in the prompt.
-- Provide any npm, pip or sudo installation commands along with any commands to setup the project, such as \`npm init -y\`, \`mkdir\`, \`touch\` etc.
-- Provide the run commands, using node, python3, g++, or gcc depending on the language.
-- Assume an environment of WSL Ubuntu, and that the user has the basics already installed, such as Python, npm, react, pip, g++, gcc, etc.
-- Do not include commands for pasting in the provided code to the files, I can do that on my own. Commands like \`cat\` should only be used for very short config files when necessary.
-- Put each command in its own code block so I can copy them easier. Chain similar commands using \`&&\` where appropriate.
-- If necessary, provide a graph of the file structure.
-- Do not actually answer anything else in the prompt, I just want to know how to run the code.
-- Keep it short, without any extra information.
-
-Got it? Here is the prompt. 
-<prompt>
-{{CODE_PLACEHOLDER}}
-</prompt>
-        `.trim();
-
-        if (copySystemPromptButton1 && systemPromptInputCode) {
-            copySystemPromptButton1.addEventListener('click', () => {
-                const userCode = systemPromptInputCode.value;
-                if (userCode.trim() === '') {
-                    this.showToast('Please paste code first.', 'warning');
-                    return;
+        this.initializeTemplateManagement();
+        this.initializeTemplateEditor();
+        this.initializeTemplateUsage();
+    }
+    
+    initializeTemplateManagement() {
+        const templateSelector = document.getElementById('templateSelector');
+        const createTemplateBtn = document.getElementById('createTemplateBtn');
+        const importTemplatesBtn = document.getElementById('importTemplatesBtn');
+        const exportTemplatesBtn = document.getElementById('exportTemplatesBtn');
+        
+        if (templateSelector) {
+            templateSelector.addEventListener('change', (e) => {
+                this.selectTemplate(e.target.value);
+            });
+        }
+        
+        if (createTemplateBtn) {
+            createTemplateBtn.addEventListener('click', () => {
+                this.openTemplateEditor();
+            });
+        }
+        
+        if (importTemplatesBtn) {
+            importTemplatesBtn.addEventListener('click', () => {
+                this.openImportDialog();
+            });
+        }
+        
+        if (exportTemplatesBtn) {
+            exportTemplatesBtn.addEventListener('click', () => {
+                this.exportTemplates();
+            });
+        }
+        
+        document.querySelectorAll('.editTemplateBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.getAttribute('data-template-id');
+                this.openTemplateEditor(templateId);
+            });
+        });
+        
+        document.querySelectorAll('.deleteTemplateBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.getAttribute('data-template-id');
+                this.deleteTemplate(templateId);
+            });
+        });
+    }
+    
+    initializeTemplateEditor() {
+        const closeEditorBtn = document.getElementById('closeEditorBtn');
+        const cancelEditorBtn = document.getElementById('cancelEditorBtn');
+        const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+        const addPlaceholderBtn = document.getElementById('addPlaceholderBtn');
+        
+        if (closeEditorBtn) {
+            closeEditorBtn.addEventListener('click', () => {
+                this.closeTemplateEditor();
+            });
+        }
+        
+        if (cancelEditorBtn) {
+            cancelEditorBtn.addEventListener('click', () => {
+                this.closeTemplateEditor();
+            });
+        }
+        
+        if (saveTemplateBtn) {
+            saveTemplateBtn.addEventListener('click', () => {
+                this.saveTemplate();
+            });
+        }
+        
+        if (addPlaceholderBtn) {
+            addPlaceholderBtn.addEventListener('click', () => {
+                this.addPlaceholder();
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('removePlaceholderBtn')) {
+                e.target.closest('[data-placeholder-index]').remove();
+            }
+        });
+    }
+    
+    initializeTemplateUsage() {
+        const copyTemplatePromptBtn = document.getElementById('copyTemplatePromptBtn');
+        const clearTemplateInputsBtn = document.getElementById('clearTemplateInputsBtn');
+        const clearTemplateBtn = document.getElementById('clearTemplateBtn');
+        
+        if (copyTemplatePromptBtn) {
+            copyTemplatePromptBtn.addEventListener('click', () => {
+                this.copyGeneratedPrompt();
+            });
+        }
+        
+        if (clearTemplateInputsBtn) {
+            clearTemplateInputsBtn.addEventListener('click', () => {
+                this.clearTemplateInputs();
+            });
+        }
+        
+        if (clearTemplateBtn) {
+            clearTemplateBtn.addEventListener('click', () => {
+                this.clearTemplateSelection();
+            });
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'x') {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.hasAttribute('data-placeholder-name')) {
+                    e.preventDefault();
+                    this.copyGeneratedPrompt();
                 }
-                const generatedPrompt = systemPromptTemplate1.replace('{{CODE_PLACEHOLDER}}', userCode);
+            }
+            if (e.ctrlKey && e.key === 't' && !this.isEditorOpen) {
+                e.preventDefault();
+                this.openTemplateEditor();
+            }
+        });
+    }
+    
+    selectTemplate(templateId) {
+        if (!templateId) {
+            this.currentTemplateId = null;
+            this.render();
+            return;
+        }
+        
+        this.currentTemplateId = templateId;
+        this.render();
+        this.initializeSystemPromptHandlers();
+    }
+    
+    clearTemplateSelection() {
+        this.currentTemplateId = null;
+        this.render();
+        this.initializeSystemPromptHandlers();
+        this.showToast('Template selection cleared.', 'info');
+    }
+    
+    openTemplateEditor(templateId = null) {
+        this.isEditorOpen = true;
+        this.editingTemplateId = templateId;
+        this.render();
+        this.initializeSystemPromptHandlers();
+        
+        if (!templateId) {
+            this.addPlaceholder();
+        }
+        
+        document.getElementById('templateEditor')?.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    closeTemplateEditor() {
+        this.isEditorOpen = false;
+        this.editingTemplateId = null;
+        this.render();
+        this.initializeSystemPromptHandlers();
+    }
+    
+    addPlaceholder() {
+        const placeholderList = document.getElementById('placeholderList');
+        if (!placeholderList) return;
+        
+        const index = placeholderList.children.length;
+        const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
+        const inputClasses = this.themeManager ? this.themeManager.getInputClasses() : 'border border-gray-300 rounded-md';
+        const secondaryButtonClasses = this.themeManager ? this.themeManager.getSecondaryButtonClasses() : 'bg-gray-500 hover:bg-gray-600';
+        
+        const placeholderHtml = this.renderPlaceholderEditor(null, index, inputClasses, secondaryButtonClasses, focusClasses);
+        placeholderList.insertAdjacentHTML('beforeend', placeholderHtml);
+    }
+    
+    saveTemplate() {
+        try {
+            const templateName = document.getElementById('templateName').value.trim();
+            const templateDescription = document.getElementById('templateDescription').value.trim();
+            const templateContent = document.getElementById('templateContent').value.trim();
+            
+            if (!templateName || !templateContent) {
+                this.showToast('Template name and content are required.', 'error');
+                return;
+            }
+            
+            const placeholders = [];
+            const placeholderElements = document.querySelectorAll('#placeholderList > div');
+            
+            for (const element of placeholderElements) {
+                const name = element.querySelector('.placeholderName').value.trim();
+                const description = element.querySelector('.placeholderDescription').value.trim();
+                const type = element.querySelector('.placeholderType').value;
+                const required = element.querySelector('.placeholderRequired').checked;
                 
-                if (!generatedPrompt || generatedPrompt.trim() === '') {
-                    this.showToast('Cannot copy empty content', 'error');
-                    return;
+                if (name) {
+                    placeholders.push({ name, description, type, required });
                 }
-                navigator.clipboard.writeText(generatedPrompt)
-                    .then(() => {
-                        this.showToast('Setup prompt copied!', 'success');
-                    })
-                    .catch(err => {
-                        this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Setup Prompt', true);
-                    });
-            });
-
-            systemPromptInputCode.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    copySystemPromptButton1.click();
-                }
-            });
+            }
+            
+            const templateData = {
+                name: templateName,
+                description: templateDescription,
+                template: templateContent,
+                placeholders: placeholders
+            };
+            
+            const errors = this.templateManager.validateTemplate(templateData);
+            if (errors.length > 0) {
+                this.showToast(`Template validation failed: ${errors.join(', ')}`, 'error');
+                return;
+            }
+            
+            if (this.editingTemplateId) {
+                this.templateManager.updateTemplate(this.editingTemplateId, templateData);
+                this.showToast('Template updated successfully!', 'success');
+            } else {
+                this.templateManager.createTemplate(templateData);
+                this.showToast('Template created successfully!', 'success');
+            }
+            
+            this.closeTemplateEditor();
+        } catch (error) {
+            this.showToast(`Error saving template: ${error.message}`, 'error');
         }
-
-        if (clearSystemPromptButton1 && systemPromptInputCode) {
-            clearSystemPromptButton1.addEventListener('click', () => {
-                systemPromptInputCode.value = '';
-                this.showToast('Code input cleared.', 'info');
-            });
+    }
+    
+    deleteTemplate(templateId) {
+        if (!confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
+            return;
         }
-
-        // --- Second System Prompt (Prompt/Response Evaluation) --
-        const systemPromptInputPrompt2 = document.getElementById('systemPromptInputPrompt2');
-        const systemPromptInputResponse2_1 = document.getElementById('systemPromptInputResponse2_1');
-        const systemPromptInputResponse2_2 = document.getElementById('systemPromptInputResponse2_2');
-        const copySystemPromptButton2 = document.getElementById('copySystemPromptButton2');
-        const clearSystemPromptButton2 = document.getElementById('clearSystemPromptButton2');
-
-        const systemPromptTemplate2 = `
-You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
-
-Review the response for:
-1. **Code Correctness** - Assess if the code executes correctly, handles edge cases, and produces the intended output.
-2. **Instruction Following** - Ensure that the response fulfills all explicit requests in the prompt. Additionally, identify any implicit expectations that, while not stated in the prompt, would be important for a complete response.
-3. **Documentation Accuracy** - All comments and explanations should be fully accurate and not misleading. Additionally, comments should not describe any changes made to the code, and should instead be framed as original.
-
-Offer a thorough evaluation for each dimension and, where applicable, provide examples to illustrate recommended improvements or corrections.
-Be very analytical in your evaluation, and provide a summary of the biggest flaws at the end. 
-<prompt>
-{{PROMPT_PLACEHOLDER}}
-</prompt>
-<response>
-{{RESPONSE_PLACEHOLDER}}
-</response>
-        `.trim();
-
-        const systemPromptTemplate2BustDown = `
-You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
-
-Your job is to:
-
-1. Break the original prompt into its individual requirements/requests
-2. For each requirement:
-   a. Restate it succinctly
-   b. Rate how well the response addresses it (1-5 scale)
-   c. Check for correctness of implementation
-   d. Verify accuracy of any comments/explanations related to that requirement
-   e. Note any issues or improvements needed
-
-3. Identify any requirements that were missed entirely
-4. Check for any factual errors or misleading statements in explanations
-5. Provide an overall assessment with key recommendations
-
-### Output Format (table example)
-
-Requirement | Addressed? | Correctness | Comment Accuracy | Rating | Notes
-------------|------------|-------------|------------------|--------|-------
-Create login function | ✔ | Correct | Accurate | 4/5 | Missing error handling
-Add validation | ✔ | Minor bug | Misleading | 2/5 | Regex explanation wrong
-Return user object | ✘ | — | — | 0/5 | Completely missing
-... | ... | ... | ... | ... | ...
-
-**Overall Assessment:**
-- Average Score: X.X/5  
-- Requirements missed: [list any]
-- Biggest correctness issues: [list key problems]
-- Comment/explanation problems: [list inaccuracies]
-- Key recommendations: [actionable improvements]
-
-Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perfectly implemented.
-
-<prompt>
-{{PROMPT_PLACEHOLDER}}
-</prompt>
-<response>
-{{RESPONSE_PLACEHOLDER}}
-</response>
-        `.trim();
-
-        if (copySystemPromptButton2 && systemPromptInputPrompt2 && systemPromptInputResponse2_1 && systemPromptInputResponse2_2) {
-            copySystemPromptButton2.addEventListener('click', () => {
-                const originalPrompt = systemPromptInputPrompt2.value;
-                const aiResponse1 = systemPromptInputResponse2_1.value;
-                const aiResponse2 = systemPromptInputResponse2_2.value;
-                const rubricEvalToggle = document.getElementById('rubricEvalToggle');
-                const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
-                const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
-
-                if (originalPrompt.trim() === '') {
-                    this.showToast('Prompt is empty!', 'error');
-                    return;
-                }
-
-                if (aiResponse1.trim() !== '') {
-                    this._copyEvaluationContent(originalPrompt, aiResponse1, copySystemPromptButton2, 'Copied (Prompt + R1)!', selectedTemplate, 'Response 1 is empty.'); 
-                } else if (aiResponse2.trim() !== '') {
-                    this._copyEvaluationContent(originalPrompt, aiResponse2, copySystemPromptButton2, 'Copied (Prompt + R2)!', selectedTemplate, 'Response 2 is empty.');
-                } else {
-                    this.showToast('Both Response fields are empty!', 'error');
-                }
-            });
-
-            systemPromptInputPrompt2.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    this.showToast('Ctrl+X disabled for prompt. Use in response fields.', 'warning');
-                }
-            });
-
-            systemPromptInputResponse2_1.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    const promptText = systemPromptInputPrompt2.value;
-                    const responseText = systemPromptInputResponse2_1.value;
-                    const rubricEvalToggle = document.getElementById('rubricEvalToggle');
-                    const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
-                    const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
-                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R1)!', selectedTemplate, 'Fill Prompt & Response 1');
-                }
-            });
-
-            systemPromptInputResponse2_2.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    const promptText = systemPromptInputPrompt2.value;
-                    const responseText = systemPromptInputResponse2_2.value;
-                    const rubricEvalToggle = document.getElementById('rubricEvalToggle');
-                    const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
-                    const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
-                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R2)!', selectedTemplate, 'Fill Prompt & Response 2');
-                }
-            });
+        
+        try {
+            this.templateManager.deleteTemplate(templateId);
+            this.showToast('Template deleted successfully.', 'success');
+            
+            if (this.currentTemplateId === templateId) {
+                this.currentTemplateId = null;
+            }
+            
+            this.render();
+            this.initializeSystemPromptHandlers();
+        } catch (error) {
+            this.showToast(`Error deleting template: ${error.message}`, 'error');
         }
-
-        if (clearSystemPromptButton2 && systemPromptInputPrompt2 && systemPromptInputResponse2_1 && systemPromptInputResponse2_2) {
-            clearSystemPromptButton2.addEventListener('click', () => {
-                systemPromptInputPrompt2.value = '';
-                systemPromptInputResponse2_1.value = '';
-                systemPromptInputResponse2_2.value = '';
-                this.showToast('Evaluation fields cleared.', 'info');
-            });
+    }
+    
+    copyGeneratedPrompt() {
+        if (!this.currentTemplateId) {
+            this.showToast('No template selected.', 'error');
+            return;
         }
-
-        // --- Third System Prompt (Content Comparison) ---
-        const systemPromptInputResponseA = document.getElementById('systemPromptInputResponseA');
-        const systemPromptInputResponseB = document.getElementById('systemPromptInputResponseB');
-        const copySystemPromptButton3 = document.getElementById('copySystemPromptButton3');
-        const clearSystemPromptButton3 = document.getElementById('clearSystemPromptButton3');
-
-        const systemPromptTemplate3 = `You are an expert computer-science content comparator. You will be given two blocks of text, Response A and Response B. Your job is to:
-
-1. Break each response into its individual claims or steps.  
-2. For each claim/step:
-   a. Restate it succinctly.  
-   b. Indicate whether it appears in A, in B, or in both.  
-   c. Judge whether the wording or logic is functionally equivalent.  
-   d. Check for any factual errors or logical missteps in that claim.
-3. Identify any claims that appear in one response but not the other.  
-4. Summarize any mismatches in logic or missing details.  
-5. At the end, answer:
-   • "Functionally identical?" (Yes/No)  
-   • "Any false or misleading statements?" (Yes/No)  
-   • If "No" to either, list the specific points of difference or error.
-
-### Output format (table example)
-
-Claim/Step                  | In A? | In B? | Equivalent? | False? | Comments  
------------------------------|-------|-------|-------------|--------|---------  
-All inputs = 1               |  ✔    | ✔     | Yes         | No     | —  
-y₁ = AND(x₁,x₂) → 1          |  ✔    | ✔     | Yes         | No     | —  
-MUX second data input = XOR  |  ✘    | ✘     | —           | No     | Both skip naming it  
-…                            | …     | …     | …           | …      | …  
-
-Functionally identical? Yes  
-Any false statements? No  
-
-If you find any mismatches or errors, call them out in the table and the final summary.
-
-### Inputs
-<ResponseA>
-{{RESPONSE_A_PLACEHOLDER}}
-</ResponseA>
-
-<ResponseB>
-{{RESPONSE_B_PLACEHOLDER}}
-</ResponseB>
-`;
-
-        if (copySystemPromptButton3 && systemPromptInputResponseA && systemPromptInputResponseB) {
-            copySystemPromptButton3.addEventListener('click', () => {
-                const responseA = systemPromptInputResponseA.value;
-                const responseB = systemPromptInputResponseB.value;
-
-                if (responseA.trim() === '') {
-                    this.showToast('Response A cannot be empty.', 'error');
-                    return;
-                }
-                if (responseB.trim() === '') {
-                    this.showToast('Response B cannot be empty.', 'error');
-                    return;
-                }
-
-                const generatedPrompt = systemPromptTemplate3
-                    .replace('{{RESPONSE_A_PLACEHOLDER}}', responseA)
-                    .replace('{{RESPONSE_B_PLACEHOLDER}}', responseB);
-
-                if (!generatedPrompt || generatedPrompt.trim() === '') {
-                    this.showToast('Cannot copy empty content', 'error');
-                    return;
-                }
-                navigator.clipboard.writeText(generatedPrompt)
-                    .then(() => {
-                        this.showToast('Comparison prompt copied!', 'success');
-                    })
-                    .catch(err => {
-                        this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Comparison Prompt', true);
-                    });
-            });
-
-            systemPromptInputResponseA.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    copySystemPromptButton3.click();
-                }
-            });
-
-            systemPromptInputResponseB.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
-                    e.preventDefault();
-                    copySystemPromptButton3.click();
-                }
-            });
+        
+        try {
+            const placeholderValues = {};
+            const inputs = document.querySelectorAll('#templateInputs [data-placeholder-name]');
+            
+            for (const input of inputs) {
+                const placeholderName = input.getAttribute('data-placeholder-name');
+                placeholderValues[placeholderName] = input.value;
+            }
+            
+            const generatedPrompt = this.templateManager.generatePromptFromTemplate(
+                this.currentTemplateId, 
+                placeholderValues
+            );
+            
+            navigator.clipboard.writeText(generatedPrompt)
+                .then(() => {
+                    this.showToast('Generated prompt copied to clipboard!', 'success');
+                })
+                .catch(err => {
+                    this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Generated Prompt', true);
+                });
+        } catch (error) {
+            this.showToast(`Error generating prompt: ${error.message}`, 'error');
         }
-
-        if (clearSystemPromptButton3 && systemPromptInputResponseA && systemPromptInputResponseB) {
-            clearSystemPromptButton3.addEventListener('click', () => {
-                systemPromptInputResponseA.value = '';
-                systemPromptInputResponseB.value = '';
-                this.showToast('Comparison fields cleared.', 'info');
-            });
+    }
+    
+    clearTemplateInputs() {
+        const inputs = document.querySelectorAll('#templateInputs [data-placeholder-name]');
+        for (const input of inputs) {
+            input.value = '';
+        }
+        this.showToast('Template inputs cleared.', 'info');
+    }
+    
+    openImportDialog() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const result = this.templateManager.importTemplates(e.target.result);
+                        this.showToast(`Import successful! ${result.imported} templates imported${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}.`, 'success');
+                        this.render();
+                        this.initializeSystemPromptHandlers();
+                    } catch (error) {
+                        this.showToast(`Import failed: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    }
+    
+    exportTemplates() {
+        try {
+            const jsonData = this.templateManager.exportTemplates();
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'system-prompt-templates.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this.showToast('Templates exported successfully!', 'success');
+        } catch (error) {
+            this.showToast(`Export failed: ${error.message}`, 'error');
         }
     }
 
@@ -478,4 +659,4 @@ If you find any mismatches or errors, call them out in the table and the final s
     }
 }
 
-export default SystemPromptView; 
+export default SystemPromptView;

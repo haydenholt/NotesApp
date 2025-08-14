@@ -92,24 +92,18 @@ export class NoteApp {
             this.updateTotalTimeDisplay();
         });
 
+        // Timer events are now handled directly by OffPlatformView
+        // These listeners are kept for any legacy timer functionality
         this.timerController.addEventListener('timerStarted', (data) => {
-            this.offPlatformView.updateTimerDisplay(data.category, 
-                this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category)), 
-                true
-            );
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         this.timerController.addEventListener('timerStopped', (data) => {
-            this.offPlatformView.updateTimerDisplay(data.category, 
-                this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category)), 
-                false
-            );
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         this.timerController.addEventListener('timerUpdated', (data) => {
-            const timeText = this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category));
-            this.offPlatformView.updateTimerDisplay(data.category, timeText, data.timer.isRunning);
-            this.offPlatformView.updateStickyTimer(data.category, timeText);
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         // Search Controller listeners
@@ -150,16 +144,30 @@ export class NoteApp {
             this.searchController.navigateToResult(dateKey, noteId);
         });
 
-        this.offPlatformView.addEventListener('timerStartRequested', ({ categoryId }) => {
-            this.timerController.startTimer(categoryId);
+        // Off-platform view listeners - entry system handles its own timer management
+        this.offPlatformView.addEventListener('timerStartRequested', ({ entryId, entryData, categoryId }) => {
+            // Handle both new entry-based events and legacy category-based events
+            if (categoryId) {
+                // Legacy category-based timer
+                this.timerController.startTimer(categoryId);
+            }
+            // Entry-based timers are handled directly by OffPlatformView
         });
 
-        this.offPlatformView.addEventListener('timerStopRequested', ({ categoryId }) => {
-            this.timerController.stopTimer(categoryId);
+        this.offPlatformView.addEventListener('timerStopRequested', ({ entryId, entryData, categoryId }) => {
+            // Handle both new entry-based events and legacy category-based events
+            if (categoryId) {
+                // Legacy category-based timer
+                this.timerController.stopTimer(categoryId);
+            }
+            // Entry-based timers are handled directly by OffPlatformView
         });
 
         this.offPlatformView.addEventListener('timerEditRequested', async ({ categoryId, label }) => {
-            await this.handleTimerEdit(categoryId, label);
+            // Keep this for any remaining legacy edit functionality
+            if (categoryId) {
+                await this.handleTimerEdit(categoryId, label);
+            }
         });
 
         // DOM event listeners
@@ -230,6 +238,7 @@ export class NoteApp {
     async loadCurrentDate() {
         const currentDate = this.appState.getCurrentDate();
         this.dateNavigationView.setCurrentDate(currentDate);
+        this.offPlatformView.setCurrentDate(currentDate);
         await this.noteController.loadNotesForDate(currentDate);
         this.timerController.loadTimerStateForDate(currentDate);
         this.updateStatistics();
@@ -238,6 +247,7 @@ export class NoteApp {
 
     handleDateChange(newDate) {
         this.dateNavigationView.setCurrentDate(newDate);
+        this.offPlatformView.setCurrentDate(newDate);
         
         if (!this.searchController.isSearchActive()) {
             this.showNormalMode();

@@ -1,4 +1,6 @@
 import { DOMHelpers } from '../../core/utils/DOMHelpers.js';
+import { OffPlatformEntryList } from '../components/OffPlatformEntryList.js';
+import { TimerEntryRepository } from '../../core/data/TimerEntryRepository.js';
 
 export class OffPlatformView {
     constructor(themeManager, timerController = null) {
@@ -6,7 +8,8 @@ export class OffPlatformView {
         this.timerController = timerController;
         this.container = null;
         this.stickyContainer = null;
-        this.timerCards = new Map(); // category -> card element
+        this.entryList = null;
+        this.currentDate = null;
         this.listeners = {
             timerStartRequested: [],
             timerStopRequested: [],
@@ -47,156 +50,82 @@ export class OffPlatformView {
             )
         );
 
-        const header = DOMHelpers.createElement('h2',
-            this.themeManager.combineClasses(
-                'text-lg font-semibold mb-3',
-                this.themeManager.getColor('text', 'secondary')
-            ),
-            'Off-platform time'
-        );
+        // Create entry list with callbacks
+        this.entryList = new OffPlatformEntryList(this.themeManager, {
+            entryAdded: (entryData) => this.handleEntryAdded(entryData),
+            entryStarted: (entryData) => this.handleEntryStarted(entryData),
+            entryStopped: (entryData) => this.handleEntryStopped(entryData),
+            entryUpdated: (entryData) => this.handleEntryUpdated(entryData),
+            entryDeleted: (entryData) => this.handleEntryDeleted(entryData),
+            stickyTimerUpdate: (entryId, timeText) => this.updateStickyTimer(entryId, timeText)
+        });
 
-        const timerGrid = this.createTimerGrid();
+        // Load entries for current date
+        if (this.currentDate) {
+            this.loadEntriesForCurrentDate();
+        }
 
-        offPlatformSection.appendChild(header);
-        offPlatformSection.appendChild(timerGrid);
+        offPlatformSection.appendChild(this.entryList.getContainer());
         this.container.appendChild(offPlatformSection);
 
         this.setupScrollBehavior();
     }
 
-    createTimerGrid() {
-        const timerGrid = DOMHelpers.createElement('div', 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-3');
-
-        const categories = [
-            { id: 'projectTraining', label: 'Project Training' },
-            { id: 'sheetwork', label: 'Sheet Work' },
-            { id: 'blocked', label: 'Blocked from Working' }
-        ];
-
-        categories.forEach(category => {
-            const timerCard = this.createTimerCard(category.id, category.label);
-            this.timerCards.set(category.id, timerCard);
-            timerGrid.appendChild(timerCard);
-        });
-
-        return timerGrid;
+    loadEntriesForCurrentDate() {
+        if (!this.currentDate || !this.entryList) return;
+        
+        const entries = TimerEntryRepository.getEntries(this.currentDate);
+        this.entryList.loadEntries(entries);
     }
 
-    createTimerCard(categoryId, label) {
-        const card = DOMHelpers.createElement('div',
-            this.themeManager.combineClasses(
-                'p-3 rounded-lg border transition-all hover:shadow-sm relative group',
-                this.themeManager.getColor('background', 'secondary'),
-                this.themeManager.getColor('border', 'light')
-            )
-        );
-
-        const cardLabel = DOMHelpers.createElement('div',
-            this.themeManager.combineClasses(
-                'text-center text-sm font-medium mb-2',
-                this.themeManager.getColor('text', 'tertiary')
-            ),
-            label
-        );
-
-        const timeDisplay = DOMHelpers.createElement('div',
-            this.themeManager.combineClasses(
-                'font-mono text-center text-2xl font-semibold my-2 py-2',
-                this.themeManager.getColor('text', 'primary')
-            ),
-            '00:00:00'
-        );
-        timeDisplay.dataset.category = categoryId;
-
-        const editButton = DOMHelpers.createButton(
-            '✎',
-            this.themeManager.combineClasses(
-                'absolute top-2 right-2 w-6 h-6 rounded text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity',
-                this.themeManager.getPrimaryButtonClasses('sm')
-            ),
-            () => this.notifyListeners('timerEditRequested', { categoryId, label })
-        );
-        editButton.title = 'Edit timer';
-
-        const buttonContainer = DOMHelpers.createElement('div', 'flex gap-2 mt-2');
-
-        const startButton = DOMHelpers.createButton(
-            'Start',
-            this.themeManager.combineClasses(
-                'w-full',
-                this.themeManager.getButtonClasses('success', 'sm')
-            ),
-            () => this.notifyListeners('timerStartRequested', { categoryId })
-        );
-
-        const stopButton = DOMHelpers.createButton(
-            'Stop',
-            this.themeManager.combineClasses(
-                'w-full',
-                this.themeManager.getButtonClasses('danger', 'sm')
-            ),
-            () => this.notifyListeners('timerStopRequested', { categoryId })
-        );
-
-        stopButton.style.display = 'none';
-
-        buttonContainer.appendChild(startButton);
-        buttonContainer.appendChild(stopButton);
-
-        card.appendChild(cardLabel);
-        card.appendChild(timeDisplay);
-        card.appendChild(editButton);
-        card.appendChild(buttonContainer);
-
-        // Store references for easy access
-        card.dataset.category = categoryId;
-        card.startButton = startButton;
-        card.stopButton = stopButton;
-        card.timeDisplay = timeDisplay;
-
-        return card;
+    // Entry event handlers
+    handleEntryAdded(entryData) {
+        this.saveCurrentEntries();
+        this.updateStickyVisibility();
     }
 
+    handleEntryStarted(entryData) {
+        this.saveCurrentEntries();
+        this.updateStickyVisibility();
+        // Notify listeners for compatibility
+        this.notifyListeners('timerStartRequested', { entryId: entryData.id, entryData });
+    }
+
+    handleEntryStopped(entryData) {
+        this.saveCurrentEntries();
+        this.updateStickyVisibility();
+        // Notify listeners for compatibility
+        this.notifyListeners('timerStopRequested', { entryId: entryData.id, entryData });
+    }
+
+    handleEntryUpdated(entryData) {
+        this.saveCurrentEntries();
+    }
+
+    handleEntryDeleted(entryData) {
+        if (this.currentDate) {
+            TimerEntryRepository.deleteEntry(this.currentDate, entryData.id);
+        }
+        this.updateStickyVisibility();
+    }
+
+    saveCurrentEntries() {
+        if (this.entryList && this.currentDate) {
+            const entries = this.entryList.getAllEntries();
+            TimerEntryRepository.saveEntries(this.currentDate, entries);
+        }
+    }
+
+    // Maintain compatibility with existing API
     updateTimerDisplay(categoryId, timeText, isRunning = false) {
-        const card = this.timerCards.get(categoryId);
-        if (!card) return;
-
-        const timeDisplay = card.timeDisplay;
-        if (timeDisplay) {
-            timeDisplay.textContent = timeText;
-        }
-
-        this.updateButtonVisibility(categoryId, isRunning);
-        this.updateCardVisualState(categoryId, isRunning);
+        // This is called by the old system - we'll update entries when date changes instead
+        this.updateStickyVisibility();
     }
-
-    updateButtonVisibility(categoryId, isRunning) {
-        const card = this.timerCards.get(categoryId);
-        if (!card) return;
-
-        // Only update button visibility based on whether timer is running for current date
-        const actuallyRunning = this.timerController ? 
-            this.timerController.isTimerRunning(categoryId) : 
-            isRunning; // fallback
-
-        card.startButton.style.display = actuallyRunning ? 'none' : 'block';
-        card.stopButton.style.display = actuallyRunning ? 'block' : 'none';
-    }
-
-    updateCardVisualState(categoryId, isRunning) {
-        const card = this.timerCards.get(categoryId);
-        if (!card) return;
-
-        // Only update visual state based on whether timer is running for current date
-        const actuallyRunning = this.timerController ? 
-            this.timerController.isTimerRunning(categoryId) : 
-            isRunning; // fallback
-
-        if (actuallyRunning) {
-            card.classList.add('ring-1', 'ring-green-200');
-        } else {
-            card.classList.remove('ring-1', 'ring-green-200');
-        }
+    
+    setCurrentDate(date) {
+        this.currentDate = date;
+        this.loadEntriesForCurrentDate();
+        this.updateStickyVisibility();
     }
 
     setupScrollBehavior() {
@@ -227,33 +156,16 @@ export class OffPlatformView {
     }
 
     getRunningTimers() {
-        const runningTimers = [];
+        if (!this.entryList) return [];
         
-        this.timerCards.forEach((card, categoryId) => {
-            // Check if timer is actually running for the current date via timerController
-            const isRunning = this.timerController ? 
-                this.timerController.isTimerRunning(categoryId) : 
-                card.startButton.style.display === 'none'; // fallback
-            
-            if (isRunning) {
-                runningTimers.push({
-                    categoryId,
-                    timeText: card.timeDisplay.textContent,
-                    label: this.getCategoryLabel(categoryId)
-                });
-            }
-        });
+        const runningEntry = this.entryList.getRunningEntry();
+        if (!runningEntry) return [];
         
-        return runningTimers;
-    }
-
-    getCategoryLabel(categoryId) {
-        const labels = {
-            projectTraining: 'Project Training',
-            sheetwork: 'Sheet Work',
-            blocked: 'Blocked from Working'
-        };
-        return labels[categoryId] || categoryId;
+        return [{
+            entryId: runningEntry.id,
+            timeText: runningEntry.timeText,
+            label: runningEntry.title || 'Untitled Entry'
+        }];
     }
 
     showStickyTimer(timerInfo) {
@@ -265,7 +177,7 @@ export class OffPlatformView {
             'flex items-center justify-between max-w-screen-lg mx-auto'
         );
 
-        const categoryLabel = DOMHelpers.createElement('div',
+        const entryLabel = DOMHelpers.createElement('div',
             this.themeManager.combineClasses(
                 'font-medium',
                 this.themeManager.getColor('text', 'secondary')
@@ -285,12 +197,18 @@ export class OffPlatformView {
             'Stop',
             this.themeManager.getButtonClasses('danger', 'sm'),
             () => {
-                this.notifyListeners('timerStopRequested', { categoryId: timerInfo.categoryId });
+                // Stop the running entry
+                if (this.entryList) {
+                    const runningEntry = this.entryList.getRunningEntry();
+                    if (runningEntry && runningEntry.entry) {
+                        runningEntry.entry.stopTimer();
+                    }
+                }
                 this.hideStickyTimer();
             }
         );
 
-        activeTimer.appendChild(categoryLabel);
+        activeTimer.appendChild(entryLabel);
         activeTimer.appendChild(timerDisplay);
         activeTimer.appendChild(stopButton);
         this.stickyContainer.appendChild(activeTimer);
@@ -299,29 +217,29 @@ export class OffPlatformView {
 
         // Store reference for live updates
         this.stickyContainer.timerDisplay = timerDisplay;
-        this.stickyContainer.categoryId = timerInfo.categoryId;
+        this.stickyContainer.entryId = timerInfo.entryId;
     }
 
     hideStickyTimer() {
         if (this.stickyContainer) {
             this.stickyContainer.classList.add('hidden');
             this.stickyContainer.timerDisplay = null;
-            this.stickyContainer.categoryId = null;
+            this.stickyContainer.entryId = null;
         }
     }
 
-    updateStickyTimer(categoryId, timeText) {
+    updateStickyTimer(entryId, timeText) {
         if (this.stickyContainer && 
-            this.stickyContainer.categoryId === categoryId && 
+            this.stickyContainer.entryId === entryId && 
             this.stickyContainer.timerDisplay) {
             this.stickyContainer.timerDisplay.textContent = timeText;
         }
     }
 
     updateTheme() {
-        // Re-render the entire section with new theme
-        if (this.container) {
-            this.renderOffPlatformSection();
+        // Update entry list theme
+        if (this.entryList) {
+            this.entryList.updateTheme();
         }
 
         // Update sticky container theme
@@ -338,11 +256,17 @@ export class OffPlatformView {
         if (this.container) {
             this.container.style.display = '';
         }
+        if (this.entryList) {
+            this.entryList.show();
+        }
     }
 
     hide() {
         if (this.container) {
             this.container.style.display = 'none';
+        }
+        if (this.entryList) {
+            this.entryList.hide();
         }
         this.hideStickyTimer();
     }
