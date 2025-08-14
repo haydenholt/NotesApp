@@ -5,7 +5,6 @@ export class SystemPromptView {
         this.container = document.getElementById(containerId);
         this.themeManager = themeManager;
         this.templateManager = new CustomTemplateManager();
-        this.currentTemplateId = null;
         this.isEditorOpen = false;
         this.editingTemplateId = null;
         
@@ -27,135 +26,133 @@ export class SystemPromptView {
         
         this.container.innerHTML = `
             <div class="max-w-4xl mx-auto">
-                ${this.renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses)}
-                ${this.renderCurrentTemplateSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
+                ${this.renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
                 ${this.renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
             </div>
             ${this.renderToastNotification()}
         `;
     }
 
-    renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses) {
+    renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
         const templates = this.templateManager.getAllTemplates();
         const customTemplates = templates.filter(t => !t.isBuiltIn);
+        const builtInTemplates = templates.filter(t => t.isBuiltIn);
         
         return `
             <div class="${cardClasses} shadow-sm rounded-md p-6 mb-6">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex justify-between items-center mb-6">
                     <h2 class="text-lg font-medium text-gray-700">System Prompt Templates</h2>
-                    <div class="flex gap-2">
-                        <button id="createTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Create New Template
-                        </button>
-                        <button id="importTemplatesBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Import
-                        </button>
-                        <button id="exportTemplatesBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" ${customTemplates.length === 0 ? 'disabled' : ''}>
-                            Export
-                        </button>
-                    </div>
+                    <button id="createTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                        Create New Template
+                    </button>
                 </div>
                 
-                <div class="mb-4">
-                    <label for="templateSelector" class="block text-sm font-medium text-gray-700 mb-2">Select Template:</label>
-                    <select id="templateSelector" class="${inputClasses} w-full p-2 text-sm">
-                        <option value="">Choose a template...</option>
-                        <optgroup label="Built-in Templates">
-                            ${templates.filter(t => t.isBuiltIn).map(t => 
-                                `<option value="${t.id}">${t.name}</option>`
-                            ).join('')}
-                        </optgroup>
-                        ${customTemplates.length > 0 ? `
-                        <optgroup label="Custom Templates">
-                            ${customTemplates.map(t => 
-                                `<option value="${t.id}">${t.name}</option>`
-                            ).join('')}
-                        </optgroup>
-                        ` : ''}
-                    </select>
+                <div class="space-y-8">
+                    ${builtInTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
+                    ${customTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
                 </div>
-                
-                ${customTemplates.length > 0 ? `
-                <div class="">
-                    <h3 class="text-sm font-medium text-gray-700 mb-2">Custom Templates:</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        ${customTemplates.map(t => `
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 truncate">${t.name}</p>
-                                    <p class="text-xs text-gray-500 truncate">${t.description || 'No description'}</p>
-                                </div>
-                                <div class="flex gap-1 ml-2">
-                                    <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-xs p-1" data-template-id="${t.id}" title="Edit">
-                                        ✏️
-                                    </button>
-                                    <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-xs p-1" data-template-id="${t.id}" title="Delete">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
             </div>
         `;
     }
 
-    renderCurrentTemplateSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
-        if (!this.currentTemplateId) {
-            return '';
-        }
-        
-        const template = this.templateManager.getTemplateById(this.currentTemplateId);
-        if (!template) {
-            return '';
-        }
+    renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        const isEvaluationTemplate = template.isEvaluationTemplate;
         
         return `
-            <div class="${cardClasses} shadow-sm rounded-md p-6 mb-6" id="currentTemplateSection">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-medium text-gray-700">${template.name}</h2>
-                    <button id="clearTemplateBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
-                        Clear Selection
-                    </button>
+            <div class="border border-gray-300 rounded-md p-6 bg-gray-50">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-lg font-medium text-gray-800">${template.name}</h3>
+                            ${template.isBuiltIn ? '<span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Built-in</span>' : '<span class="inline-block px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Custom</span>'}
+                        </div>
+                        ${template.description ? `<p class="text-sm text-gray-600 mt-1">${template.description}</p>` : ''}
+                    </div>
+                    <div class="flex gap-2">
+                        ${!template.isBuiltIn ? `
+                            <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
+                                ✏️
+                            </button>
+                            <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">
+                                🗑️
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${isEvaluationTemplate ? this.renderEvaluationTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses) : this.renderStandardTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses)}
+            </div>
+        `;
+    }
+
+    renderEvaluationTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses) {
+        return `
+            <div class="space-y-4">
+                <div class="flex items-center gap-2 mb-4">
+                    <input type="checkbox" id="rubricEvalToggle_${template.id}" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="rubricEvalToggle_${template.id}" class="text-sm text-gray-700 cursor-pointer">Use Rubric Evaluation (detailed breakdown)</label>
                 </div>
                 
-                ${template.description ? `
-                <p class="text-sm text-gray-600 mb-4">${template.description}</p>
-                ` : ''}
+                <div class="mb-4">
+                    <label for="evalPromptInput_${template.id}" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
+                    <textarea id="evalPromptInput_${template.id}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
+                </div>
                 
-                <div class="space-y-4 mb-6" id="templateInputs">
-                    ${template.placeholders.map(placeholder => {
-                        const isTextarea = placeholder.type === 'textarea';
-                        const fieldClass = isTextarea ? textareaClasses : inputClasses;
-                        const heightClass = isTextarea ? 'h-32' : 'h-10';
-                        const element = isTextarea ? 'textarea' : 'input';
-                        const typeAttr = isTextarea ? '' : 'type="text"';
-                        
-                        return `
-                            <div>
-                                <label for="placeholder_${placeholder.name}" class="block text-sm font-medium text-gray-700 mb-2">
-                                    ${placeholder.description || placeholder.name} ${placeholder.required ? '<span class="text-red-500">*</span>' : ''}
-                                </label>
-                                <${element} id="placeholder_${placeholder.name}" 
-                                    ${typeAttr}
-                                    class="w-full ${heightClass} p-3 ${fieldClass} ${focusClasses} text-sm" 
-                                    placeholder="${placeholder.description || placeholder.name}..."
-                                    data-placeholder-name="${placeholder.name}"
-                                    ${placeholder.required ? 'required' : ''}>
-                                ${isTextarea ? `</textarea>` : ''}
-                            </div>
-                        `;
-                    }).join('')}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label for="evalResponse1Input_${template.id}" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
+                        <textarea id="evalResponse1Input_${template.id}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" data-template-id="${template.id}" placeholder="Paste AI's first response..."></textarea>
+                    </div>
+                    <div>
+                        <label for="evalResponse2Input_${template.id}" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
+                        <textarea id="evalResponse2Input_${template.id}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" data-template-id="${template.id}" placeholder="Paste AI's second response..."></textarea>
+                    </div>
                 </div>
                 
                 <div class="flex gap-3 justify-between">
-                    <button id="copyTemplatePromptBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                    <button class="copyEvaluationPromptBtn ${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${template.id}">
+                        Copy Evaluation Prompt
+                    </button>
+                    <button class="clearEvaluationInputsBtn ${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${template.id}">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStandardTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses) {
+        return `
+            <div class="space-y-4">
+                ${template.placeholders.map(placeholder => {
+                    const isTextarea = placeholder.type === 'textarea';
+                    const fieldClass = isTextarea ? textareaClasses : inputClasses;
+                    const heightClass = isTextarea ? 'h-32' : 'h-10';
+                    const element = isTextarea ? 'textarea' : 'input';
+                    const typeAttr = isTextarea ? '' : 'type="text"';
+                    
+                    return `
+                        <div>
+                            <label for="placeholder_${template.id}_${placeholder.name}" class="block text-sm font-medium text-gray-700 mb-2">
+                                ${placeholder.description || placeholder.name}
+                            </label>
+                            <${element} id="placeholder_${template.id}_${placeholder.name}" 
+                                ${typeAttr}
+                                class="w-full ${heightClass} p-3 ${fieldClass} ${focusClasses} text-sm" 
+                                placeholder="${placeholder.description || placeholder.name}..."
+                                data-template-id="${template.id}"
+                                data-placeholder-name="${placeholder.name}">
+                            ${isTextarea ? `</textarea>` : ''}
+                        </div>
+                    `;
+                }).join('')}
+                
+                <div class="flex gap-3 justify-between">
+                    <button class="copyTemplatePromptBtn ${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${template.id}">
                         Copy Generated Prompt
                     </button>
-                    <button id="clearTemplateInputsBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                        Clear Inputs
+                    <button class="clearTemplateInputsBtn ${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${template.id}">
+                        Clear
                     </button>
                 </div>
             </div>
@@ -171,53 +168,91 @@ export class SystemPromptView {
         const isEditing = !!template;
         
         return `
-            <div class="${cardClasses} shadow-lg rounded-md p-6 mb-6 border-2 border-blue-200" id="templateEditor">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-medium text-gray-700">${isEditing ? 'Edit Template' : 'Create New Template'}</h2>
-                    <button id="closeEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
-                        ✕ Close
-                    </button>
-                </div>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label for="templateName" class="block text-sm font-medium text-gray-700 mb-2">Template Name <span class="text-red-500">*</span></label>
-                        <input type="text" id="templateName" class="w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
-                            placeholder="Enter template name..." value="${isEditing ? template.name : ''}" required>
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" id="templateEditorOverlay">
+                <div class="${cardClasses} shadow-2xl rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" id="templateEditor">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <h2 class="text-xl font-bold text-gray-800">${isEditing ? 'Edit Template' : 'Create New Template'}</h2>
+                        <button id="closeEditorBtn" class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
                     </div>
                     
-                    <div>
-                        <label for="templateDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <textarea id="templateDescription" class="w-full h-20 p-3 ${textareaClasses} ${focusClasses} text-sm" 
-                            placeholder="Enter template description...">${isEditing ? template.description : ''}</textarea>
-                    </div>
-                    
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="block text-sm font-medium text-gray-700">Placeholders</label>
-                            <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-1 px-2 rounded-md transition-colors text-xs">
-                                + Add Placeholder
+                    <!-- Content -->
+                    <div class="p-6 space-y-6">
+                        <!-- Basic Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="templateName" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Template Name <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" id="templateName" 
+                                       class="w-full h-12 p-4 ${inputClasses} ${focusClasses} text-sm" 
+                                       placeholder="Enter a descriptive name for your template..." 
+                                       value="${isEditing ? template.name : ''}" required>
+                            </div>
+                            <div>
+                                <label for="templateDescription" class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                                <input type="text" id="templateDescription" 
+                                       class="w-full h-12 p-4 ${inputClasses} ${focusClasses} text-sm" 
+                                       placeholder="Brief description of what this template does..."
+                                       value="${isEditing ? template.description : ''}">
+                            </div>
+                        </div>
+                        
+                        <!-- Placeholders Section -->
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-700">Placeholders</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Define input fields that users will fill in</p>
+                                </div>
+                                <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
+                                    + Add Placeholder
+                                </button>
+                            </div>
+                            <div id="placeholderList" class="space-y-3">
+                                ${isEditing ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Template Content -->
+                        <div>
+                            <label for="templateContent" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Template Content <span class="text-red-500">*</span>
+                            </label>
+                            <div class="mb-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <h4 class="text-sm font-medium text-yellow-800 mb-2">Example Template:</h4>
+                                <pre class="text-xs text-yellow-700 whitespace-pre-wrap font-mono">You are a {{ROLE_PLACEHOLDER}} who specializes in {{SPECIALTY_PLACEHOLDER}}.
+
+Your task is to {{TASK_PLACEHOLDER}}.
+
+Requirements:
+- Be thorough and accurate
+- Provide specific examples
+- Keep responses under 500 words
+
+Input to process:
+{{INPUT_PLACEHOLDER}}</pre>
+                                <p class="text-xs text-yellow-600 mt-2">Use {{PLACEHOLDER_NAME}} syntax to insert user inputs. Make sure placeholder names match exactly what you define above.</p>
+                            </div>
+                            <textarea id="templateContent" 
+                                      class="w-full h-64 p-4 ${textareaClasses} ${focusClasses} text-sm font-mono resize-y" 
+                                      placeholder="Enter your template content using {{PLACEHOLDER_NAME}} syntax..." 
+                                      required>${isEditing ? template.template : ''}</textarea>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                            <button id="cancelEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-3 px-6 rounded-lg transition-colors text-sm">
+                                Cancel
+                            </button>
+                            <button id="saveTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-3 px-6 rounded-lg transition-colors text-sm">
+                                ${isEditing ? 'Update Template' : 'Save Template'}
                             </button>
                         </div>
-                        <div id="placeholderList" class="space-y-2">
-                            ${isEditing ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label for="templateContent" class="block text-sm font-medium text-gray-700 mb-2">Template Content <span class="text-red-500">*</span></label>
-                        <textarea id="templateContent" class="w-full h-48 p-3 ${textareaClasses} ${focusClasses} text-sm font-mono" 
-                            placeholder="Enter your template content using {{PLACEHOLDER_NAME}} syntax..." required>${isEditing ? template.template : ''}</textarea>
-                        <p class="text-xs text-gray-500 mt-1">Use {{PLACEHOLDER_NAME}} to insert placeholders. Make sure placeholder names match exactly.</p>
-                    </div>
-                    
-                    <div class="flex gap-3 justify-end">
-                        <button id="saveTemplateBtn" class="${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            ${isEditing ? 'Update Template' : 'Save Template'}
-                        </button>
-                        <button id="cancelEditorBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
-                            Cancel
-                        </button>
                     </div>
                 </div>
             </div>
@@ -226,32 +261,28 @@ export class SystemPromptView {
     
     renderPlaceholderEditor(placeholder, index, inputClasses, secondaryButtonClasses, focusClasses) {
         return `
-            <div class="flex gap-2 items-end p-3 bg-gray-50 rounded border" data-placeholder-index="${index}">
+            <div class="flex gap-3 items-end p-4 bg-gray-50 rounded-lg border border-gray-200" data-placeholder-index="${index}">
                 <div class="flex-1">
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Name</label>
-                    <input type="text" class="placeholderName w-full h-8 p-2 ${inputClasses} ${focusClasses} text-xs" 
-                        value="${placeholder ? placeholder.name : ''}" placeholder="PLACEHOLDER_NAME">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Placeholder Name</label>
+                    <input type="text" class="placeholderName w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
+                           value="${placeholder ? placeholder.name : ''}" 
+                           placeholder="e.g., USER_INPUT">
                 </div>
                 <div class="flex-2">
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                    <input type="text" class="placeholderDescription w-full h-8 p-2 ${inputClasses} ${focusClasses} text-xs" 
-                        value="${placeholder ? placeholder.description : ''}" placeholder="Description for users">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Label for User</label>
+                    <input type="text" class="placeholderDescription w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
+                           value="${placeholder ? placeholder.description : ''}" 
+                           placeholder="e.g., Enter your text here">
                 </div>
-                <div class="">
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                    <select class="placeholderType h-8 p-1 ${inputClasses} text-xs">
-                        <option value="input" ${placeholder && placeholder.type === 'input' ? 'selected' : ''}>Input</option>
-                        <option value="textarea" ${placeholder && placeholder.type === 'textarea' ? 'selected' : ''}>Textarea</option>
+                <div class="w-32">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Input Type</label>
+                    <select class="placeholderType w-full h-10 p-2 ${inputClasses} text-sm">
+                        <option value="input" ${placeholder && placeholder.type === 'input' ? 'selected' : ''}>Single Line</option>
+                        <option value="textarea" ${placeholder && placeholder.type === 'textarea' ? 'selected' : ''}>Multi-line</option>
                     </select>
                 </div>
-                <div class="flex items-center">
-                    <label class="flex items-center text-xs text-gray-700">
-                        <input type="checkbox" class="placeholderRequired mr-1" ${placeholder && placeholder.required ? 'checked' : ''}>
-                        Required
-                    </label>
-                </div>
-                <button class="removePlaceholderBtn ${secondaryButtonClasses} text-white h-8 px-2 rounded text-xs">
-                    ✕
+                <button class="removePlaceholderBtn ${secondaryButtonClasses} text-white h-10 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors">
+                    Remove
                 </button>
             </div>
         `;
@@ -259,7 +290,7 @@ export class SystemPromptView {
     
     renderToastNotification() {
         return `
-            <div id="toast-notification" class="fixed bottom-4 right-4 p-4 rounded-md shadow-lg text-white text-sm transition-opacity duration-300 ease-in-out opacity-0 z-50">
+            <div id="toast-notification" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white text-sm transition-all duration-300 ease-in-out opacity-0 transform translate-y-2 z-50">
                 <span id="toast-message"></span>
             </div>
         `;
@@ -275,8 +306,7 @@ export class SystemPromptView {
         }
 
         toastMessageElement.textContent = message;
-        const primaryBg = this.themeManager ? this.themeManager.getNestedColor('button', 'primary', 'bg') : 'bg-gray-600';
-        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', primaryBg);
+        toastElement.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-gray-700');
 
         if (type === 'success') {
             toastElement.classList.add('bg-green-500');
@@ -285,17 +315,17 @@ export class SystemPromptView {
         } else if (type === 'warning') {
             toastElement.classList.add('bg-yellow-500');
         } else if (type === 'info') {
-            toastElement.classList.add(primaryBg);
+            toastElement.classList.add('bg-blue-500');
         } else {
             toastElement.classList.add('bg-gray-700');
         }
 
-        toastElement.classList.remove('opacity-0');
-        toastElement.classList.add('opacity-100');
+        toastElement.classList.remove('opacity-0', 'translate-y-2');
+        toastElement.classList.add('opacity-100', 'translate-y-0');
 
         setTimeout(() => {
-            toastElement.classList.remove('opacity-100');
-            toastElement.classList.add('opacity-0');
+            toastElement.classList.remove('opacity-100', 'translate-y-0');
+            toastElement.classList.add('opacity-0', 'translate-y-2');
         }, 3000);
     }
 
@@ -306,16 +336,7 @@ export class SystemPromptView {
     }
     
     initializeTemplateManagement() {
-        const templateSelector = document.getElementById('templateSelector');
         const createTemplateBtn = document.getElementById('createTemplateBtn');
-        const importTemplatesBtn = document.getElementById('importTemplatesBtn');
-        const exportTemplatesBtn = document.getElementById('exportTemplatesBtn');
-        
-        if (templateSelector) {
-            templateSelector.addEventListener('change', (e) => {
-                this.selectTemplate(e.target.value);
-            });
-        }
         
         if (createTemplateBtn) {
             createTemplateBtn.addEventListener('click', () => {
@@ -323,28 +344,16 @@ export class SystemPromptView {
             });
         }
         
-        if (importTemplatesBtn) {
-            importTemplatesBtn.addEventListener('click', () => {
-                this.openImportDialog();
-            });
-        }
-        
-        if (exportTemplatesBtn) {
-            exportTemplatesBtn.addEventListener('click', () => {
-                this.exportTemplates();
-            });
-        }
-        
         document.querySelectorAll('.editTemplateBtn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const templateId = e.target.getAttribute('data-template-id');
+                const templateId = e.target.closest('.editTemplateBtn').getAttribute('data-template-id');
                 this.openTemplateEditor(templateId);
             });
         });
         
         document.querySelectorAll('.deleteTemplateBtn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const templateId = e.target.getAttribute('data-template-id');
+                const templateId = e.target.closest('.deleteTemplateBtn').getAttribute('data-template-id');
                 this.deleteTemplate(templateId);
             });
         });
@@ -355,6 +364,15 @@ export class SystemPromptView {
         const cancelEditorBtn = document.getElementById('cancelEditorBtn');
         const saveTemplateBtn = document.getElementById('saveTemplateBtn');
         const addPlaceholderBtn = document.getElementById('addPlaceholderBtn');
+        const editorOverlay = document.getElementById('templateEditorOverlay');
+        
+        if (editorOverlay) {
+            editorOverlay.addEventListener('click', (e) => {
+                if (e.target === editorOverlay) {
+                    this.closeTemplateEditor();
+                }
+            });
+        }
         
         if (closeEditorBtn) {
             closeEditorBtn.addEventListener('click', () => {
@@ -388,60 +406,59 @@ export class SystemPromptView {
     }
     
     initializeTemplateUsage() {
-        const copyTemplatePromptBtn = document.getElementById('copyTemplatePromptBtn');
-        const clearTemplateInputsBtn = document.getElementById('clearTemplateInputsBtn');
-        const clearTemplateBtn = document.getElementById('clearTemplateBtn');
-        
-        if (copyTemplatePromptBtn) {
-            copyTemplatePromptBtn.addEventListener('click', () => {
-                this.copyGeneratedPrompt();
+        // Standard template handlers
+        document.querySelectorAll('.copyTemplatePromptBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.closest('.copyTemplatePromptBtn').getAttribute('data-template-id');
+                this.copyGeneratedPrompt(templateId);
             });
-        }
+        });
         
-        if (clearTemplateInputsBtn) {
-            clearTemplateInputsBtn.addEventListener('click', () => {
-                this.clearTemplateInputs();
+        document.querySelectorAll('.clearTemplateInputsBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.closest('.clearTemplateInputsBtn').getAttribute('data-template-id');
+                this.clearTemplateInputs(templateId);
             });
-        }
-        
-        if (clearTemplateBtn) {
-            clearTemplateBtn.addEventListener('click', () => {
-                this.clearTemplateSelection();
+        });
+
+        // Evaluation template handlers
+        document.querySelectorAll('.copyEvaluationPromptBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.closest('.copyEvaluationPromptBtn').getAttribute('data-template-id');
+                this.copyEvaluationPrompt(templateId);
             });
-        }
+        });
         
+        document.querySelectorAll('.clearEvaluationInputsBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.closest('.clearEvaluationInputsBtn').getAttribute('data-template-id');
+                this.clearEvaluationInputs(templateId);
+            });
+        });
+        
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'x') {
                 const activeElement = document.activeElement;
-                if (activeElement && activeElement.hasAttribute('data-placeholder-name')) {
+                if (activeElement && activeElement.hasAttribute('data-template-id')) {
                     e.preventDefault();
-                    this.copyGeneratedPrompt();
+                    const templateId = activeElement.getAttribute('data-template-id');
+                    if (activeElement.id.includes('evalPromptInput') || activeElement.id.includes('evalResponse')) {
+                        this.copyEvaluationPrompt(templateId);
+                    } else {
+                        this.copyGeneratedPrompt(templateId);
+                    }
                 }
             }
             if (e.ctrlKey && e.key === 't' && !this.isEditorOpen) {
                 e.preventDefault();
                 this.openTemplateEditor();
             }
+            if (e.key === 'Escape' && this.isEditorOpen) {
+                e.preventDefault();
+                this.closeTemplateEditor();
+            }
         });
-    }
-    
-    selectTemplate(templateId) {
-        if (!templateId) {
-            this.currentTemplateId = null;
-            this.render();
-            return;
-        }
-        
-        this.currentTemplateId = templateId;
-        this.render();
-        this.initializeSystemPromptHandlers();
-    }
-    
-    clearTemplateSelection() {
-        this.currentTemplateId = null;
-        this.render();
-        this.initializeSystemPromptHandlers();
-        this.showToast('Template selection cleared.', 'info');
     }
     
     openTemplateEditor(templateId = null) {
@@ -454,7 +471,11 @@ export class SystemPromptView {
             this.addPlaceholder();
         }
         
-        document.getElementById('templateEditor')?.scrollIntoView({ behavior: 'smooth' });
+        // Focus on template name
+        setTimeout(() => {
+            const nameInput = document.getElementById('templateName');
+            if (nameInput) nameInput.focus();
+        }, 100);
     }
     
     closeTemplateEditor() {
@@ -492,13 +513,18 @@ export class SystemPromptView {
             const placeholderElements = document.querySelectorAll('#placeholderList > div');
             
             for (const element of placeholderElements) {
-                const name = element.querySelector('.placeholderName').value.trim();
-                const description = element.querySelector('.placeholderDescription').value.trim();
-                const type = element.querySelector('.placeholderType').value;
-                const required = element.querySelector('.placeholderRequired').checked;
+                const nameInput = element.querySelector('.placeholderName');
+                const descInput = element.querySelector('.placeholderDescription');
+                const typeSelect = element.querySelector('.placeholderType');
                 
-                if (name) {
-                    placeholders.push({ name, description, type, required });
+                if (nameInput && descInput && typeSelect) {
+                    const name = nameInput.value.trim();
+                    const description = descInput.value.trim();
+                    const type = typeSelect.value;
+                    
+                    if (name) {
+                        placeholders.push({ name, description, type });
+                    }
                 }
             }
             
@@ -537,11 +563,6 @@ export class SystemPromptView {
         try {
             this.templateManager.deleteTemplate(templateId);
             this.showToast('Template deleted successfully.', 'success');
-            
-            if (this.currentTemplateId === templateId) {
-                this.currentTemplateId = null;
-            }
-            
             this.render();
             this.initializeSystemPromptHandlers();
         } catch (error) {
@@ -549,15 +570,10 @@ export class SystemPromptView {
         }
     }
     
-    copyGeneratedPrompt() {
-        if (!this.currentTemplateId) {
-            this.showToast('No template selected.', 'error');
-            return;
-        }
-        
+    copyGeneratedPrompt(templateId) {
         try {
             const placeholderValues = {};
-            const inputs = document.querySelectorAll('#templateInputs [data-placeholder-name]');
+            const inputs = document.querySelectorAll(`[data-template-id="${templateId}"][data-placeholder-name]`);
             
             for (const input of inputs) {
                 const placeholderName = input.getAttribute('data-placeholder-name');
@@ -565,7 +581,7 @@ export class SystemPromptView {
             }
             
             const generatedPrompt = this.templateManager.generatePromptFromTemplate(
-                this.currentTemplateId, 
+                templateId, 
                 placeholderValues
             );
             
@@ -580,55 +596,68 @@ export class SystemPromptView {
             this.showToast(`Error generating prompt: ${error.message}`, 'error');
         }
     }
+
+    copyEvaluationPrompt(templateId) {
+        try {
+            const originalPrompt = document.getElementById(`evalPromptInput_${templateId}`).value.trim();
+            const aiResponse1 = document.getElementById(`evalResponse1Input_${templateId}`).value.trim();
+            const aiResponse2 = document.getElementById(`evalResponse2Input_${templateId}`).value.trim();
+            const rubricToggle = document.getElementById(`rubricEvalToggle_${templateId}`);
+            const useRubric = rubricToggle && rubricToggle.checked;
+
+            if (!originalPrompt) {
+                this.showToast('Original prompt cannot be empty.', 'error');
+                return;
+            }
+
+            let aiResponse = '';
+            if (aiResponse1) {
+                aiResponse = aiResponse1;
+            } else if (aiResponse2) {
+                aiResponse = aiResponse2;
+            } else {
+                this.showToast('At least one AI response is required.', 'error');
+                return;
+            }
+
+            const placeholderValues = {
+                'PROMPT_PLACEHOLDER': originalPrompt,
+                'RESPONSE_PLACEHOLDER': aiResponse
+            };
+
+            const generatedPrompt = this.templateManager.generatePromptFromTemplate(
+                templateId,
+                placeholderValues,
+                useRubric
+            );
+
+            navigator.clipboard.writeText(generatedPrompt)
+                .then(() => {
+                    this.showToast('Evaluation prompt copied to clipboard!', 'success');
+                })
+                .catch(err => {
+                    this.fallbackCopyTextToClipboard(generatedPrompt, 'Copy Evaluation Prompt', true);
+                });
+        } catch (error) {
+            this.showToast(`Error generating evaluation prompt: ${error.message}`, 'error');
+        }
+    }
     
-    clearTemplateInputs() {
-        const inputs = document.querySelectorAll('#templateInputs [data-placeholder-name]');
+    clearTemplateInputs(templateId) {
+        const inputs = document.querySelectorAll(`[data-template-id="${templateId}"][data-placeholder-name]`);
         for (const input of inputs) {
             input.value = '';
         }
         this.showToast('Template inputs cleared.', 'info');
     }
-    
-    openImportDialog() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const result = this.templateManager.importTemplates(e.target.result);
-                        this.showToast(`Import successful! ${result.imported} templates imported${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}.`, 'success');
-                        this.render();
-                        this.initializeSystemPromptHandlers();
-                    } catch (error) {
-                        this.showToast(`Import failed: ${error.message}`, 'error');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        };
-        input.click();
-    }
-    
-    exportTemplates() {
-        try {
-            const jsonData = this.templateManager.exportTemplates();
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'system-prompt-templates.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            this.showToast('Templates exported successfully!', 'success');
-        } catch (error) {
-            this.showToast(`Export failed: ${error.message}`, 'error');
-        }
+
+    clearEvaluationInputs(templateId) {
+        document.getElementById(`evalPromptInput_${templateId}`).value = '';
+        document.getElementById(`evalResponse1Input_${templateId}`).value = '';
+        document.getElementById(`evalResponse2Input_${templateId}`).value = '';
+        const checkbox = document.getElementById(`rubricEvalToggle_${templateId}`);
+        if (checkbox) checkbox.checked = false;
+        this.showToast('Evaluation inputs cleared.', 'info');
     }
 
     fallbackCopyTextToClipboard(text, originalButtonText = 'Copy Prompt', isError = false) {

@@ -103,23 +103,36 @@ export class CustomTemplateManager {
         return allTemplates.find(t => t.id === id);
     }
 
-    generatePromptFromTemplate(templateId, placeholderValues) {
+    generatePromptFromTemplate(templateId, placeholderValues, useRubric = false) {
         const template = this.getTemplateById(templateId);
         if (!template) {
             throw new Error('Template not found');
         }
 
-        let generatedPrompt = template.template;
+        let generatedPrompt;
         
-        for (const placeholder of template.placeholders) {
-            const value = placeholderValues[placeholder.name];
-            if (placeholder.required && (!value || value.trim() === '')) {
-                throw new Error(`${placeholder.name} is required`);
-            }
+        // Handle evaluation template with rubric option
+        if (template.isEvaluationTemplate) {
+            generatedPrompt = useRubric ? template.rubricTemplate : template.standardTemplate;
+            // Replace evaluation-specific placeholders
             generatedPrompt = generatedPrompt.replace(
-                new RegExp(`{{${placeholder.name}}}`, 'g'), 
-                value || ''
+                new RegExp(`{{PROMPT_PLACEHOLDER}}`, 'g'), 
+                placeholderValues.PROMPT_PLACEHOLDER || ''
             );
+            generatedPrompt = generatedPrompt.replace(
+                new RegExp(`{{RESPONSE_PLACEHOLDER}}`, 'g'), 
+                placeholderValues.RESPONSE_PLACEHOLDER || ''
+            );
+        } else {
+            // Handle standard templates
+            generatedPrompt = template.template;
+            for (const placeholder of template.placeholders) {
+                const value = placeholderValues[placeholder.name];
+                generatedPrompt = generatedPrompt.replace(
+                    new RegExp(`{{${placeholder.name}}}`, 'g'), 
+                    value || ''
+                );
+            }
         }
 
         return generatedPrompt;
@@ -153,51 +166,6 @@ export class CustomTemplateManager {
         return errors;
     }
 
-    exportTemplates() {
-        const customTemplates = this.getCustomTemplates();
-        return JSON.stringify(customTemplates, null, 2);
-    }
-
-    importTemplates(jsonData) {
-        try {
-            const importedTemplates = JSON.parse(jsonData);
-            if (!Array.isArray(importedTemplates)) {
-                throw new Error('Invalid format: expected array of templates');
-            }
-
-            const existingTemplates = this.getCustomTemplates();
-            const newTemplates = [];
-
-            for (const template of importedTemplates) {
-                const errors = this.validateTemplate(template);
-                if (errors.length > 0) {
-                    console.warn(`Skipping invalid template "${template.name}": ${errors.join(', ')}`);
-                    continue;
-                }
-
-                const importedTemplate = {
-                    ...template,
-                    id: this.generateId(),
-                    isBuiltIn: false,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now()
-                };
-
-                newTemplates.push(importedTemplate);
-            }
-
-            const allTemplates = [...existingTemplates, ...newTemplates];
-            this.saveCustomTemplates(allTemplates);
-            
-            return {
-                imported: newTemplates.length,
-                skipped: importedTemplates.length - newTemplates.length
-            };
-        } catch (error) {
-            throw new Error('Failed to import templates: ' + error.message);
-        }
-    }
-
     getBuiltInTemplates() {
         return [
             {
@@ -208,8 +176,7 @@ export class CustomTemplateManager {
                     {
                         name: 'CODE_PLACEHOLDER',
                         description: 'Paste your code here',
-                        type: 'textarea',
-                        required: true
+                        type: 'textarea'
                     }
                 ],
                 template: `I will provide you with a prompt. Your job is to explain how to setup my environment to run the code in the prompt.
@@ -233,22 +200,9 @@ Got it? Here is the prompt.
             {
                 id: 'builtin-response-evaluation',
                 name: 'Response Evaluation',
-                description: 'Evaluate AI responses for code review',
-                placeholders: [
-                    {
-                        name: 'PROMPT_PLACEHOLDER',
-                        description: 'Original prompt to AI',
-                        type: 'textarea',
-                        required: true
-                    },
-                    {
-                        name: 'RESPONSE_PLACEHOLDER',
-                        description: 'AI response to evaluate',
-                        type: 'textarea',
-                        required: true
-                    }
-                ],
-                template: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
+                description: 'Evaluate AI responses for code review with optional rubric mode',
+                isEvaluationTemplate: true,
+                standardTemplate: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
 
 Review the response for:
 1. **Code Correctness** - Assess if the code executes correctly, handles edge cases, and produces the intended output.
@@ -263,29 +217,7 @@ Be very analytical in your evaluation, and provide a summary of the biggest flaw
 <response>
 {{RESPONSE_PLACEHOLDER}}
 </response>`,
-                isBuiltIn: true,
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-            },
-            {
-                id: 'builtin-rubric-evaluation',
-                name: 'Rubric Evaluation',
-                description: 'Detailed rubric-based evaluation of AI responses',
-                placeholders: [
-                    {
-                        name: 'PROMPT_PLACEHOLDER',
-                        description: 'Original prompt to AI',
-                        type: 'textarea',
-                        required: true
-                    },
-                    {
-                        name: 'RESPONSE_PLACEHOLDER',
-                        description: 'AI response to evaluate',
-                        type: 'textarea',
-                        required: true
-                    }
-                ],
-                template: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
+                rubricTemplate: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
 
 Your job is to:
 
@@ -337,14 +269,12 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
                     {
                         name: 'RESPONSE_A_PLACEHOLDER',
                         description: 'First response to compare',
-                        type: 'textarea',
-                        required: true
+                        type: 'textarea'
                     },
                     {
                         name: 'RESPONSE_B_PLACEHOLDER',
                         description: 'Second response to compare',
-                        type: 'textarea',
-                        required: true
+                        type: 'textarea'
                     }
                 ],
                 template: `You are an expert computer-science content comparator. You will be given two blocks of text, Response A and Response B. Your job is to:
