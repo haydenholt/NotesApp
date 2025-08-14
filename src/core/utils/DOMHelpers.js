@@ -75,4 +75,42 @@ export class DOMHelpers {
             timeoutId = setTimeout(() => func.apply(this, args), delay);
         };
     }
+
+    static saveScrollPosition() {
+        return {
+            x: window.pageXOffset || document.documentElement.scrollLeft,
+            y: window.pageYOffset || document.documentElement.scrollTop
+        };
+    }
+
+    static restoreScrollPosition(position, behavior = 'instant') {
+        if (!position || typeof position.x === 'undefined' || typeof position.y === 'undefined') {
+            return;
+        }
+        
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            window.scrollTo({
+                left: position.x,
+                top: position.y,
+                behavior: behavior
+            });
+        });
+    }
+
+    static preserveScrollDuring(operation) {
+        const scrollPos = this.saveScrollPosition();
+        const result = operation();
+        
+        // Handle both sync and async operations
+        if (result && typeof result.then === 'function') {
+            return result.then(res => {
+                this.restoreScrollPosition(scrollPos);
+                return res;
+            });
+        } else {
+            this.restoreScrollPosition(scrollPos);
+            return result;
+        }
+    }
 }

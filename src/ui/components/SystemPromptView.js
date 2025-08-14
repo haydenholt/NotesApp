@@ -35,7 +35,13 @@ export class SystemPromptView {
 
                 <!-- System Prompt for Prompt/Response Evaluation -->
                 <div class="bg-white shadow-sm border border-gray-200 rounded-md p-6 mb-6">
-                    <h2 class="text-lg font-medium mb-4 text-gray-700">Prompt/Response Evaluation Prompt</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-medium text-gray-700">Prompt/Response Evaluation Prompt</h2>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="rubricEvalToggle" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="rubricEvalToggle" class="text-sm text-gray-700 cursor-pointer">Rubric Eval</label>
+                        </div>
+                    </div>
 
                     <div class="mb-4">
                         <label for="systemPromptInputPrompt2" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
@@ -220,6 +226,24 @@ Got it? Here is the prompt.
         const clearSystemPromptButton2 = document.getElementById('clearSystemPromptButton2');
 
         const systemPromptTemplate2 = `
+You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
+
+Review the response for:
+1. **Code Correctness** - Assess if the code executes correctly, handles edge cases, and produces the intended output.
+2. **Instruction Following** - Ensure that the response fulfills all explicit requests in the prompt. Additionally, identify any implicit expectations that, while not stated in the prompt, would be important for a complete response.
+3. **Documentation Accuracy** - All comments and explanations should be fully accurate and not misleading. Additionally, comments should not describe any changes made to the code, and should instead be framed as original.
+
+Offer a thorough evaluation for each dimension and, where applicable, provide examples to illustrate recommended improvements or corrections.
+Be very analytical in your evaluation, and provide a summary of the biggest flaws at the end. 
+<prompt>
+{{PROMPT_PLACEHOLDER}}
+</prompt>
+<response>
+{{RESPONSE_PLACEHOLDER}}
+</response>
+        `.trim();
+
+        const systemPromptTemplate2BustDown = `
 You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
 
 Your job is to:
@@ -267,6 +291,9 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
                 const originalPrompt = systemPromptInputPrompt2.value;
                 const aiResponse1 = systemPromptInputResponse2_1.value;
                 const aiResponse2 = systemPromptInputResponse2_2.value;
+                const rubricEvalToggle = document.getElementById('rubricEvalToggle');
+                const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
+                const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
 
                 if (originalPrompt.trim() === '') {
                     this.showToast('Prompt is empty!', 'error');
@@ -274,9 +301,9 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
                 }
 
                 if (aiResponse1.trim() !== '') {
-                    this._copyEvaluationContent(originalPrompt, aiResponse1, copySystemPromptButton2, 'Copied (Prompt + R1)!', systemPromptTemplate2, 'Response 1 is empty.'); 
+                    this._copyEvaluationContent(originalPrompt, aiResponse1, copySystemPromptButton2, 'Copied (Prompt + R1)!', selectedTemplate, 'Response 1 is empty.'); 
                 } else if (aiResponse2.trim() !== '') {
-                    this._copyEvaluationContent(originalPrompt, aiResponse2, copySystemPromptButton2, 'Copied (Prompt + R2)!', systemPromptTemplate2, 'Response 2 is empty.');
+                    this._copyEvaluationContent(originalPrompt, aiResponse2, copySystemPromptButton2, 'Copied (Prompt + R2)!', selectedTemplate, 'Response 2 is empty.');
                 } else {
                     this.showToast('Both Response fields are empty!', 'error');
                 }
@@ -294,7 +321,10 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
                     e.preventDefault();
                     const promptText = systemPromptInputPrompt2.value;
                     const responseText = systemPromptInputResponse2_1.value;
-                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R1)!', systemPromptTemplate2, 'Fill Prompt & Response 1');
+                    const rubricEvalToggle = document.getElementById('rubricEvalToggle');
+                    const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
+                    const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
+                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R1)!', selectedTemplate, 'Fill Prompt & Response 1');
                 }
             });
 
@@ -303,7 +333,10 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
                     e.preventDefault();
                     const promptText = systemPromptInputPrompt2.value;
                     const responseText = systemPromptInputResponse2_2.value;
-                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R2)!', systemPromptTemplate2, 'Fill Prompt & Response 2');
+                    const rubricEvalToggle = document.getElementById('rubricEvalToggle');
+                    const isRubricEval = rubricEvalToggle && rubricEvalToggle.checked;
+                    const selectedTemplate = isRubricEval ? systemPromptTemplate2BustDown : systemPromptTemplate2;
+                    this._copyEvaluationContent(promptText, responseText, copySystemPromptButton2, 'Copied (Prompt + R2)!', selectedTemplate, 'Fill Prompt & Response 2');
                 }
             });
         }

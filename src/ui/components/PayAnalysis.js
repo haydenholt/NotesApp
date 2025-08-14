@@ -39,16 +39,26 @@ export class PayAnalysis {
     generateReport() {
         if (!this.selectedMonday) return;
         const [year, month, day] = this.selectedMonday.split('-').map(Number);
-        const monday = new Date(year, month - 1, day);
+        const startDate = new Date(year, month - 1, day);
         const reportRows = [];
         let totalOnSeconds = 0;
         let totalOffSeconds = 0;
         let totalTasks = 0;
         const now = Date.now();
+        
+        // Determine the number of days to include based on the week type
+        let daysToInclude = 7;
+        if (this.isTransitionWeek) {
+            daysToInclude = 8; // Monday to Monday (inclusive)
+        }
+        
+        // Check if this is a new schedule week (Tuesday to Monday)
+        const transitionWeekEnd = new Date(2025, 7, 4); // August 4, 2025
+        const isNewSchedule = startDate > transitionWeekEnd && !this.isTransitionWeek;
 
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(monday);
-            date.setDate(monday.getDate() + i);
+        for (let i = 0; i < daysToInclude; i++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
             const dateKey = date.toLocaleDateString('sv-SE');
 
             const onSeconds = this.getOnSecondsForDate(dateKey, now);
@@ -101,9 +111,19 @@ export class PayAnalysis {
         const tableClasses = this.themeManager.getTableClasses();
         const cardClass = this.themeManager.getCardClasses('large');
         
+        // Determine the week title based on the schedule type
+        let weekTitle;
+        if (this.isTransitionWeek) {
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 7);
+            weekTitle = `Transition Week: ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        } else {
+            weekTitle = `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        }
+        
         html += `<div class="${cardClass}">
             <h3 class="${tableClasses.title}">
-                Week of ${monday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                ${weekTitle}
             </h3>
             
             <div class="overflow-x-auto">
@@ -366,11 +386,18 @@ export class PayAnalysis {
             if (this.selectedMonday) {
                 // Parse the selectedMonday string (YYYY-MM-DD) to avoid timezone issues
                 const [year, month, day] = this.selectedMonday.split('-').map(Number);
-                const mondayDate = new Date(year, month - 1, day);
+                const startDate = new Date(year, month - 1, day);
                 const weekDates = [];
-                for (let j = 0; j < 7; j++) {
-                    const d = new Date(mondayDate);
-                    d.setDate(mondayDate.getDate() + j);
+                
+                // Determine how many days to include in the week
+                let daysToInclude = 7;
+                if (this.isTransitionWeek) {
+                    daysToInclude = 8; // Monday to Monday
+                }
+                
+                for (let j = 0; j < daysToInclude; j++) {
+                    const d = new Date(startDate);
+                    d.setDate(startDate.getDate() + j);
                     weekDates.push(d.toLocaleDateString('sv-SE'));
                 }
                 const currentDateStr = dateObj.toLocaleDateString('sv-SE');
@@ -421,16 +448,44 @@ export class PayAnalysis {
         // Ensure we're working with a fresh Date object to avoid mutation issues
         const workDate = new Date(date.getTime());
         
-        // Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
-        const dayOfWeek = workDate.getDay();
+        // Define the transition week start date (July 28, 2025)
+        const transitionWeekStart = new Date(2025, 6, 28); // July 28, 2025
+        const transitionWeekEnd = new Date(2025, 7, 4); // August 4, 2025
         
-        // Calculate days to subtract to get to Monday
-        const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        // Check if the selected date falls within the transition week
+        if (workDate >= transitionWeekStart && workDate <= transitionWeekEnd) {
+            // Special case: transition week (Monday to Monday)
+            this.selectedMonday = '2025-07-28';
+            this.isTransitionWeek = true;
+        } else if (workDate >= transitionWeekEnd) {
+            // New schedule: Tuesday to Monday
+            const dayOfWeek = workDate.getDay();
+            // Calculate days to subtract to get to previous Tuesday
+            let daysToSubtract;
+            if (dayOfWeek === 0) { // Sunday
+                daysToSubtract = 5;
+            } else if (dayOfWeek === 1) { // Monday
+                daysToSubtract = 6;
+            } else { // Tuesday through Saturday
+                daysToSubtract = dayOfWeek - 2;
+            }
+            
+            const tuesday = new Date(workDate);
+            tuesday.setDate(workDate.getDate() - daysToSubtract);
+            this.selectedMonday = tuesday.toLocaleDateString('sv-SE');
+            this.isTransitionWeek = false;
+        } else {
+            // Old schedule: Monday to Sunday
+            const dayOfWeek = workDate.getDay();
+            // Calculate days to subtract to get to Monday
+            const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            
+            const monday = new Date(workDate);
+            monday.setDate(workDate.getDate() - daysToSubtract);
+            this.selectedMonday = monday.toLocaleDateString('sv-SE');
+            this.isTransitionWeek = false;
+        }
         
-        const monday = new Date(workDate);
-        monday.setDate(workDate.getDate() - daysToSubtract);
-
-        this.selectedMonday = monday.toLocaleDateString('sv-SE');
         this.updateCalendar();
         this.generateReport();
     }

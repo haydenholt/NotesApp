@@ -126,6 +126,15 @@ export class NoteApp {
             this.showNormalMode();
             this.noteListView.clear();
             this.noteController.loadNotesForDate(this.appState.getCurrentDate());
+            
+            // Restore scroll position after notes are loaded
+            if (this.searchScrollPosition) {
+                // Wait for notes to be rendered
+                setTimeout(() => {
+                    DOMHelpers.restoreScrollPosition(this.searchScrollPosition);
+                    this.searchScrollPosition = null;
+                }, 200);
+            }
         });
 
         this.searchController.addEventListener('navigateToResult', ({ dateKey, noteId }) => {
@@ -162,11 +171,20 @@ export class NoteApp {
     }
 
     setupSearchInput() {
+        // Store scroll position at a higher scope so it persists across search sessions
+        this.searchScrollPosition = null;
+        
         const debouncedSearch = DOMHelpers.debounce((query) => {
             if (query.trim() === '') {
                 this.searchController.clearSearch();
             } else {
+                // Save scroll position before first search
+                if (!this.searchController.isSearchActive() && !this.searchScrollPosition) {
+                    this.searchScrollPosition = DOMHelpers.saveScrollPosition();
+                }
                 this.searchController.searchNotes(query);
+                // Scroll to top when searching
+                window.scrollTo(0, 0);
             }
         }, 300);
 
@@ -243,9 +261,13 @@ export class NoteApp {
     }
 
     showSearchMode() {
+        // Don't clear notes immediately to avoid visual jump
         this.offPlatformView.hide();
         this.hideTotalTimeBar();
-        this.noteListView.clear();
+        // Only clear if we're not already in search mode
+        if (!this.searchResultsView.container?.hasChildNodes()) {
+            this.noteListView.clear();
+        }
     }
 
     showNormalMode() {
@@ -291,13 +313,16 @@ export class NoteApp {
         const offPlatformSeconds = this.timerController.getTotalOffPlatformSeconds();
         const totalSeconds = onPlatformSeconds + offPlatformSeconds;
         
+        const textMutedClass = this.themeManager.getColor('text', 'muted');
+        const textPrimaryClass = this.themeManager.getColor('text', 'primary');
+        
         this.elements.totalTimeDisplay.innerHTML = `
             <div class="flex items-center justify-between gap-4">
-                <div class="text-sm text-gray-600 space-y-1">
+                <div class="text-sm ${textMutedClass} space-y-1">
                     <div>On-platform: ${TimeFormatter.formatTime(onPlatformSeconds)}</div>
                     <div>Off-platform: ${TimeFormatter.formatTime(offPlatformSeconds)}</div>
                 </div>
-                <div class="font-semibold text-lg">Total: ${TimeFormatter.formatTime(totalSeconds)}</div>
+                <div class="font-semibold text-lg ${textPrimaryClass}">Total: ${TimeFormatter.formatTime(totalSeconds)}</div>
             </div>
         `;
     }
@@ -333,6 +358,9 @@ export class NoteApp {
     refreshAllViews() {
         this.dateNavigationView.updateTheme();
         this.offPlatformView.updateTheme();
+        
+        // Update total time display with new theme colors
+        this.updateTotalTimeDisplay();
         
         if (this.searchController.isSearchActive()) {
             const results = this.searchController.getSearchResults();

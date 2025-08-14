@@ -38,12 +38,16 @@ export class Timer {
             return
         } 
 
-        // Calculate time spent in previous session and add to additionalTime
-        this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
-
-        // Reset timestamps for new session
-        this.startTimestamp = Date.now();
-        this.endTimestamp = null;
+        // Only calculate and add previous session time if the timer was actually stopped
+        if (this.endTimestamp) {
+            this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
+            
+            // Reset timestamps for new session
+            this.startTimestamp = Date.now();
+            this.endTimestamp = null;
+        }
+        // If endTimestamp is null, timer is already running, so just ensure display is active
+        
         this.hasStarted = true;
         this.startDisplay();
         this.saveState();

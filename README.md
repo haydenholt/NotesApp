@@ -1,4 +1,4 @@
-# Timer Notes
+# QC Notes
 
 A web-based note-taking application with time tracking, text comparison, and system prompt generation features.
 

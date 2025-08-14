@@ -403,4 +403,107 @@ describe('DOMHelpers', () => {
             expect(mockFn).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe('saveScrollPosition', () => {
+        it('should save current scroll position', () => {
+            // Mock window scroll properties
+            Object.defineProperty(window, 'pageXOffset', { value: 100, writable: true });
+            Object.defineProperty(window, 'pageYOffset', { value: 200, writable: true });
+
+            const position = DOMHelpers.saveScrollPosition();
+
+            expect(position).toEqual({ x: 100, y: 200 });
+        });
+
+        it('should use documentElement as fallback', () => {
+            // Mock window scroll properties as undefined
+            Object.defineProperty(window, 'pageXOffset', { value: undefined, writable: true });
+            Object.defineProperty(window, 'pageYOffset', { value: undefined, writable: true });
+            Object.defineProperty(document.documentElement, 'scrollLeft', { value: 50, writable: true });
+            Object.defineProperty(document.documentElement, 'scrollTop', { value: 150, writable: true });
+
+            const position = DOMHelpers.saveScrollPosition();
+
+            expect(position).toEqual({ x: 50, y: 150 });
+        });
+    });
+
+    describe('restoreScrollPosition', () => {
+        beforeEach(() => {
+            window.scrollTo = jest.fn();
+            window.requestAnimationFrame = jest.fn(cb => cb());
+        });
+
+        it('should restore scroll position', () => {
+            const position = { x: 100, y: 200 };
+
+            DOMHelpers.restoreScrollPosition(position);
+
+            expect(window.requestAnimationFrame).toHaveBeenCalled();
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                left: 100,
+                top: 200,
+                behavior: 'instant'
+            });
+        });
+
+        it('should use custom behavior when specified', () => {
+            const position = { x: 50, y: 150 };
+
+            DOMHelpers.restoreScrollPosition(position, 'smooth');
+
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                left: 50,
+                top: 150,
+                behavior: 'smooth'
+            });
+        });
+
+        it('should handle invalid position gracefully', () => {
+            DOMHelpers.restoreScrollPosition(null);
+            DOMHelpers.restoreScrollPosition(undefined);
+            DOMHelpers.restoreScrollPosition({});
+            DOMHelpers.restoreScrollPosition({ x: 100 }); // missing y
+            DOMHelpers.restoreScrollPosition({ y: 100 }); // missing x
+
+            expect(window.scrollTo).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('preserveScrollDuring', () => {
+        beforeEach(() => {
+            window.scrollTo = jest.fn();
+            window.requestAnimationFrame = jest.fn(cb => cb());
+            Object.defineProperty(window, 'pageXOffset', { value: 100, writable: true });
+            Object.defineProperty(window, 'pageYOffset', { value: 200, writable: true });
+        });
+
+        it('should preserve scroll for synchronous operations', () => {
+            const operation = jest.fn(() => 'result');
+
+            const result = DOMHelpers.preserveScrollDuring(operation);
+
+            expect(operation).toHaveBeenCalled();
+            expect(result).toBe('result');
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                left: 100,
+                top: 200,
+                behavior: 'instant'
+            });
+        });
+
+        it('should preserve scroll for asynchronous operations', async () => {
+            const operation = jest.fn(() => Promise.resolve('async result'));
+
+            const result = await DOMHelpers.preserveScrollDuring(operation);
+
+            expect(operation).toHaveBeenCalled();
+            expect(result).toBe('async result');
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                left: 100,
+                top: 200,
+                behavior: 'instant'
+            });
+        });
+    });
 });
