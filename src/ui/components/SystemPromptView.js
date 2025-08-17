@@ -693,10 +693,24 @@ Input to process:
             }
 
             let aiResponse = '';
-            if (aiResponse1) {
+            
+            // Determine which response to use based on which textarea has focus or which has content
+            const activeElement = document.activeElement;
+            const isResponse1Focused = activeElement && activeElement.id === `evalResponse1Input_${templateId}`;
+            const isResponse2Focused = activeElement && activeElement.id === `evalResponse2Input_${templateId}`;
+            
+            if (isResponse2Focused && aiResponse2) {
+                // User is focused on Response 2 and it has content - use it
+                aiResponse = aiResponse2;
+            } else if (isResponse1Focused && aiResponse1) {
+                // User is focused on Response 1 and it has content - use it
                 aiResponse = aiResponse1;
             } else if (aiResponse2) {
+                // Response 2 has content but user isn't focused on either - use Response 2
                 aiResponse = aiResponse2;
+            } else if (aiResponse1) {
+                // Response 1 has content - use it as fallback
+                aiResponse = aiResponse1;
             } else {
                 this.showToast('At least one AI response is required.', 'error');
                 return;

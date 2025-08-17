@@ -330,7 +330,7 @@ export class OffPlatformEntryList {
             // Show empty state
             emptyState = DOMHelpers.createElement('div',
                 this.themeManager.combineClasses(
-                    'text-center py-12 rounded-lg border border-dashed',
+                    'text-center py-12 rounded-lg',
                     this.themeManager.getColor('border', 'light'),
                     this.themeManager.getColor('text', 'muted')
                 ),

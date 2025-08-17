@@ -6,7 +6,11 @@ export class PayAnalysis {
         this.calendarContainer = document.getElementById('calendarContainer');
         this.reportContainer = document.getElementById('payReportContainer');
         this.selectedMonday = null;
-        this.ratePerHour = 60;
+        
+        // Load saved payrate from localStorage, default to $60
+        const savedRate = localStorage.getItem('pay_rate');
+        this.ratePerHour = savedRate ? parseFloat(savedRate) : 60;
+        
         this.init();
     }
 
@@ -79,7 +83,17 @@ export class PayAnalysis {
 
         const grandTotalSeconds = totalOnSeconds + totalOffSeconds;
         const totalHours = grandTotalSeconds / 3600;
-        const payAmount = (totalHours * this.ratePerHour).toFixed(2);
+        const hourlyPay = totalHours * this.ratePerHour;
+        
+        // Calculate bonus based on task count
+        let bonus = 0;
+        if (totalTasks >= 25) {
+            bonus = 200;
+        } else if (totalTasks >= 1) {
+            bonus = 135;
+        }
+        
+        const payAmount = (hourlyPay + bonus).toFixed(2);
     
 
         // Balanced summary cards with subtle color accents
@@ -201,11 +215,29 @@ export class PayAnalysis {
                     <div class="${bgSecondary} p-3 rounded-md border ${sectionBorder}">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm ${textSecondary}">Rate per hour:</span>
-                            <span class="text-sm ${textSecondary}">$${this.ratePerHour.toFixed(2)}</span>
+                            <div class="flex items-center">
+                                <span class="text-sm ${textSecondary}">$</span>
+                                <input type="number" 
+                                       value="${this.ratePerHour.toFixed(2)}" 
+                                       min="0" 
+                                       step="0.01" 
+                                       class="ml-1 w-16 text-sm ${textSecondary} bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:rounded px-1"
+                                       onchange="window.payAnalysis.savePayRate(parseFloat(this.value) || 60)"
+                                       onblur="this.style.backgroundColor = 'transparent'; this.style.border = 'none'"
+                                       onfocus="this.style.backgroundColor = 'white'; this.style.border = '1px solid #d1d5db'">
+                            </div>
                         </div>
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm ${textSecondary}">Total hours:</span>
                             <span class="text-sm ${textSecondary}">${totalHours.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm ${textSecondary}">Hourly pay:</span>
+                            <span class="text-sm ${textSecondary}">$${hourlyPay.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm ${textSecondary}">Bonus (${totalTasks} tasks):</span>
+                            <span class="text-sm ${textSecondary} ${bonus > 0 ? 'text-green-600' : ''}">$${bonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between items-center pt-2 border-t ${sectionBorder}">
                             <span class="text-sm font-medium ${textPrimary}">Total pay:</span>
@@ -266,6 +298,18 @@ export class PayAnalysis {
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
         return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+
+    // Save payrate to localStorage and update internal value
+    savePayRate(rate) {
+        this.ratePerHour = rate;
+        localStorage.setItem('pay_rate', rate.toString());
+        
+        // Regenerate report if a week is selected
+        if (this.selectedMonday) {
+            this.generateReport();
+        }
     }
 
     // Render a calendar with balanced styling
