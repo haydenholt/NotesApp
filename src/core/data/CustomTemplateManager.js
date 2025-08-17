@@ -65,25 +65,53 @@ export class CustomTemplateManager {
     }
 
     updateTemplate(id, templateData) {
-        const templates = this.getCustomTemplates();
-        const index = templates.findIndex(t => t.id === id);
+        const template = this.getTemplateById(id);
         
-        if (index === -1) {
+        if (!template) {
             throw new Error('Template not found');
         }
-
-        const updatedTemplate = {
-            ...templates[index],
-            ...templateData,
-            updatedAt: Date.now()
-        };
-
-        templates[index] = updatedTemplate;
         
-        if (this.saveCustomTemplates(templates)) {
-            return updatedTemplate;
+        // If it's a built-in template, create a custom copy instead
+        if (template.isBuiltIn) {
+            const newTemplate = {
+                ...templateData,
+                id: this.generateId(),
+                name: templateData.name + ' (Custom)',
+                isBuiltIn: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            };
+            
+            const templates = this.getCustomTemplates();
+            templates.push(newTemplate);
+            
+            if (this.saveCustomTemplates(templates)) {
+                return newTemplate;
+            } else {
+                throw new Error('Failed to create custom template');
+            }
         } else {
-            throw new Error('Failed to update template');
+            // Update existing custom template
+            const templates = this.getCustomTemplates();
+            const index = templates.findIndex(t => t.id === id);
+            
+            if (index === -1) {
+                throw new Error('Custom template not found');
+            }
+
+            const updatedTemplate = {
+                ...templates[index],
+                ...templateData,
+                updatedAt: Date.now()
+            };
+
+            templates[index] = updatedTemplate;
+            
+            if (this.saveCustomTemplates(templates)) {
+                return updatedTemplate;
+            } else {
+                throw new Error('Failed to update template');
+            }
         }
     }
 
@@ -103,36 +131,19 @@ export class CustomTemplateManager {
         return allTemplates.find(t => t.id === id);
     }
 
-    generatePromptFromTemplate(templateId, placeholderValues, useRubric = false) {
+    generatePromptFromTemplate(templateId, placeholderValues) {
         const template = this.getTemplateById(templateId);
         if (!template) {
             throw new Error('Template not found');
         }
 
-        let generatedPrompt;
-        
-        // Handle evaluation template with rubric option
-        if (template.isEvaluationTemplate) {
-            generatedPrompt = useRubric ? template.rubricTemplate : template.standardTemplate;
-            // Replace evaluation-specific placeholders
+        let generatedPrompt = template.template;
+        for (const placeholder of template.placeholders) {
+            const value = placeholderValues[placeholder.name];
             generatedPrompt = generatedPrompt.replace(
-                new RegExp(`{{PROMPT_PLACEHOLDER}}`, 'g'), 
-                placeholderValues.PROMPT_PLACEHOLDER || ''
+                new RegExp(`{{${placeholder.name}}}`, 'g'), 
+                value || ''
             );
-            generatedPrompt = generatedPrompt.replace(
-                new RegExp(`{{RESPONSE_PLACEHOLDER}}`, 'g'), 
-                placeholderValues.RESPONSE_PLACEHOLDER || ''
-            );
-        } else {
-            // Handle standard templates
-            generatedPrompt = template.template;
-            for (const placeholder of template.placeholders) {
-                const value = placeholderValues[placeholder.name];
-                generatedPrompt = generatedPrompt.replace(
-                    new RegExp(`{{${placeholder.name}}}`, 'g'), 
-                    value || ''
-                );
-            }
         }
 
         return generatedPrompt;
@@ -198,11 +209,22 @@ Got it? Here is the prompt.
                 updatedAt: Date.now()
             },
             {
-                id: 'builtin-response-evaluation',
-                name: 'Response Evaluation',
-                description: 'Evaluate AI responses for code review with optional rubric mode',
-                isEvaluationTemplate: true,
-                standardTemplate: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
+                id: 'builtin-response-evaluation-standard',
+                name: 'Response Evaluation (Standard)',
+                description: 'Evaluate AI responses for code review with thorough analysis',
+                placeholders: [
+                    {
+                        name: 'PROMPT_PLACEHOLDER',
+                        description: 'Original Prompt',
+                        type: 'textarea'
+                    },
+                    {
+                        name: 'RESPONSE_PLACEHOLDER',
+                        description: 'AI Response',
+                        type: 'textarea'
+                    }
+                ],
+                template: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in XML format.
 
 Review the response for:
 1. **Code Correctness** - Assess if the code executes correctly, handles edge cases, and produces the intended output.
@@ -217,7 +239,27 @@ Be very analytical in your evaluation, and provide a summary of the biggest flaw
 <response>
 {{RESPONSE_PLACEHOLDER}}
 </response>`,
-                rubricTemplate: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
+                isBuiltIn: true,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            },
+            {
+                id: 'builtin-response-evaluation-rubric',
+                name: 'Response Evaluation (Rubric)',
+                description: 'Evaluate AI responses with detailed rubric breakdown',
+                placeholders: [
+                    {
+                        name: 'PROMPT_PLACEHOLDER',
+                        description: 'Original Prompt',
+                        type: 'textarea'
+                    },
+                    {
+                        name: 'RESPONSE_PLACEHOLDER',
+                        description: 'AI Response',
+                        type: 'textarea'
+                    }
+                ],
+                template: `You are a senior software engineer whose goal is to provide insightful, constructive, and technically detailed code reviews for code responses provided with a prompt. You are given a prompt and a response in an XML format.
 
 Your job is to:
 

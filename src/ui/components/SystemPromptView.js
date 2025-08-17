@@ -38,7 +38,15 @@ export class SystemPromptView {
         const customTemplates = templates.filter(t => !t.isBuiltIn);
         const builtInTemplates = templates.filter(t => t.isBuiltIn);
         
-        const allTemplates = [...builtInTemplates, ...customTemplates];
+        // Group evaluation templates
+        const standardEval = builtInTemplates.find(t => t.id === 'builtin-response-evaluation-standard');
+        const rubricEval = builtInTemplates.find(t => t.id === 'builtin-response-evaluation-rubric');
+        const otherBuiltIns = builtInTemplates.filter(t => 
+            t.id !== 'builtin-response-evaluation-standard' && 
+            t.id !== 'builtin-response-evaluation-rubric'
+        );
+        
+        const allTemplates = [...otherBuiltIns, ...customTemplates];
         
         return `
             <div class="max-w-4xl mx-auto">
@@ -50,15 +58,71 @@ export class SystemPromptView {
                 </div>
                 
                 <div class="space-y-6">
+                    ${standardEval && rubricEval ? this.renderCombinedEvaluationTemplate(standardEval, rubricEval, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) : ''}
                     ${allTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
                 </div>
             </div>
         `;
     }
 
-    renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
-        const isEvaluationTemplate = template.isEvaluationTemplate;
+    renderCombinedEvaluationTemplate(standardTemplate, rubricTemplate, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        const templateId = 'response-evaluation-combined';
         
+        return `
+            <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 mb-6" data-combined-eval="true">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-lg font-medium text-gray-800">Response Evaluation</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1">Evaluate AI responses for code review with optional rubric mode</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${templateId}" title="Edit">
+                            ✎
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <input type="checkbox" id="rubricEvalToggle_${templateId}" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="rubricEvalToggle_${templateId}" class="text-sm text-gray-700 cursor-pointer">Use Rubric Evaluation (detailed breakdown)</label>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="evalPromptInput_${templateId}" class="block text-sm font-medium text-gray-700 mb-2">Original Prompt to AI:</label>
+                        <textarea id="evalPromptInput_${templateId}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" placeholder="Paste the original prompt..."></textarea>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label for="evalResponse1Input_${templateId}" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 1:</label>
+                            <textarea id="evalResponse1Input_${templateId}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" data-template-id="${templateId}" placeholder="Paste AI's first response..."></textarea>
+                        </div>
+                        <div>
+                            <label for="evalResponse2Input_${templateId}" class="block text-sm font-medium text-gray-700 mb-2">AI's Response 2:</label>
+                            <textarea id="evalResponse2Input_${templateId}" class="w-full h-32 p-3 ${textareaClasses} ${focusClasses} text-sm" data-template-id="${templateId}" placeholder="Paste AI's second response..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3 justify-between">
+                        <button class="copyEvaluationPromptBtn ${primaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${templateId}">
+                            Copy Evaluation Prompt
+                        </button>
+                        <button class="clearEvaluationInputsBtn ${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-md transition-colors text-sm" data-template-id="${templateId}">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Hidden data attributes to store actual template IDs -->
+                <div class="hidden" data-standard-template-id="${standardTemplate.id}" data-rubric-template-id="${rubricTemplate.id}"></div>
+            </div>
+        `;
+    }
+
+    renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {        
         return `
             <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 mb-6">
                 <div class="flex justify-between items-start mb-4">
@@ -72,13 +136,11 @@ export class SystemPromptView {
                         <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
                             ✎
                         </button>
-                        <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">
-                            ×
-                        </button>
+                        ${!template.isBuiltIn ? `<button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">×</button>` : ''}
                     </div>
                 </div>
 
-                ${isEvaluationTemplate ? this.renderEvaluationTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses) : this.renderStandardTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses)}
+                ${this.renderStandardTemplateInputs(template, primaryButtonClasses, secondaryButtonClasses, inputClasses, textareaClasses, focusClasses)}
             </div>
         `;
     }
@@ -206,7 +268,7 @@ export class SystemPromptView {
                                 <p class="text-xs text-gray-500 mt-1">Define input fields that users will fill in</p>
                             </div>
                             <div id="placeholderList" class="space-y-4 mb-4">
-                                ${isEditing && template.placeholders ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
+                                ${isEditing && template && template.placeholders ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
                             </div>
                             <div class="flex justify-center">
                                 <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
@@ -237,7 +299,7 @@ Requirements:
 
 Input to process:
 {{INPUT_PLACEHOLDER}}" 
-                                      required>${isEditing ? (template.isEvaluationTemplate ? template.standardTemplate : template.template) || '' : ''}</textarea>
+                                      required>${isEditing ? template.template || '' : ''}</textarea>
                         </div>
                         
                         <!-- Actions -->
@@ -425,6 +487,7 @@ Input to process:
             });
         }
         
+        
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('removePlaceholderBtn')) {
                 e.target.closest('[data-placeholder-index]').remove();
@@ -489,13 +552,38 @@ Input to process:
     }
     
     openTemplateEditor(templateId = null) {
+        // Handle combined evaluation template
+        if (templateId === 'response-evaluation-combined') {
+            const combinedCard = document.querySelector('[data-combined-eval="true"]');
+            if (combinedCard) {
+                const rubricToggle = combinedCard.querySelector(`#rubricEvalToggle_${templateId}`);
+                const useRubric = rubricToggle ? rubricToggle.checked : false;
+                
+                // Get the actual template ID based on checkbox state
+                const hiddenDiv = combinedCard.querySelector('.hidden');
+                if (hiddenDiv) {
+                    const actualTemplateId = useRubric 
+                        ? hiddenDiv.getAttribute('data-rubric-template-id')
+                        : hiddenDiv.getAttribute('data-standard-template-id');
+                    
+                    if (actualTemplateId) {
+                        templateId = actualTemplateId;
+                    }
+                }
+            }
+        }
+        
         this.isEditorOpen = true;
         this.editingTemplateId = templateId;
+        
         this.render();
         this.initializeSystemPromptHandlers();
         
+        // For new templates, add a placeholder
         if (!templateId) {
-            this.addPlaceholder();
+            setTimeout(() => {
+                this.addPlaceholder();
+            }, 100);
         }
         
         // Focus on template name
@@ -555,29 +643,12 @@ Input to process:
                 }
             }
             
-            // Get the current template if we're editing
-            const currentTemplate = this.editingTemplateId ? this.templateManager.getTemplateById(this.editingTemplateId) : null;
-            const isEvaluationTemplate = currentTemplate && currentTemplate.isEvaluationTemplate;
-            
-            let templateData;
-            if (isEvaluationTemplate) {
-                // For evaluation templates, update the standardTemplate but keep the rubricTemplate
-                templateData = {
-                    name: templateName,
-                    description: templateDescription,
-                    isEvaluationTemplate: true,
-                    standardTemplate: templateContent,
-                    rubricTemplate: currentTemplate.rubricTemplate, // Keep existing rubric template
-                    placeholders: placeholders
-                };
-            } else {
-                templateData = {
-                    name: templateName,
-                    description: templateDescription,
-                    template: templateContent,
-                    placeholders: placeholders
-                };
-            }
+            const templateData = {
+                name: templateName,
+                description: templateDescription,
+                template: templateContent,
+                placeholders: placeholders
+            };
             
             const errors = this.templateManager.validateTemplate(templateData);
             if (errors.length > 0) {
@@ -586,8 +657,12 @@ Input to process:
             }
             
             if (this.editingTemplateId) {
-                this.templateManager.updateTemplate(this.editingTemplateId, templateData);
-                this.showToast('Template updated successfully!', 'success');
+                const result = this.templateManager.updateTemplate(this.editingTemplateId, templateData);
+                if (result.id !== this.editingTemplateId) {
+                    this.showToast('Built-in template copied as custom template!', 'success');
+                } else {
+                    this.showToast('Template updated successfully!', 'success');
+                }
             } else {
                 this.templateManager.createTemplate(templateData);
                 this.showToast('Template created successfully!', 'success');
@@ -681,11 +756,27 @@ Input to process:
 
     copyEvaluationPrompt(templateId) {
         try {
+            // Handle combined evaluation template
+            let actualTemplateId = templateId;
+            if (templateId === 'response-evaluation-combined') {
+                const combinedCard = document.querySelector('[data-combined-eval="true"]');
+                if (combinedCard) {
+                    const rubricToggle = combinedCard.querySelector(`#rubricEvalToggle_${templateId}`);
+                    const useRubric = rubricToggle ? rubricToggle.checked : false;
+                    
+                    // Get the actual template ID based on checkbox state
+                    const hiddenDiv = combinedCard.querySelector('.hidden');
+                    if (hiddenDiv) {
+                        actualTemplateId = useRubric 
+                            ? hiddenDiv.getAttribute('data-rubric-template-id')
+                            : hiddenDiv.getAttribute('data-standard-template-id');
+                    }
+                }
+            }
+            
             const originalPrompt = document.getElementById(`evalPromptInput_${templateId}`).value.trim();
             const aiResponse1 = document.getElementById(`evalResponse1Input_${templateId}`).value.trim();
             const aiResponse2 = document.getElementById(`evalResponse2Input_${templateId}`).value.trim();
-            const rubricToggle = document.getElementById(`rubricEvalToggle_${templateId}`);
-            const useRubric = rubricToggle && rubricToggle.checked;
 
             if (!originalPrompt) {
                 this.showToast('Original prompt cannot be empty.', 'error');
@@ -722,9 +813,8 @@ Input to process:
             };
 
             const generatedPrompt = this.templateManager.generatePromptFromTemplate(
-                templateId,
-                placeholderValues,
-                useRubric
+                actualTemplateId,
+                placeholderValues
             );
 
             navigator.clipboard.writeText(generatedPrompt)
