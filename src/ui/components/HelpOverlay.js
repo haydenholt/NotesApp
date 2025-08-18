@@ -1,12 +1,15 @@
 /**
  * Help overlay component that displays all keyboard shortcuts
  */
+import { ImportExportService } from '../../core/data/ImportExportService.js';
+
 export default class HelpOverlay {
     constructor(themeManager = null) {
         this.themeManager = themeManager;
         this.overlay = document.getElementById('helpOverlay');
         this.content = document.getElementById('helpContent');
         this.closeButton = document.getElementById('closeHelpButton');
+        this.fileInput = null; // Will be created dynamically
         
         // Only initialize if all required elements exist
         if (this.overlay && this.content && this.closeButton) {
@@ -107,6 +110,10 @@ export default class HelpOverlay {
         const keyBgClass = this.themeManager?.getColor('background', 'secondary') || 'bg-gray-100';
         const descClass = this.themeManager?.getColor('text', 'secondary') || 'text-gray-600';
         
+        // Add data management section
+        const primaryButtonClasses = this.themeManager?.getPrimaryButtonClasses() || 'bg-blue-500 text-white hover:bg-blue-600';
+        const secondaryButtonClasses = this.themeManager?.getSecondaryButtonClasses() || 'bg-gray-200 text-gray-700 hover:bg-gray-300';
+        
         this.content.innerHTML = shortcuts.map(category => `
             <div class="border-b ${borderClass} pb-3">
                 <h3 class="text-lg font-semibold ${titleClass} mb-2">${category.category}</h3>
@@ -119,7 +126,98 @@ export default class HelpOverlay {
                     `).join('')}
                 </div>
             </div>
-        `).join('');
+        `).join('') + `
+            <div class="pt-3">
+                <h3 class="text-lg font-semibold ${titleClass} mb-3">Data Management</h3>
+                <div class="flex gap-3 items-center">
+                    <button id="exportDataBtn" class="${primaryButtonClasses} px-4 py-2 rounded transition-colors">
+                        Export All Data
+                    </button>
+                    <button id="importDataBtn" class="${secondaryButtonClasses} px-4 py-2 rounded transition-colors">
+                        Import Data
+                    </button>
+                    <span id="importExportStatus" class="text-sm ${descClass} ml-2"></span>
+                </div>
+            </div>
+        `;
+        
+        // Setup import/export buttons
+        this.setupImportExportButtons();
+    }
+    
+    setupImportExportButtons() {
+        // Create hidden file input if it doesn't exist
+        if (!this.fileInput) {
+            this.fileInput = document.createElement('input');
+            this.fileInput.type = 'file';
+            this.fileInput.accept = '.json';
+            this.fileInput.style.display = 'none';
+            document.body.appendChild(this.fileInput);
+            
+            this.fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    await this.handleImport(file);
+                }
+                // Reset the input
+                this.fileInput.value = '';
+            });
+        }
+        
+        // Export button
+        const exportBtn = document.getElementById('exportDataBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.handleExport());
+        }
+        
+        // Import button
+        const importBtn = document.getElementById('importDataBtn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                if (confirm('This will replace all existing data. Are you sure you want to continue?')) {
+                    this.fileInput.click();
+                }
+            });
+        }
+    }
+    
+    async handleExport() {
+        const statusEl = document.getElementById('importExportStatus');
+        try {
+            const result = ImportExportService.exportData();
+            if (statusEl) {
+                statusEl.textContent = `✅ Exported ${result.keysExported} items to ${result.filename}`;
+                statusEl.style.color = 'green';
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                }, 5000);
+            }
+        } catch (error) {
+            if (statusEl) {
+                statusEl.textContent = `❌ Export failed: ${error.message}`;
+                statusEl.style.color = 'red';
+            }
+        }
+    }
+    
+    async handleImport(file) {
+        const statusEl = document.getElementById('importExportStatus');
+        try {
+            const result = await ImportExportService.importData(file);
+            if (statusEl) {
+                statusEl.textContent = `✅ Imported ${result.keysImported} items from ${result.filename}`;
+                statusEl.style.color = 'green';
+                setTimeout(() => {
+                    // Reload the page to show imported data
+                    window.location.reload();
+                }, 2000);
+            }
+        } catch (error) {
+            if (statusEl) {
+                statusEl.textContent = `❌ Import failed: ${error.message}`;
+                statusEl.style.color = 'red';
+            }
+        }
     }
 
     show() {
