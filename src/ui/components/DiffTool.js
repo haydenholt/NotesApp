@@ -78,7 +78,7 @@ export class DiffTool {
     compareTexts() {
         const original = this.originalTextArea.value;
         const modified = this.modifiedTextArea.value;
-        const diffMode = this.diffModeSelect ? this.diffModeSelect.value : 'line';
+        const diffMode = this.diffModeSelect ? this.diffModeSelect.value : 'word';
         
         if (!original && !modified) {
             this.resultContainer.textContent = '';

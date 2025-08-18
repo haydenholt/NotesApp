@@ -371,7 +371,7 @@ export class PayAnalysis {
             calendarClasses.border
         );
         
-        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(d => {
+        ['T', 'W', 'T', 'F', 'S', 'S', 'M'].forEach(d => {
             const cell = document.createElement('div');
             cell.textContent = d;
             cell.className = this.themeManager.combineClasses(
@@ -410,7 +410,10 @@ export class PayAnalysis {
         this.datesGrid.textContent = '';
         
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-        const startIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+        // Adjust for Tuesday start (0=Sun, 1=Mon, 2=Tue, etc.)
+        // We want Tuesday=0, Wednesday=1, ... Monday=6
+        let dayOfWeek = firstDay.getDay();
+        const startIndex = dayOfWeek === 0 ? 5 : (dayOfWeek === 1 ? 6 : dayOfWeek - 2);
         const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
         const totalCells = Math.ceil((startIndex + daysInMonth) / 7) * 7;
         
