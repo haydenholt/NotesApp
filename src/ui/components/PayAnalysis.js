@@ -700,6 +700,138 @@ export class PayAnalysis {
         tableContainer.appendChild(table);
         reportCard.appendChild(tableContainer);
         
+        // Create pay breakdown section
+        const sectionBg = this.themeManager.getColor('background', 'card');
+        const sectionBorder = this.themeManager.getColor('border', 'primary');
+        const textPrimary = this.themeManager.getColor('text', 'primary');
+        const textSecondary = this.themeManager.getColor('text', 'secondary');
+        const textMuted = this.themeManager.getColor('text', 'muted');
+        const bgSecondary = this.themeManager.getColor('background', 'secondary');
+        
+        const payBreakdownSection = SecurityUtils.createElement('div', '', `mt-6 p-4 ${sectionBg} border-t ${sectionBorder}`);
+        const payBreakdownGrid = SecurityUtils.createElement('div', '', 'grid grid-cols-1 md:grid-cols-2 gap-6');
+        
+        // Time breakdown column
+        const timeBreakdownColumn = SecurityUtils.createElement('div');
+        const timeBreakdownTitle = SecurityUtils.createElement('h4', 'Time Breakdown', `text-base font-medium ${textPrimary} mb-3`);
+        const timeBreakdownList = SecurityUtils.createElement('div', '', 'space-y-2');
+        
+        // On-platform time
+        const onPlatformRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center');
+        const onPlatformLabel = SecurityUtils.createElement('span', 'On-platform:', `text-sm ${textSecondary}`);
+        const onPlatformValue = SecurityUtils.createElement('span', this.formatTime(totalOnSeconds), `text-sm font-mono ${textPrimary}`);
+        onPlatformRow.appendChild(onPlatformLabel);
+        onPlatformRow.appendChild(onPlatformValue);
+        
+        // Off-platform time
+        const offPlatformRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center');
+        const offPlatformLabel = SecurityUtils.createElement('span', 'Off-platform:', `text-sm ${textSecondary}`);
+        const offPlatformValue = SecurityUtils.createElement('span', this.formatTime(totalOffSeconds), `text-sm font-mono ${textPrimary}`);
+        offPlatformRow.appendChild(offPlatformLabel);
+        offPlatformRow.appendChild(offPlatformValue);
+        
+        // Total time
+        const totalTimeRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center');
+        const totalTimeLabel = SecurityUtils.createElement('span', 'Total Time:', `text-sm font-medium ${textPrimary}`);
+        const totalTimeValue = SecurityUtils.createElement('span', this.formatTime(grandTotalSeconds), `text-sm font-mono font-semibold ${textPrimary}`);
+        totalTimeRow.appendChild(totalTimeLabel);
+        totalTimeRow.appendChild(totalTimeValue);
+        
+        timeBreakdownList.appendChild(onPlatformRow);
+        timeBreakdownList.appendChild(offPlatformRow);
+        timeBreakdownList.appendChild(totalTimeRow);
+        
+        // Progress bar
+        const progressBarContainer = SecurityUtils.createElement('div', '', `mt-3 ${bgSecondary} rounded-full h-1.5`);
+        const progressBar = SecurityUtils.createElement('div', '', `${this.themeManager.getProgressBarClasses().fill} h-1.5 rounded-full`);
+        progressBar.style.width = `${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%`;
+        progressBarContainer.appendChild(progressBar);
+        
+        const progressLabels = SecurityUtils.createElement('div', '', `flex justify-between mt-1 text-xs ${textMuted}`);
+        const onPlatformPercent = SecurityUtils.createElement('span', `On-platform (${Math.round(totalOnSeconds / grandTotalSeconds * 100)}%)`);
+        const offPlatformPercent = SecurityUtils.createElement('span', `Off-platform (${Math.round(totalOffSeconds / grandTotalSeconds * 100)}%)`);
+        progressLabels.appendChild(onPlatformPercent);
+        progressLabels.appendChild(offPlatformPercent);
+        
+        timeBreakdownColumn.appendChild(timeBreakdownTitle);
+        timeBreakdownColumn.appendChild(timeBreakdownList);
+        timeBreakdownColumn.appendChild(progressBarContainer);
+        timeBreakdownColumn.appendChild(progressLabels);
+        
+        // Payment details column
+        const paymentColumn = SecurityUtils.createElement('div');
+        const paymentTitle = SecurityUtils.createElement('h4', 'Payment Details', `text-base font-medium ${textPrimary} mb-3`);
+        const paymentCard = SecurityUtils.createElement('div', '', `${bgSecondary} p-3 rounded-md border ${sectionBorder}`);
+        
+        // Rate per hour
+        const rateRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
+        const rateLabel = SecurityUtils.createElement('span', 'Rate per hour:', `text-sm ${textSecondary}`);
+        const rateInputContainer = SecurityUtils.createElement('div', '', 'flex items-center');
+        const rateDollarSign = SecurityUtils.createElement('span', '$', `text-sm ${textSecondary}`);
+        const rateInput = SecurityUtils.createElement('input');
+        rateInput.type = 'number';
+        rateInput.value = this.ratePerHour.toFixed(2);
+        rateInput.min = '0';
+        rateInput.step = '0.01';
+        rateInput.className = `ml-1 w-16 text-sm ${textSecondary} bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:rounded px-1`;
+        rateInput.addEventListener('change', () => {
+            window.payAnalysis.savePayRate(parseFloat(rateInput.value) || 60);
+        });
+        rateInput.addEventListener('blur', () => {
+            rateInput.style.backgroundColor = 'transparent';
+            rateInput.style.border = 'none';
+        });
+        rateInput.addEventListener('focus', () => {
+            rateInput.style.backgroundColor = 'white';
+            rateInput.style.border = '1px solid #d1d5db';
+        });
+        rateInputContainer.appendChild(rateDollarSign);
+        rateInputContainer.appendChild(rateInput);
+        rateRow.appendChild(rateLabel);
+        rateRow.appendChild(rateInputContainer);
+        
+        // Total hours
+        const totalHoursRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
+        const totalHoursLabel = SecurityUtils.createElement('span', 'Total hours:', `text-sm ${textSecondary}`);
+        const totalHoursValue = SecurityUtils.createElement('span', totalHours.toFixed(2), `text-sm ${textSecondary}`);
+        totalHoursRow.appendChild(totalHoursLabel);
+        totalHoursRow.appendChild(totalHoursValue);
+        
+        // Hourly pay
+        const hourlyPayRowElement = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
+        const hourlyPayLabelElement = SecurityUtils.createElement('span', 'Hourly pay:', `text-sm ${textSecondary}`);
+        const hourlyPayValueElement = SecurityUtils.createElement('span', '$' + hourlyPay.toFixed(2), `text-sm ${textSecondary}`);
+        hourlyPayRowElement.appendChild(hourlyPayLabelElement);
+        hourlyPayRowElement.appendChild(hourlyPayValueElement);
+        
+        // Bonus
+        const bonusRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
+        const bonusLabel = SecurityUtils.createElement('span', `Bonus (${totalTasks} tasks):`, `text-sm ${textSecondary}`);
+        const bonusValue = SecurityUtils.createElement('span', '$' + bonus.toFixed(2), `text-sm ${textSecondary} ${bonus > 0 ? 'text-green-600' : ''}`);
+        bonusRow.appendChild(bonusLabel);
+        bonusRow.appendChild(bonusValue);
+        
+        // Total pay
+        const totalPayRow = SecurityUtils.createElement('div', '', `flex justify-between items-center pt-2 border-t ${sectionBorder}`);
+        const totalPayLabel = SecurityUtils.createElement('span', 'Total pay:', `text-sm font-medium ${textPrimary}`);
+        const totalPayValue = SecurityUtils.createElement('span', '$' + payAmount, 'text-sm font-medium text-green-600');
+        totalPayRow.appendChild(totalPayLabel);
+        totalPayRow.appendChild(totalPayValue);
+        
+        paymentCard.appendChild(rateRow);
+        paymentCard.appendChild(totalHoursRow);
+        paymentCard.appendChild(hourlyPayRowElement);
+        paymentCard.appendChild(bonusRow);
+        paymentCard.appendChild(totalPayRow);
+        
+        paymentColumn.appendChild(paymentTitle);
+        paymentColumn.appendChild(paymentCard);
+        
+        payBreakdownGrid.appendChild(timeBreakdownColumn);
+        payBreakdownGrid.appendChild(paymentColumn);
+        payBreakdownSection.appendChild(payBreakdownGrid);
+        reportCard.appendChild(payBreakdownSection);
+        
         // Append everything to the container
         this.reportContainer.appendChild(summaryGrid);
         this.reportContainer.appendChild(reportCard);
