@@ -1,37 +1,61 @@
 export class CustomTemplateManager {
     constructor() {
         this.storageKey = 'systemPromptTemplates';
-        this.builtInTemplates = this.getBuiltInTemplates();
+        this.versionKey = 'systemPromptTemplatesVersion';
+        this.currentVersion = 1;
+        
+        // Initialize templates (migrate if needed)
+        this.initializeTemplates();
     }
 
     generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
-    getAllTemplates() {
-        const customTemplates = this.getCustomTemplates();
-        return [...this.builtInTemplates, ...customTemplates];
+    initializeTemplates() {
+        const version = localStorage.getItem(this.versionKey);
+        const existingTemplates = this.getTemplates();
+        
+        // If no templates exist or version is outdated, initialize with defaults
+        if (!version || parseInt(version) < this.currentVersion || existingTemplates.length === 0) {
+            this.migrateToVersion1();
+        }
     }
 
-    getCustomTemplates() {
+    migrateToVersion1() {
+        const existingCustomTemplates = this.getTemplates().filter(t => !t.isDefault);
+        const defaultTemplates = this.getDefaultTemplates();
+        
+        // Combine existing custom templates with fresh default templates
+        const allTemplates = [...defaultTemplates, ...existingCustomTemplates];
+        
+        this.saveTemplates(allTemplates);
+        localStorage.setItem(this.versionKey, this.currentVersion.toString());
+    }
+
+    getAllTemplates() {
+        return this.getTemplates();
+    }
+
+    getTemplates() {
         try {
             const data = localStorage.getItem(this.storageKey);
             if (!data) return [];
             const parsed = JSON.parse(data);
             return parsed.templates || [];
         } catch (error) {
-            console.error('Failed to load custom templates:', error);
+            console.error('Failed to load templates:', error);
             return [];
         }
     }
 
-    saveCustomTemplates(templates) {
+    saveTemplates(templates) {
         try {
             const data = { templates };
             localStorage.setItem(this.storageKey, JSON.stringify(data));
             return true;
         } catch (error) {
-            console.error('Failed to save custom templates:', error);
+            console.error('Failed to save templates:', error);
             return false;
         }
     }
@@ -49,15 +73,15 @@ export class CustomTemplateManager {
             description: description?.trim() || '',
             placeholders: placeholders || [],
             template: template.trim(),
-            isBuiltIn: false,
+            isDefault: false,
             createdAt: Date.now(),
             updatedAt: Date.now()
         };
 
-        const templates = this.getCustomTemplates();
+        const templates = this.getTemplates();
         templates.push(newTemplate);
         
-        if (this.saveCustomTemplates(templates)) {
+        if (this.saveTemplates(templates)) {
             return newTemplate;
         } else {
             throw new Error('Failed to save template');
@@ -65,70 +89,68 @@ export class CustomTemplateManager {
     }
 
     updateTemplate(id, templateData) {
-        const template = this.getTemplateById(id);
+        const templates = this.getTemplates();
+        const index = templates.findIndex(t => t.id === id);
         
-        if (!template) {
+        if (index === -1) {
             throw new Error('Template not found');
         }
+
+        const updatedTemplate = {
+            ...templates[index],
+            ...templateData,
+            updatedAt: Date.now()
+        };
+
+        templates[index] = updatedTemplate;
         
-        // If it's a built-in template, create a custom copy instead
-        if (template.isBuiltIn) {
-            const newTemplate = {
-                ...templateData,
-                id: this.generateId(),
-                name: templateData.name + ' (Custom)',
-                isBuiltIn: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-            };
-            
-            const templates = this.getCustomTemplates();
-            templates.push(newTemplate);
-            
-            if (this.saveCustomTemplates(templates)) {
-                return newTemplate;
-            } else {
-                throw new Error('Failed to create custom template');
-            }
+        if (this.saveTemplates(templates)) {
+            return updatedTemplate;
         } else {
-            // Update existing custom template
-            const templates = this.getCustomTemplates();
-            const index = templates.findIndex(t => t.id === id);
-            
-            if (index === -1) {
-                throw new Error('Custom template not found');
-            }
-
-            const updatedTemplate = {
-                ...templates[index],
-                ...templateData,
-                updatedAt: Date.now()
-            };
-
-            templates[index] = updatedTemplate;
-            
-            if (this.saveCustomTemplates(templates)) {
-                return updatedTemplate;
-            } else {
-                throw new Error('Failed to update template');
-            }
+            throw new Error('Failed to update template');
         }
     }
 
     deleteTemplate(id) {
-        const templates = this.getCustomTemplates();
+        const templates = this.getTemplates();
         const filteredTemplates = templates.filter(t => t.id !== id);
         
         if (filteredTemplates.length === templates.length) {
             throw new Error('Template not found');
         }
 
-        return this.saveCustomTemplates(filteredTemplates);
+        return this.saveTemplates(filteredTemplates);
     }
 
     getTemplateById(id) {
         const allTemplates = this.getAllTemplates();
         return allTemplates.find(t => t.id === id);
+    }
+
+    resetTemplateToDefault(id) {
+        const template = this.getTemplateById(id);
+        
+        if (!template || !template.isDefault) {
+            throw new Error('Template is not a default template');
+        }
+        
+        // Find the original default template
+        const defaultTemplates = this.getDefaultTemplates();
+        const originalTemplate = defaultTemplates.find(t => t.id === id);
+        
+        if (!originalTemplate) {
+            throw new Error('Original default template not found');
+        }
+        
+        // Update with original content but keep user's name/description if modified
+        const resetData = {
+            ...originalTemplate,
+            name: template.name, // Keep user's name if they changed it
+            description: template.description, // Keep user's description if they changed it
+            updatedAt: Date.now()
+        };
+        
+        return this.updateTemplate(id, resetData);
     }
 
     generatePromptFromTemplate(templateId, placeholderValues) {
@@ -177,7 +199,7 @@ export class CustomTemplateManager {
         return errors;
     }
 
-    getBuiltInTemplates() {
+    getDefaultTemplates() {
         return [
             {
                 id: 'builtin-code-setup',
@@ -204,7 +226,7 @@ Got it? Here is the prompt.
 <prompt>
 {{CODE_PLACEHOLDER}}
 </prompt>`,
-                isBuiltIn: true,
+                isDefault: true,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             },
@@ -239,7 +261,7 @@ Be very analytical in your evaluation, and provide a summary of the biggest flaw
 <response>
 {{RESPONSE_PLACEHOLDER}}
 </response>`,
-                isBuiltIn: true,
+                isDefault: true,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             },
@@ -299,7 +321,7 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
 <response>
 {{RESPONSE_PLACEHOLDER}}
 </response>`,
-                isBuiltIn: true,
+                isDefault: true,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             },
@@ -356,7 +378,7 @@ If you find any mismatches or errors, call them out in the table and the final s
 <ResponseB>
 {{RESPONSE_B_PLACEHOLDER}}
 </ResponseB>`,
-                isBuiltIn: true,
+                isDefault: true,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
             }

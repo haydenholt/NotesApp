@@ -35,18 +35,14 @@ export class SystemPromptView {
 
     renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
         const templates = this.templateManager.getAllTemplates();
-        const customTemplates = templates.filter(t => !t.isBuiltIn);
-        const builtInTemplates = templates.filter(t => t.isBuiltIn);
         
         // Group evaluation templates
-        const standardEval = builtInTemplates.find(t => t.id === 'builtin-response-evaluation-standard');
-        const rubricEval = builtInTemplates.find(t => t.id === 'builtin-response-evaluation-rubric');
-        const otherBuiltIns = builtInTemplates.filter(t => 
+        const standardEval = templates.find(t => t.id === 'builtin-response-evaluation-standard');
+        const rubricEval = templates.find(t => t.id === 'builtin-response-evaluation-rubric');
+        const otherTemplates = templates.filter(t => 
             t.id !== 'builtin-response-evaluation-standard' && 
             t.id !== 'builtin-response-evaluation-rubric'
         );
-        
-        const allTemplates = [...otherBuiltIns, ...customTemplates];
         
         return `
             <div class="max-w-4xl mx-auto">
@@ -59,7 +55,7 @@ export class SystemPromptView {
                 
                 <div class="space-y-6">
                     ${standardEval && rubricEval ? this.renderCombinedEvaluationTemplate(standardEval, rubricEval, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) : ''}
-                    ${allTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
+                    ${otherTemplates.map(template => this.renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)).join('')}
                 </div>
             </div>
         `;
@@ -129,6 +125,7 @@ export class SystemPromptView {
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="text-lg font-medium text-gray-800">${template.name}</h3>
+                            ${template.isDefault ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>` : ''}
                         </div>
                         ${template.description ? `<p class="text-sm text-gray-600 mt-1">${template.description}</p>` : ''}
                     </div>
@@ -136,7 +133,8 @@ export class SystemPromptView {
                         <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
                             ✎
                         </button>
-                        ${!template.isBuiltIn ? `<button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">×</button>` : ''}
+                        ${template.isDefault ? `<button class="resetTemplateBtn text-green-600 hover:text-green-800 text-sm p-1" data-template-id="${template.id}" title="Reset to Default">↻</button>` : ''}
+                        <button class="deleteTemplateBtn text-red-600 hover:text-red-800 text-sm p-1" data-template-id="${template.id}" title="Delete">×</button>
                     </div>
                 </div>
 
@@ -415,6 +413,13 @@ Input to process:
                 this.deleteTemplate(templateId);
             });
         });
+        
+        document.querySelectorAll('.resetTemplateBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const templateId = e.target.closest('.resetTemplateBtn').getAttribute('data-template-id');
+                this.resetTemplate(templateId);
+            });
+        });
     }
     
     initializeTemplateEditor() {
@@ -657,12 +662,8 @@ Input to process:
             }
             
             if (this.editingTemplateId) {
-                const result = this.templateManager.updateTemplate(this.editingTemplateId, templateData);
-                if (result.id !== this.editingTemplateId) {
-                    this.showToast('Built-in template copied as custom template!', 'success');
-                } else {
-                    this.showToast('Template updated successfully!', 'success');
-                }
+                this.templateManager.updateTemplate(this.editingTemplateId, templateData);
+                this.showToast('Template updated successfully!', 'success');
             } else {
                 this.templateManager.createTemplate(templateData);
                 this.showToast('Template created successfully!', 'success');
@@ -725,6 +726,17 @@ Input to process:
         cancelBtn.addEventListener('click', () => {
             templateCard.removeChild(confirmationDiv);
         });
+    }
+    
+    resetTemplate(templateId) {
+        try {
+            this.templateManager.resetTemplateToDefault(templateId);
+            this.showToast('Template reset to default successfully!', 'success');
+            this.render();
+            this.initializeSystemPromptHandlers();
+        } catch (error) {
+            this.showToast(`Error resetting template: ${error.message}`, 'error');
+        }
     }
     
     copyGeneratedPrompt(templateId) {
