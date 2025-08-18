@@ -49,10 +49,43 @@ export class DOMHelpers {
         }
     }
 
-    static showFeedback(element, successIcon, originalIcon, duration = 1000) {
-        element.innerHTML = successIcon;
+    static showFeedback(element, successContent, originalContent, duration = 1000) {
+        // Clear element and add success content
+        element.textContent = '';
+        if (typeof successContent === 'string') {
+            // If it's a string, try to parse as HTML safely
+            if (successContent.startsWith('<svg')) {
+                // For SVG strings, create DOM elements
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = successContent;
+                const svg = tempDiv.firstElementChild;
+                if (svg) {
+                    element.appendChild(svg.cloneNode(true));
+                }
+            } else {
+                element.textContent = successContent;
+            }
+        } else {
+            // If it's already a DOM element
+            element.appendChild(successContent.cloneNode(true));
+        }
+        
         setTimeout(() => {
-            element.innerHTML = originalIcon;
+            element.textContent = '';
+            if (typeof originalContent === 'string') {
+                if (originalContent.startsWith('<svg')) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = originalContent;
+                    const svg = tempDiv.firstElementChild;
+                    if (svg) {
+                        element.appendChild(svg.cloneNode(true));
+                    }
+                } else {
+                    element.textContent = originalContent;
+                }
+            } else {
+                element.appendChild(originalContent.cloneNode(true));
+            }
         }, duration);
     }
 

@@ -1,4 +1,5 @@
 import Timer from './Timer.js';
+import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -65,20 +66,20 @@ export class Note {
             'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
             this.themeManager.getPrimaryButtonClasses('sm')
         );
-        editButton.innerHTML = '✎';
+        editButton.textContent = '✎';
         editButton.title = 'Edit note';
         editButton.style.display = completed ? 'block' : 'none';
         editButton.style.textIndent = '-1px';
 
         const saveButton = document.createElement('button');
         saveButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
-        saveButton.innerHTML = '✓';
+        saveButton.textContent = '✓';
         saveButton.title = 'Save note';
         saveButton.style.display = completed ? 'none' : 'block';
 
         const deleteButton = document.createElement('button');
         deleteButton.className = 'w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded text-sm flex items-center justify-center';
-        deleteButton.innerHTML = '×';
+        deleteButton.textContent = '×';
         deleteButton.title = 'Delete note';
 
 
@@ -479,7 +480,7 @@ export class Note {
 
         // Wait for all stylesheets to load, fonts to be ready, and DOM to be fully rendered
         Promise.all([
-            document.fonts.ready,
+            document.fonts ? document.fonts.ready : Promise.resolve(),
             new Promise(resolve => {
                 if (document.readyState === 'complete') {
                     resolve();
@@ -940,16 +941,17 @@ export class Note {
     save(startTimestamp, endTimestamp, completed, canceled = false) {
         const savedNotes = JSON.parse(localStorage.getItem(this.date) || '{}');
         const number = this.container.dataset.noteId;
+        // Sanitize all user input fields before saving
         const noteData = {
-            failingIssues: this.elements.failingIssues.value || '',
-            nonFailingIssues: this.elements.nonFailingIssues.value || '',
-            discussion: this.elements.discussion.value || '',
+            failingIssues: SecurityUtils.sanitizeInput(this.elements.failingIssues.value || ''),
+            nonFailingIssues: SecurityUtils.sanitizeInput(this.elements.nonFailingIssues.value || ''),
+            discussion: SecurityUtils.sanitizeInput(this.elements.discussion.value || ''),
             startTimestamp: startTimestamp || this.timer.startTimestamp || Date.now(),
             endTimestamp: endTimestamp,
             completed: completed,
-            projectID: this.elements.projectID.value || '',
-            attemptID: this.elements.attemptID.value || '',
-            operationID: this.elements.operationID.value || '',
+            projectID: SecurityUtils.sanitizeInput(this.elements.projectID.value || ''),
+            attemptID: SecurityUtils.sanitizeInput(this.elements.attemptID.value || ''),
+            operationID: SecurityUtils.sanitizeInput(this.elements.operationID.value || ''),
             additionalTime: this.timer.additionalTime || 0,
             hasStarted: this.timer.hasStarted,
             canceled: canceled || this.canceled

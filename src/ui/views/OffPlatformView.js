@@ -41,7 +41,7 @@ export class OffPlatformView {
     renderOffPlatformSection() {
         if (!this.container) return;
 
-        this.container.innerHTML = '';
+        this.container.textContent = '';
 
         const offPlatformSection = DOMHelpers.createElement('div',
             this.themeManager.combineClasses(
@@ -171,7 +171,7 @@ export class OffPlatformView {
     showStickyTimer(timerInfo) {
         if (!this.stickyContainer) return;
 
-        this.stickyContainer.innerHTML = '';
+        this.stickyContainer.textContent = '';
 
         const activeTimer = DOMHelpers.createElement('div', 
             'flex items-center justify-between max-w-screen-lg mx-auto'

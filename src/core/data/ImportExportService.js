@@ -1,6 +1,8 @@
 /**
  * ImportExportService - Handles manual import/export of all localStorage data
  */
+import { SecurityUtils } from '../utils/SecurityUtils.js';
+
 export class ImportExportService {
     /**
      * Export all localStorage data to a JSON file
@@ -98,10 +100,60 @@ export class ImportExportService {
                         // Import all data
                         let importedKeys = 0;
                         for (const [key, value] of Object.entries(importData.data)) {
-                            // Convert objects back to JSON strings for localStorage
-                            const valueToStore = typeof value === 'object' 
-                                ? JSON.stringify(value) 
-                                : value;
+                            // Validate the key format
+                            if (typeof key !== 'string' || key.length === 0) {
+                                console.warn('Skipping invalid key:', key);
+                                continue;
+                            }
+                            
+                            let valueToStore;
+                            
+                            // For date keys (note data), validate and sanitize
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+                                if (typeof value === 'object') {
+                                    const sanitizedNotes = {};
+                                    for (const [noteId, noteData] of Object.entries(value)) {
+                                        if (!/^\d+$/.test(noteId)) continue;
+                                        sanitizedNotes[noteId] = SecurityUtils.sanitizeNoteData(noteData);
+                                    }
+                                    valueToStore = JSON.stringify(sanitizedNotes);
+                                } else {
+                                    continue; // Skip invalid note data
+                                }
+                            }
+                            // For pay rate
+                            else if (key === 'pay_rate') {
+                                const rate = parseFloat(value);
+                                if (isNaN(rate) || rate < 0 || rate > 1000) {
+                                    console.warn('Skipping invalid pay rate:', value);
+                                    continue;
+                                }
+                                valueToStore = String(rate);
+                            }
+                            // For theme
+                            else if (key === 'app_theme') {
+                                if (value !== 'light' && value !== 'dark') {
+                                    console.warn('Skipping invalid theme:', value);
+                                    continue;
+                                }
+                                valueToStore = value;
+                            }
+                            // For off-platform timer data
+                            else if (key.startsWith('offPlatform_')) {
+                                const dateKey = key.substring(12);
+                                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                                    console.warn('Skipping invalid off-platform key:', key);
+                                    continue;
+                                }
+                                valueToStore = typeof value === 'object' 
+                                    ? JSON.stringify(value) 
+                                    : value;
+                            }
+                            // Skip any other keys for security
+                            else {
+                                console.warn('Skipping unknown key for security:', key);
+                                continue;
+                            }
                             
                             localStorage.setItem(key, valueToStore);
                             importedKeys++;

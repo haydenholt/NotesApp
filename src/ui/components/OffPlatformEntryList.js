@@ -233,7 +233,7 @@ export class OffPlatformEntryList {
     clearAllEntries() {
         this.entries.forEach(entry => entry.cleanup());
         this.entries.clear();
-        this.entriesContainer.innerHTML = '';
+        this.entriesContainer.textContent = '';
         this.toggleEmptyState();
     }
 

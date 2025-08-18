@@ -12,6 +12,7 @@ import { ModalView } from '../ui/views/ModalView.js';
 import { ExportService } from './data/ExportService.js';
 import { DOMHelpers } from './utils/DOMHelpers.js';
 import { TimeFormatter } from './utils/TimeFormatter.js';
+import { SecurityUtils } from './utils/SecurityUtils.js';
 import Timer from '../ui/components/Timer.js';
 
 export class NoteApp {
@@ -326,15 +327,24 @@ export class NoteApp {
         const textMutedClass = this.themeManager.getColor('text', 'muted');
         const textPrimaryClass = this.themeManager.getColor('text', 'primary');
         
-        this.elements.totalTimeDisplay.innerHTML = `
-            <div class="flex items-center justify-between gap-4">
-                <div class="text-sm ${textMutedClass} space-y-1">
-                    <div>On-platform: ${TimeFormatter.formatTime(onPlatformSeconds)}</div>
-                    <div>Off-platform: ${TimeFormatter.formatTime(offPlatformSeconds)}</div>
-                </div>
-                <div class="font-semibold text-lg ${textPrimaryClass}">Total: ${TimeFormatter.formatTime(totalSeconds)}</div>
-            </div>
-        `;
+        // Clear and rebuild total time display safely
+        this.elements.totalTimeDisplay.textContent = '';
+        
+        const container = SecurityUtils.createElement('div', '', 'flex items-center justify-between gap-4');
+        
+        // Left side - breakdown
+        const breakdown = SecurityUtils.createElement('div', '', `text-sm ${textMutedClass} space-y-1`);
+        const onPlatformDiv = SecurityUtils.createElement('div', `On-platform: ${TimeFormatter.formatTime(onPlatformSeconds)}`);
+        const offPlatformDiv = SecurityUtils.createElement('div', `Off-platform: ${TimeFormatter.formatTime(offPlatformSeconds)}`);
+        breakdown.appendChild(onPlatformDiv);
+        breakdown.appendChild(offPlatformDiv);
+        
+        // Right side - total
+        const totalDiv = SecurityUtils.createElement('div', `Total: ${TimeFormatter.formatTime(totalSeconds)}`, `font-semibold text-lg ${textPrimaryClass}`);
+        
+        container.appendChild(breakdown);
+        container.appendChild(totalDiv);
+        this.elements.totalTimeDisplay.appendChild(container);
     }
 
     startTotalTimeUpdater() {

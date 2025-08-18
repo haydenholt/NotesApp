@@ -1,4 +1,5 @@
 import { TimerEntryRepository } from '../../core/data/TimerEntryRepository.js';
+import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
 
 export class PayAnalysis {
     constructor(themeManager) {
@@ -249,7 +250,8 @@ export class PayAnalysis {
         </div>`;
 
         if (this.reportContainer) {
-            this.reportContainer.innerHTML = html;
+            this.reportContainer.textContent = '';
+            this.buildReportDOM(reportRows, totalOnSeconds, totalOffSeconds, totalTasks, startDate);
         }
     }
 
@@ -317,7 +319,7 @@ export class PayAnalysis {
         const today = new Date();
         this.currentMonth = today.getMonth();
         this.currentYear = today.getFullYear();
-        this.calendarContainer.innerHTML = '';
+        this.calendarContainer.textContent = '';
 
         // Calendar container with theme styling
         const calendarClasses = this.themeManager.getCalendarClasses();
@@ -340,7 +342,8 @@ export class PayAnalysis {
         const buttonTextColor = this.themeManager.getColor('text', 'muted');
         
         const prevBtn = document.createElement('button');
-        prevBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path></svg>';
+        const prevSvg = this.createPrevIcon();
+        prevBtn.appendChild(prevSvg);
         prevBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
         prevBtn.title = 'Previous Month';
         prevBtn.addEventListener('click', () => this.changeMonth(-1));
@@ -352,7 +355,8 @@ export class PayAnalysis {
         );
         
         const nextBtn = document.createElement('button');
-        nextBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>';
+        const nextSvg = this.createNextIcon();
+        nextBtn.appendChild(nextSvg);
         nextBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
         nextBtn.title = 'Next Month';
         nextBtn.addEventListener('click', () => this.changeMonth(1));
@@ -403,7 +407,7 @@ export class PayAnalysis {
     // Update calendar grid with balanced styling
     updateCalendar() {
         this.monthLabelElement.textContent = `${this.getMonthName(this.currentMonth)} ${this.currentYear}`;
-        this.datesGrid.innerHTML = '';
+        this.datesGrid.textContent = '';
         
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
         const startIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
@@ -572,6 +576,167 @@ export class PayAnalysis {
             }
         });
         input.click();
+    }
+
+    buildReportDOM(reportRows, totalOnSeconds, totalOffSeconds, totalTasks, startDate) {
+        const grandTotalSeconds = totalOnSeconds + totalOffSeconds;
+        const totalHours = grandTotalSeconds / 3600;
+        const hourlyPay = totalHours * this.ratePerHour;
+        
+        // Calculate bonus based on task count
+        let bonus = 0;
+        if (totalTasks >= 25) {
+            bonus = 200;
+        } else if (totalTasks >= 1) {
+            bonus = 135;
+        }
+        
+        const payAmount = (hourlyPay + bonus).toFixed(2);
+        
+        // Create summary cards
+        const summaryGrid = SecurityUtils.createElement('div', '', 'mb-6 grid grid-cols-1 md:grid-cols-3 gap-4');
+        
+        // Total Hours card
+        const hoursCard = SecurityUtils.createElement('div', '', `bg-white p-4 rounded-md shadow-sm border-l-2 ${this.themeManager.getColor('border', 'primary')}`);
+        const hoursLabel = SecurityUtils.createElement('div', 'Total Hours', 'text-xs uppercase text-gray-400 tracking-wider');
+        const hoursContainer = SecurityUtils.createElement('div', '', 'flex items-end mt-1');
+        const hoursValue = SecurityUtils.createElement('span', (grandTotalSeconds / 3600).toFixed(1), 'text-2xl font-light text-gray-800');
+        const hoursUnit = SecurityUtils.createElement('span', 'hours', 'ml-1 text-sm text-gray-500');
+        hoursContainer.appendChild(hoursValue);
+        hoursContainer.appendChild(hoursUnit);
+        hoursCard.appendChild(hoursLabel);
+        hoursCard.appendChild(hoursContainer);
+        
+        // Pay card
+        const payCard = SecurityUtils.createElement('div', '', 'bg-white p-4 rounded-md shadow-sm border-l-2 border-emerald-300');
+        const payLabel = SecurityUtils.createElement('div', 'Total Pay', 'text-xs uppercase text-gray-400 tracking-wider');
+        const payContainer = SecurityUtils.createElement('div', '', 'flex items-end mt-1');
+        const payValue = SecurityUtils.createElement('span', '$' + payAmount, 'text-2xl font-light text-gray-800');
+        const payUnit = SecurityUtils.createElement('span', 'USD', 'ml-1 text-sm text-gray-500');
+        payContainer.appendChild(payValue);
+        payContainer.appendChild(payUnit);
+        payCard.appendChild(payLabel);
+        payCard.appendChild(payContainer);
+        
+        // Tasks card
+        const tasksCard = SecurityUtils.createElement('div', '', 'bg-white p-4 rounded-md shadow-sm border-l-2 border-indigo-300');
+        const tasksLabel = SecurityUtils.createElement('div', 'Tasks Completed', 'text-xs uppercase text-gray-400 tracking-wider');
+        const tasksContainer = SecurityUtils.createElement('div', '', 'flex items-end mt-1');
+        const tasksValue = SecurityUtils.createElement('span', String(totalTasks), 'text-2xl font-light text-gray-800');
+        const tasksUnit = SecurityUtils.createElement('span', 'tasks', 'ml-1 text-sm text-gray-500');
+        tasksContainer.appendChild(tasksValue);
+        tasksContainer.appendChild(tasksUnit);
+        tasksCard.appendChild(tasksLabel);
+        tasksCard.appendChild(tasksContainer);
+        
+        summaryGrid.appendChild(hoursCard);
+        summaryGrid.appendChild(payCard);
+        summaryGrid.appendChild(tasksCard);
+        
+        // Create main report table
+        const cardClass = this.themeManager.getCardClasses('large');
+        const tableClasses = this.themeManager.getTableClasses();
+        
+        const reportCard = SecurityUtils.createElement('div', '', cardClass);
+        
+        // Week title
+        let weekTitle;
+        if (this.isTransitionWeek) {
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 7);
+            weekTitle = `Transition Week: ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        } else {
+            weekTitle = `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        }
+        
+        const title = SecurityUtils.createElement('h3', weekTitle, tableClasses.title);
+        reportCard.appendChild(title);
+        
+        // Table container
+        const tableContainer = SecurityUtils.createElement('div', '', 'overflow-x-auto');
+        const table = SecurityUtils.createElement('table', '', tableClasses.table);
+        
+        // Table header
+        const thead = document.createElement('thead');
+        const headerRow = SecurityUtils.createElement('tr', '', tableClasses.headerRow);
+        const headers = ['Day', 'Date', 'On-platform', 'Off-platform', 'Total'];
+        headers.forEach(headerText => {
+            const th = SecurityUtils.createElement('th', headerText, tableClasses.headerCell);
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        
+        // Table body
+        const tbody = document.createElement('tbody');
+        reportRows.forEach((row, index) => {
+            const onTime = this.formatTime(row.onSeconds);
+            const offTime = this.formatTime(row.offSeconds);
+            const totalSeconds = row.onSeconds + row.offSeconds;
+            const totalTime = this.formatTime(totalSeconds);
+            const isDayOff = index >= 2 && index <= 4; // Wed, Thu, Fri
+            
+            const rowClass = isDayOff ? 
+                this.themeManager.combineClasses(tableClasses.bodyRow, this.themeManager.getColor('calendar', 'dayOff')) :
+                tableClasses.bodyRow;
+            
+            const tr = SecurityUtils.createElement('tr', '', rowClass);
+            
+            const dayCell = SecurityUtils.createElement('td', row.dayName, `${tableClasses.bodyCell} font-medium`);
+            const dateCell = SecurityUtils.createElement('td', new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), tableClasses.bodyCell);
+            const onCell = SecurityUtils.createElement('td', onTime, `${tableClasses.bodyCell} font-mono`);
+            const offCell = SecurityUtils.createElement('td', offTime, `${tableClasses.bodyCell} font-mono`);
+            const totalCell = SecurityUtils.createElement('td', totalTime, `${tableClasses.bodyCell} font-mono`);
+            
+            tr.appendChild(dayCell);
+            tr.appendChild(dateCell);
+            tr.appendChild(onCell);
+            tr.appendChild(offCell);
+            tr.appendChild(totalCell);
+            
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        tableContainer.appendChild(table);
+        reportCard.appendChild(tableContainer);
+        
+        // Append everything to the container
+        this.reportContainer.appendChild(summaryGrid);
+        this.reportContainer.appendChild(reportCard);
+    }
+
+    createPrevIcon() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'w-4 h-4');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('d', 'M15 19l-7-7 7-7');
+        
+        svg.appendChild(path);
+        return svg;
+    }
+
+    createNextIcon() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'w-4 h-4');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('d', 'M9 5l7 7-7 7');
+        
+        svg.appendChild(path);
+        return svg;
     }
 }
 

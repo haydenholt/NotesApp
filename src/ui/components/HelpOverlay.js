@@ -2,6 +2,7 @@
  * Help overlay component that displays all keyboard shortcuts
  */
 import { ImportExportService } from '../../core/data/ImportExportService.js';
+import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
 
 export default class HelpOverlay {
     constructor(themeManager = null) {
@@ -114,32 +115,55 @@ export default class HelpOverlay {
         const primaryButtonClasses = this.themeManager?.getPrimaryButtonClasses() || 'bg-blue-500 text-white hover:bg-blue-600';
         const secondaryButtonClasses = this.themeManager?.getSecondaryButtonClasses() || 'bg-gray-200 text-gray-700 hover:bg-gray-300';
         
-        this.content.innerHTML = shortcuts.map(category => `
-            <div class="border-b ${borderClass} pb-3">
-                <h3 class="text-lg font-semibold ${titleClass} mb-2">${category.category}</h3>
-                <div class="space-y-1">
-                    ${category.shortcuts.map(shortcut => `
-                        <div class="flex justify-between items-center">
-                            <span class="${keyBgClass} px-2 py-1 rounded text-sm font-mono">${shortcut.key}</span>
-                            <span class="text-sm ${descClass} ml-4 flex-1">${shortcut.description}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('') + `
-            <div class="pt-3">
-                <h3 class="text-lg font-semibold ${titleClass} mb-3">Data Management</h3>
-                <div class="flex gap-3 items-center">
-                    <button id="exportDataBtn" class="${primaryButtonClasses} px-4 py-2 rounded transition-colors">
-                        Export All Data
-                    </button>
-                    <button id="importDataBtn" class="${secondaryButtonClasses} px-4 py-2 rounded transition-colors">
-                        Import Data
-                    </button>
-                    <span id="importExportStatus" class="text-sm ${descClass} ml-2"></span>
-                </div>
-            </div>
-        `;
+        // Clear content and rebuild safely
+        this.content.textContent = '';
+        
+        // Create shortcuts sections
+        shortcuts.forEach(category => {
+            const categoryDiv = SecurityUtils.createElement('div', '', `border-b ${borderClass} pb-3`);
+            
+            const titleH3 = SecurityUtils.createElement('h3', category.category, `text-lg font-semibold ${titleClass} mb-2`);
+            categoryDiv.appendChild(titleH3);
+            
+            const shortcutsContainer = SecurityUtils.createElement('div', '', 'space-y-1');
+            
+            category.shortcuts.forEach(shortcut => {
+                const shortcutDiv = SecurityUtils.createElement('div', '', 'flex justify-between items-center');
+                
+                const keySpan = SecurityUtils.createElement('span', shortcut.key, `${keyBgClass} px-2 py-1 rounded text-sm font-mono`);
+                const descSpan = SecurityUtils.createElement('span', shortcut.description, `text-sm ${descClass} ml-4 flex-1`);
+                
+                shortcutDiv.appendChild(keySpan);
+                shortcutDiv.appendChild(descSpan);
+                shortcutsContainer.appendChild(shortcutDiv);
+            });
+            
+            categoryDiv.appendChild(shortcutsContainer);
+            this.content.appendChild(categoryDiv);
+        });
+        
+        // Add data management section
+        const dataManagementDiv = SecurityUtils.createElement('div', '', 'pt-3');
+        const dataTitle = SecurityUtils.createElement('h3', 'Data Management', `text-lg font-semibold ${titleClass} mb-3`);
+        dataManagementDiv.appendChild(dataTitle);
+        
+        const buttonContainer = SecurityUtils.createElement('div', '', 'flex gap-3 items-center');
+        
+        const exportBtn = SecurityUtils.createElement('button', 'Export All Data', `${primaryButtonClasses} px-4 py-2 rounded transition-colors`);
+        exportBtn.id = 'exportDataBtn';
+        
+        const importBtn = SecurityUtils.createElement('button', 'Import Data', `${secondaryButtonClasses} px-4 py-2 rounded transition-colors`);
+        importBtn.id = 'importDataBtn';
+        
+        const statusSpan = SecurityUtils.createElement('span', '', `text-sm ${descClass} ml-2`);
+        statusSpan.id = 'importExportStatus';
+        
+        buttonContainer.appendChild(exportBtn);
+        buttonContainer.appendChild(importBtn);
+        buttonContainer.appendChild(statusSpan);
+        
+        dataManagementDiv.appendChild(buttonContainer);
+        this.content.appendChild(dataManagementDiv);
         
         // Setup import/export buttons
         this.setupImportExportButtons();
