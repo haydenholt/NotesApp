@@ -12,9 +12,12 @@ export class ViewManager {
                 element: document.getElementById('notesView'),
                 onShow: () => {
                     // Refresh notes view layout when returning from other views
-                    if (window.noteApp) {
-                        // Force a layout refresh by recreating the off-platform section
-                        window.noteApp.createOffPlatformSection();
+                    if (window.noteApp && window.noteApp.offPlatformView) {
+                        // Force a layout refresh by re-rendering the off-platform section
+                        const container = document.getElementById('offPlatformContainer');
+                        if (container) {
+                            window.noteApp.offPlatformView.render(container);
+                        }
                     }
                 }
             },
