@@ -15,9 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize secure storage first
     try {
         await SecureStorage.initialize();
-        console.log('SecureStorage initialized successfully');
     } catch (error) {
-        console.error('Failed to initialize SecureStorage:', error);
         alert('Failed to initialize secure storage. The application may not work correctly.');
         return;
     }

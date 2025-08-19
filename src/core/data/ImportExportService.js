@@ -18,7 +18,6 @@ export class ImportExportService {
             for (const [key, value] of Object.entries(allData)) {
                 // Skip old format offPlatform_ keys (but keep offPlatform_entries_ keys)
                 if (key.startsWith('offPlatform_') && !key.startsWith('offPlatform_entries_')) {
-                    console.log('Skipping old format key from export:', key);
                     continue;
                 }
                 data[key] = value;
@@ -143,7 +142,6 @@ export class ImportExportService {
                             else if (key === 'pay_rate') {
                                 const rate = parseFloat(value);
                                 if (isNaN(rate) || rate < 0 || rate > 1000) {
-                                    console.warn('Skipping invalid pay rate:', value);
                                     continue;
                                 }
                                 valueToStore = String(rate);
@@ -151,7 +149,7 @@ export class ImportExportService {
                             // For theme
                             else if (key === 'app_theme') {
                                 if (value !== 'light' && value !== 'dark') {
-                                    console.warn('Skipping invalid theme:', value);
+
                                     continue;
                                 }
                                 valueToStore = value;
@@ -161,7 +159,7 @@ export class ImportExportService {
                                 // New format: offPlatform_entries_YYYY-MM-DD
                                 const dateKey = key.substring(20);
                                 if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-                                    console.warn('Skipping invalid off-platform entries key:', key);
+
                                     continue;
                                 }
                                 valueToStore = typeof value === 'object' 
@@ -189,7 +187,6 @@ export class ImportExportService {
                                 }
                                 
                                 if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-                                    console.warn('Skipping invalid off-platform key:', key);
                                     continue;
                                 }
                                 
@@ -232,14 +229,12 @@ export class ImportExportService {
                                     continue; // Skip storing the old format
                                 } else {
                                     // Skip old format keys that don't have the expected structure
-                                    console.warn('Skipping old format off-platform key during import:', key);
                                     continue;
                                 }
                             }
                             // Handle timer_ keys (legacy timer format)
                             else if (key.startsWith('timer_')) {
                                 // These are legacy individual timer keys, skip them
-                                console.warn('Skipping legacy timer key:', key);
                                 continue;
                             }
                             // Handle systemPromptTemplates

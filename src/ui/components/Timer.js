@@ -94,16 +94,17 @@ export class Timer {
     }
 
     async saveState() {
-        if (this.noteId && window.app) {
+        if (this.noteId && window.noteApp) {
             try {
-                const savedNotes = await NotesRepository.getNotesForDate(window.app.currentDate);
+                const currentDate = window.noteApp.appState.getCurrentDate();
+                const savedNotes = await NotesRepository.getNotesForDate(currentDate);
                 if (savedNotes[this.noteId]) {
                     savedNotes[this.noteId].startTimestamp = this.startTimestamp;
                     savedNotes[this.noteId].endTimestamp = this.endTimestamp;
                     savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
                     savedNotes[this.noteId].completed = this.completed; // Save completion status
                     savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
-                    await NotesRepository.saveNotesForDate(window.app.currentDate, savedNotes);
+                    await NotesRepository.saveNotesForDate(currentDate, savedNotes);
                 }
             } catch (error) {
                 console.error('Error saving timer state:', error);

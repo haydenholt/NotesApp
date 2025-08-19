@@ -380,7 +380,6 @@ export class NoteApp {
             this.timerController.editTimer(categoryId, result.hours, result.minutes, result.seconds);
         } catch (error) {
             // User cancelled or error occurred
-            console.log('Timer edit cancelled or failed:', error.message);
         }
     }
 
