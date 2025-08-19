@@ -10,7 +10,8 @@ export class SearchController {
         this.listeners = {
             searchStarted: [],
             searchCompleted: [],
-            searchCleared: []
+            searchCleared: [],
+            navigateToResult: []
         };
     }
 
@@ -155,7 +156,8 @@ export class SearchController {
     }
 
     navigateToResult(dateKey, noteId) {
-        this.clearSearch();
+        // Don't clear search here - let the navigation handler do it
+        // This prevents the searchCleared event from loading the wrong date
         
         this.notifyListeners('navigateToResult', {
             dateKey,

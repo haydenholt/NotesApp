@@ -859,7 +859,11 @@ Input to process:
      */
     async populateExistingPlaceholders() {
         const placeholderList = document.getElementById('placeholderList');
-        if (!placeholderList || !this.editingTemplate) return;
+        if (!placeholderList || !this.editingTemplateId) return;
+
+        // Fetch the template being edited
+        const template = await this.templateManager.getTemplateById(this.editingTemplateId);
+        if (!template) return;
 
         // Get theme classes
         const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
@@ -870,8 +874,8 @@ Input to process:
         placeholderList.textContent = '';
 
         // Add existing placeholders if available
-        if (this.editingTemplate.placeholders && this.editingTemplate.placeholders.length > 0) {
-            this.editingTemplate.placeholders.forEach((placeholder, index) => {
+        if (template.placeholders && template.placeholders.length > 0) {
+            template.placeholders.forEach((placeholder, index) => {
                 const placeholderElement = this.createPlaceholderEditor(
                     placeholder, 
                     index, 

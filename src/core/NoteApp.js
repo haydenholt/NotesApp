@@ -53,8 +53,8 @@ export class NoteApp {
 
     setupEventListeners() {
         // App State listeners
-        this.appState.addEventListener('dateChange', ({ newDate }) => {
-            this.handleDateChange(newDate);
+        this.appState.addEventListener('dateChange', async ({ newDate }) => {
+            await this.handleDateChange(newDate);
         });
 
         this.appState.addEventListener('searchChange', ({ isActive, query }) => {
@@ -118,22 +118,25 @@ export class NoteApp {
         });
 
         this.searchController.addEventListener('searchCleared', () => {
-            this.showNormalMode();
-            this.noteListView.clear();
-            this.noteController.loadNotesForDate(this.appState.getCurrentDate());
-            
-            // Restore scroll position after notes are loaded
-            if (this.searchScrollPosition) {
-                // Wait for notes to be rendered
-                setTimeout(() => {
-                    DOMHelpers.restoreScrollPosition(this.searchScrollPosition);
-                    this.searchScrollPosition = null;
-                }, 200);
+            // Don't load notes if we're in the middle of navigating to a specific note
+            if (!this.isNavigatingToNote) {
+                this.showNormalMode();
+                this.noteListView.clear();
+                this.noteController.loadNotesForDate(this.appState.getCurrentDate());
+                
+                // Restore scroll position after notes are loaded
+                if (this.searchScrollPosition) {
+                    // Wait for notes to be rendered
+                    setTimeout(() => {
+                        DOMHelpers.restoreScrollPosition(this.searchScrollPosition);
+                        this.searchScrollPosition = null;
+                    }, 200);
+                }
             }
         });
 
-        this.searchController.addEventListener('navigateToResult', ({ dateKey, noteId }) => {
-            this.navigateToNote(dateKey, noteId);
+        this.searchController.addEventListener('navigateToResult', async ({ dateKey, noteId }) => {
+            await this.navigateToNote(dateKey, noteId);
         });
 
         // View listeners
@@ -246,14 +249,24 @@ export class NoteApp {
         this.updateTotalTimeDisplay().catch(console.error);
     }
 
-    handleDateChange(newDate) {
+    async handleDateChange(newDate) {
         this.dateNavigationView.setCurrentDate(newDate);
         this.offPlatformView.setCurrentDate(newDate);
         
         if (!this.searchController.isSearchActive()) {
             this.showNormalMode();
             this.noteListView.clear(); // Clear the view before loading new notes
-            this.noteController.loadNotesForDate(newDate);
+            await this.noteController.loadNotesForDate(newDate);
+            
+            // If we have a pending note to highlight (from navigateToNote), do it now
+            if (this.pendingHighlightNote) {
+                const noteToHighlight = this.pendingHighlightNote;
+                this.pendingHighlightNote = null;
+                // Give DOM a moment to render
+                setTimeout(() => {
+                    this.noteListView.highlightNote(noteToHighlight);
+                }, 50);
+            }
         } else {
             this.searchController.searchNotes(this.searchController.getCurrentQuery());
         }
@@ -262,6 +275,11 @@ export class NoteApp {
     }
 
     handleSearchChange(isActive, query) {
+        // Don't handle search changes if we're navigating to a note
+        if (this.isNavigatingToNote) {
+            return;
+        }
+        
         if (isActive) {
             this.showSearchMode();
         } else {
@@ -366,13 +384,39 @@ export class NoteApp {
         }
     }
 
-    navigateToNote(dateKey, noteId) {
-        this.appState.setCurrentDate(dateKey);
+    async navigateToNote(dateKey, noteId) {
+        // Set flag to prevent duplicate loads
+        this.isNavigatingToNote = true;
+        
+        // Clear the search state and input
+        this.searchController.clearSearch();
         this.elements.searchInput.value = '';
         
+        // Show normal mode
+        this.showNormalMode();
+        
+        // Clear and load notes for the target date
+        this.noteListView.clear();
+        
+        // Change date if needed (this updates the UI date display)
+        if (this.appState.getCurrentDate() !== dateKey) {
+            // Just update the date display, don't trigger full date change
+            this.appState.currentDate = dateKey;
+            this.dateNavigationView.setCurrentDate(dateKey);
+            this.offPlatformView.setCurrentDate(dateKey);
+            this.timerController.loadTimerStateForDate(dateKey);
+        }
+        
+        // Load notes for the target date
+        await this.noteController.loadNotesForDate(dateKey);
+        
+        // Reset flag
+        this.isNavigatingToNote = false;
+        
+        // Highlight the note after a short delay for DOM to update
         setTimeout(() => {
             this.noteListView.highlightNote(noteId);
-        }, 100);
+        }, 50);
     }
 
     refreshAllViews() {
