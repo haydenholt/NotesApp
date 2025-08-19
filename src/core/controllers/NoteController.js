@@ -227,25 +227,44 @@ export class NoteController {
         }
     }
 
-    deleteNote(number) {
+    async deleteNote(number) {
         const date = this.appState.getCurrentDate();
         const note = this.notesState.getNote(date, number);
         if (!note) return false;
 
-        // Remove from storage and renumber
-        NotesRepository.deleteNote(date, number).catch(console.error);
-        NotesRepository.renumberNotes(date).catch(console.error);
-        
-        // Remove from state
-        this.notesState.removeNote(date, number);
+        // Store current scroll position
+        const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+        try {
+            // Remove from storage and renumber (await these operations)
+            await NotesRepository.deleteNote(date, number);
+            await NotesRepository.renumberNotes(date);
+            
+            // Clear all notes from memory state
+            this.notesState.clearNotesForDate(date);
+            
+            // Notify that notes are clearing (this will clear the DOM)
+            this.notifyListeners('notesClearing', { date });
+            
+            // Reload notes with the new numbering
+            await this.loadNotesForDate(date);
+            
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            return false;
+        }
         
         // Notify listeners with the note being deleted
         this.notifyListeners('noteDeleted', { note, date, number });
         
-        // Reload notes to reflect the renumbering
-        this.reloadNotesForDate(date);
+        // Restore scroll position after a brief delay to allow DOM updates
+        setTimeout(() => {
+            window.scrollTo(0, scrollPosition);
+        }, 50);
+        
         return true;
     }
+
 
     markNoteAsEditing(number) {
         this.appState.markNoteAsEditing(number);

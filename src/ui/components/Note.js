@@ -59,50 +59,79 @@ export class Note {
         noteContainer.dataset.noteId = number;
         noteContainer._noteInstance = this; // Store reference for cleanup
 
-        // Create action buttons
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
+        // Create menu button container with explicit positioning
+        const menuContainer = document.createElement('div');
+        menuContainer.style.position = 'absolute';
+        menuContainer.style.top = '8px';
+        menuContainer.style.right = '8px';
+        menuContainer.style.zIndex = '30';
+        menuContainer.style.width = '32px';
+        menuContainer.style.height = '32px';
         
-        const editButton = document.createElement('button');
-        editButton.className = this.themeManager.combineClasses(
-            'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
-            this.themeManager.getPrimaryButtonClasses('sm')
+        // Create hamburger menu button with completely inline styles
+        const menuButton = document.createElement('button');
+        menuButton.style.width = '32px';
+        menuButton.style.height = '32px';
+        menuButton.style.backgroundColor = 'transparent';
+        menuButton.style.border = 'none';
+        menuButton.style.borderRadius = '4px';
+        menuButton.style.display = 'flex';
+        menuButton.style.flexDirection = 'column';
+        menuButton.style.alignItems = 'center';
+        menuButton.style.justifyContent = 'center';
+        menuButton.style.cursor = 'pointer';
+        menuButton.style.padding = '4px';
+        
+        // Create three visible hamburger bars with explicit styling
+        for (let i = 0; i < 3; i++) {
+            const bar = document.createElement('div');
+            bar.style.width = '16px';
+            bar.style.height = '1.5px';
+            bar.style.backgroundColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
+            bar.style.borderRadius = '1px';
+            bar.style.margin = '0px';
+            if (i === 1) {
+                bar.style.marginTop = '2px';
+                bar.style.marginBottom = '2px';
+            }
+            bar.style.display = 'block';
+            menuButton.appendChild(bar);
+        }
+        
+        menuButton.title = 'Note options';
+        console.log('Creating hamburger menu button:', menuButton);
+        
+        // Create dropdown menu
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className = this.themeManager.combineClasses(
+            'fixed mt-1 py-2 w-48 rounded-lg shadow-xl border hidden z-50',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary')
         );
-        editButton.textContent = '✎';
-        editButton.title = 'Edit note';
-        editButton.style.display = completed ? 'block' : 'none';
-        editButton.style.textIndent = '-1px';
-
-        const saveButton = document.createElement('button');
-        saveButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
-        saveButton.textContent = '✓';
-        saveButton.title = 'Save note';
-        saveButton.style.display = completed ? 'none' : 'block';
-
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded text-sm flex items-center justify-center';
-        deleteButton.textContent = '×';
-        deleteButton.title = 'Delete note';
-
-
-        // Wire up actions
-        editButton.addEventListener('click', () => {
-            this._enableNoteEditing(number);
-            editButton.style.display = 'none';
-            saveButton.style.display = 'block';
+        
+        // Store references for later updates
+        this.menuButton = menuButton;
+        this.dropdownMenu = dropdownMenu;
+        
+        // Build menu options based on note state (defer until after container setup)
+        setTimeout(() => this.buildMenuOptions(), 0);
+        
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown();
         });
-        saveButton.addEventListener('click', () => {
-            this._completeNoteEditing(number);
-            saveButton.style.display = 'none';
-            editButton.style.display = 'block';
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuContainer.contains(e.target)) {
+                this.closeDropdown();
+            }
         });
-        deleteButton.addEventListener('click', () => {
-            // Show delete confirmation dialog
-            this.showDeleteConfirmation();
-        });
-
-        actionsDiv.append(editButton, saveButton, deleteButton);
-        noteContainer.appendChild(actionsDiv);
+        
+        menuContainer.appendChild(menuButton);
+        menuContainer.appendChild(dropdownMenu);
+        noteContainer.appendChild(menuContainer);
 
         // Left sidebar with number, timer and ID fields
         const leftSidebar = document.createElement('div');
@@ -351,21 +380,8 @@ export class Note {
                     console.warn('Cannot copy empty formatted IDs');
                     return;
                 }
-                // Use clipboard API or fallback
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(formattedIDs)
-                            .catch(err => {
-                                console.error('Failed to copy formatted IDs: ', err);
-                                this.fallbackCopy(formattedIDs);
-                            });
-                    } else {
-                        this.fallbackCopy(formattedIDs);
-                    }
-                } catch (err) {
-                    console.error('Clipboard operation failed:', err);
-                    this.fallbackCopy(formattedIDs);
-                }
+                // Use the new copyFormattedIDs method
+                this.copyFormattedIDs();
                 // Show inline cancel confirmation on this note
                 this.showCancelConfirmation();
             }
@@ -376,21 +392,8 @@ export class Note {
                     console.warn('Cannot copy empty text');
                     return;
                 }
-                // Check if clipboard API is available
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text)
-                            .catch(err => {
-                                console.error('Failed to copy: ', err);
-                                this.fallbackCopy(text);
-                            });
-                    } else {
-                        this.fallbackCopy(text);
-                    }
-                } catch (err) {
-                    console.error('Clipboard operation failed:', err);
-                    this.fallbackCopy(text);
-                }
+                // Use the new copyFormattedText method
+                this.copyFormattedText();
             }
             if (e.ctrlKey && e.shiftKey && e.key === 'V') {
                 e.preventDefault();
@@ -437,8 +440,6 @@ export class Note {
         this.container = noteContainer;
         this.elements = { ...sectionElements, attemptID: attemptIDInput, projectID: projectIDInput, operationID: operationIDInput };
         this.labels = sectionLabels;
-        this.editButton = editButton;
-        this.saveButton = saveButton;
         this.completed = completed;
         this.canceled = canceled;
 
@@ -453,6 +454,7 @@ export class Note {
             this.updateTextFieldStyles();
             this.updateButtonStyles();
             this.updateLabelStyles();
+            this.buildMenuOptions(); // Rebuild menu with new theme
         };
         document.addEventListener('themeChanged', this.themeChangeHandler);
     }
@@ -514,10 +516,13 @@ export class Note {
         // Remove all color classes
         numberDisplay.classList.remove('text-gray-600', 'text-red-600');
         
-        if (this.canceled) {
+        if (this.completed && this.canceled) {
+            // Update text to show "Cancelled" for cancelled notes
+            numberDisplay.textContent = "Cancelled";
             const cancelledTextColor = this.themeManager.getColor('note', 'cancelledText');
             numberDisplay.classList.add(cancelledTextColor);
         } else {
+            // For non-cancelled notes, keep the current number text but update color
             const tertiaryTextColor = this.themeManager.getColor('text', 'tertiary');
             numberDisplay.classList.add(tertiaryTextColor);
         }
@@ -595,16 +600,24 @@ export class Note {
     }
     
     updateButtonStyles() {
-        if (this.editButton) {
-            const oldClasses = Array.from(this.editButton.classList).filter(cls => 
-                cls.includes('bg-') || cls.includes('hover:bg-') || cls.includes('text-')
-            );
-            oldClasses.forEach(cls => this.editButton.classList.remove(cls));
+        if (this.menuButton) {
+            // Update button background for theme (keep transparent)
+            this.menuButton.style.backgroundColor = 'transparent';
             
-            const newClasses = this.themeManager.getPrimaryButtonClasses('sm');
-            this.editButton.className = this.themeManager.combineClasses(
-                'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
-                newClasses
+            // Update bar colors for theme with lighter colors
+            const bars = this.menuButton.querySelectorAll('div');
+            const barColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
+            bars.forEach(bar => {
+                bar.style.backgroundColor = barColor;
+            });
+        }
+        if (this.dropdownMenu) {
+            // Update dropdown styling
+            const baseClasses = 'fixed mt-1 py-2 w-48 rounded-lg shadow-xl border hidden z-50';
+            this.dropdownMenu.className = this.themeManager.combineClasses(
+                baseClasses,
+                this.themeManager.getColor('background', 'card'),
+                this.themeManager.getColor('border', 'primary')
             );
         }
     }
@@ -633,9 +646,11 @@ export class Note {
         this.completed = true;
         this.canceled = isCanceled;
         
-        // Update button visibility - edit button should show for completed notes
-        this.editButton.style.display = 'block';
-        this.saveButton.style.display = 'none';
+        // Update number display (for cancelled notes)
+        this.updateNumberDisplay();
+        
+        // Rebuild menu options for completed state
+        this.buildMenuOptions();
         
         // Update placeholders (hide them)
         Object.values(this.elements).forEach(element => {
@@ -661,9 +676,8 @@ export class Note {
             this.timer.restart();
         }
         
-        // Update button visibility - save button should show for editing notes
-        this.editButton.style.display = 'none';
-        this.saveButton.style.display = 'block';
+        // Rebuild menu options for editing state
+        this.buildMenuOptions();
         
         // Restore placeholders
         Object.values(this.elements).forEach(element => {
@@ -850,6 +864,163 @@ export class Note {
     }
 
     
+    /**
+     * Build menu options based on current note state
+     */
+    buildMenuOptions() {
+        if (!this.dropdownMenu || !this.container) return;
+        
+        // Clear existing options
+        this.dropdownMenu.innerHTML = '';
+        
+        const number = this.container.dataset.noteId || this.number;
+        
+        if (this.completed) {
+            // Options for completed notes
+            this.addMenuOption('Edit Note', () => {
+                this._enableNoteEditing(number);
+                this.closeDropdown();
+            });
+            
+            this.addMenuOption('Copy Content', () => {
+                this.copyFormattedText();
+                this.closeDropdown();
+            });
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        } else {
+            // Options for active/editing notes
+            this.addMenuOption('Save Note', () => {
+                this._completeNoteEditing(number);
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('success') || 'text-green-600 hover:text-green-700');
+            
+            this.addMenuOption('Cancel Note', () => {
+                this.showCancelConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('warning') || 'text-yellow-600 hover:text-yellow-700');
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Copy Content', () => {
+                this.copyFormattedText();
+                this.closeDropdown();
+            });
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        }
+    }
+    
+    /**
+     * Add a menu option to the dropdown
+     */
+    addMenuOption(text, onClick, extraClasses = '') {
+        const option = document.createElement('button');
+        const baseHoverClass = this.themeManager.getColor('background', 'hover') || 'hover:bg-gray-100';
+        
+        option.className = this.themeManager.combineClasses(
+            'w-full px-4 py-2 text-left text-sm transition-colors whitespace-nowrap overflow-hidden text-ellipsis',
+            baseHoverClass,
+            this.themeManager.getColor('text', 'primary'),
+            extraClasses
+        );
+        
+        option.textContent = text;
+        option.addEventListener('click', onClick);
+        
+        this.dropdownMenu.appendChild(option);
+    }
+    
+    /**
+     * Add a separator to the dropdown menu
+     */
+    addMenuSeparator() {
+        const separator = document.createElement('div');
+        separator.className = this.themeManager.combineClasses(
+            'h-px mx-2 my-1',
+            this.themeManager.getColor('border', 'secondary')
+        );
+        this.dropdownMenu.appendChild(separator);
+    }
+    
+    /**
+     * Toggle dropdown visibility
+     */
+    toggleDropdown() {
+        if (this.dropdownMenu.classList.contains('hidden')) {
+            // Position the fixed dropdown relative to the menu button
+            const buttonRect = this.menuButton.getBoundingClientRect();
+            this.dropdownMenu.style.top = (buttonRect.bottom + 4) + 'px';
+            this.dropdownMenu.style.right = (window.innerWidth - buttonRect.right) + 'px';
+            this.dropdownMenu.classList.remove('hidden');
+        } else {
+            this.dropdownMenu.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Close dropdown menu
+     */
+    closeDropdown() {
+        if (this.dropdownMenu) {
+            this.dropdownMenu.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Copy formatted text with clipboard API
+     */
+    async copyFormattedText() {
+        const text = this.getFormattedText();
+        if (!text || text.trim() === '') {
+            console.warn('Cannot copy empty text');
+            return;
+        }
+        
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                this.fallbackCopy(text);
+            }
+        } catch (err) {
+            console.error('Failed to copy formatted text:', err);
+            this.fallbackCopy(text);
+        }
+    }
+    
+    /**
+     * Copy formatted IDs with clipboard API
+     */
+    async copyFormattedIDs() {
+        const formattedIDs = this.getFormattedIDs();
+        if (!formattedIDs || formattedIDs.trim() === '') {
+            console.warn('Cannot copy empty formatted IDs');
+            return;
+        }
+        
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(formattedIDs);
+            } else {
+                this.fallbackCopy(formattedIDs);
+            }
+        } catch (err) {
+            console.error('Failed to copy formatted IDs:', err);
+            this.fallbackCopy(formattedIDs);
+        }
+    }
+
     /** Format this note's IDs for copying */
     getFormattedIDs() {
         const project = this.elements.projectID.value || '';
@@ -969,23 +1140,25 @@ export class Note {
             const noteData = savedNotes[number] || {};
             
             // Update fields with loaded data if they exist
-            if (noteData.failingIssues && this.elements.failingIssues) {
-                this.elements.failingIssues.value = noteData.failingIssues;
-            }
-            if (noteData.nonFailingIssues && this.elements.nonFailingIssues) {
-                this.elements.nonFailingIssues.value = noteData.nonFailingIssues;
-            }
-            if (noteData.discussion && this.elements.discussion) {
-                this.elements.discussion.value = noteData.discussion;
-            }
-            if (noteData.attemptID && this.elements.attemptID) {
-                this.elements.attemptID.value = noteData.attemptID;
-            }
-            if (noteData.projectID && this.elements.projectID) {
-                this.elements.projectID.value = noteData.projectID;
-            }
-            if (noteData.operationID && this.elements.operationID) {
-                this.elements.operationID.value = noteData.operationID;
+            if (this.elements) {
+                if (noteData.failingIssues && this.elements.failingIssues) {
+                    this.elements.failingIssues.value = noteData.failingIssues;
+                }
+                if (noteData.nonFailingIssues && this.elements.nonFailingIssues) {
+                    this.elements.nonFailingIssues.value = noteData.nonFailingIssues;
+                }
+                if (noteData.discussion && this.elements.discussion) {
+                    this.elements.discussion.value = noteData.discussion;
+                }
+                if (noteData.attemptID && this.elements.attemptID) {
+                    this.elements.attemptID.value = noteData.attemptID;
+                }
+                if (noteData.projectID && this.elements.projectID) {
+                    this.elements.projectID.value = noteData.projectID;
+                }
+                if (noteData.operationID && this.elements.operationID) {
+                    this.elements.operationID.value = noteData.operationID;
+                }
             }
             
             // Update timer if it exists

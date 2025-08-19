@@ -77,7 +77,7 @@ export class NoteApp {
 
         this.noteController.addEventListener('noteDeleted', () => {
             this.updateStatistics();
-            this.noteListView.scrollToBottom();
+            // Don't change scroll position when deleting notes
         });
 
         this.noteController.addEventListener('notesClearing', () => {
