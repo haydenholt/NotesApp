@@ -53,14 +53,25 @@ export class DOMHelpers {
         // Clear element and add success content
         element.textContent = '';
         if (typeof successContent === 'string') {
-            // If it's a string, try to parse as HTML safely
+            // If it's a string, try to parse as HTML safely using DOMParser
             if (successContent.startsWith('<svg')) {
-                // For SVG strings, create DOM elements
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = successContent;
-                const svg = tempDiv.firstElementChild;
-                if (svg) {
-                    element.appendChild(svg.cloneNode(true));
+                // For SVG strings, use DOMParser for secure parsing
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(successContent, 'image/svg+xml');
+                    const svg = doc.documentElement;
+                    
+                    // Check for parsing errors
+                    const parseError = doc.querySelector('parsererror');
+                    if (!parseError && svg && svg.tagName === 'svg') {
+                        element.appendChild(svg.cloneNode(true));
+                    } else {
+                        // Fallback to text content if parsing fails
+                        element.textContent = successContent;
+                    }
+                } catch (error) {
+                    console.warn('Failed to parse SVG content safely:', error);
+                    element.textContent = successContent;
                 }
             } else {
                 element.textContent = successContent;
@@ -74,11 +85,23 @@ export class DOMHelpers {
             element.textContent = '';
             if (typeof originalContent === 'string') {
                 if (originalContent.startsWith('<svg')) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = originalContent;
-                    const svg = tempDiv.firstElementChild;
-                    if (svg) {
-                        element.appendChild(svg.cloneNode(true));
+                    // For SVG strings, use DOMParser for secure parsing
+                    try {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(originalContent, 'image/svg+xml');
+                        const svg = doc.documentElement;
+                        
+                        // Check for parsing errors
+                        const parseError = doc.querySelector('parsererror');
+                        if (!parseError && svg && svg.tagName === 'svg') {
+                            element.appendChild(svg.cloneNode(true));
+                        } else {
+                            // Fallback to text content if parsing fails
+                            element.textContent = originalContent;
+                        }
+                    } catch (error) {
+                        console.warn('Failed to parse SVG content safely:', error);
+                        element.textContent = originalContent;
                     }
                 } else {
                     element.textContent = originalContent;

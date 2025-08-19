@@ -2,6 +2,8 @@
  * ThemeManager class for managing application themes
  * Provides centralized color management and theme switching capabilities
  */
+import { SecureStorage } from '../../core/data/SecureStorage.js';
+
 export class ThemeManager {
     constructor() {
         this.currentTheme = 'light';
@@ -433,9 +435,9 @@ export class ThemeManager {
     /**
      * Save current theme to localStorage
      */
-    saveTheme() {
+    async saveTheme() {
         try {
-            localStorage.setItem('app_theme', this.currentTheme);
+            await SecureStorage.setItem('app_theme', this.currentTheme);
         } catch (e) {
             console.error('Error saving theme:', e);
         }
@@ -444,9 +446,9 @@ export class ThemeManager {
     /**
      * Load theme from localStorage
      */
-    loadTheme() {
+    async loadTheme() {
         try {
-            const savedTheme = localStorage.getItem('app_theme');
+            const savedTheme = await SecureStorage.getItem('app_theme');
             if (savedTheme && this.themes[savedTheme]) {
                 this.currentTheme = savedTheme;
             }

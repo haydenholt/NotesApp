@@ -113,16 +113,20 @@ export class TimerController {
         return this.timerState.getRunningTimers(timerDate);
     }
 
-    getTotalOffPlatformSeconds(date = null) {
+    async getTotalOffPlatformSeconds(date = null) {
         const timerDate = date || this.appState.getCurrentDate();
         
         // Use new entry-based system
-        const entrySeconds = TimerEntryRepository.getTotalSecondsForDate(timerDate);
+        const entrySeconds = await TimerEntryRepository.getTotalSecondsForDate(timerDate);
         
         // Also include any legacy timer state for backward compatibility
         const legacySeconds = this.timerState.getTotalSecondsForDate(timerDate);
         
-        return entrySeconds + legacySeconds;
+        // Ensure both values are valid numbers
+        const validEntrySeconds = Number(entrySeconds) || 0;
+        const validLegacySeconds = Number(legacySeconds) || 0;
+        
+        return validEntrySeconds + validLegacySeconds;
     }
 
     getTotalOnPlatformSeconds(noteController) {
@@ -130,9 +134,9 @@ export class TimerController {
         return notes.reduce((total, note) => total + note.timer.getSeconds(), 0);
     }
 
-    getTotalSeconds(noteController) {
+    async getTotalSeconds(noteController) {
         const onPlatformSeconds = this.getTotalOnPlatformSeconds(noteController);
-        const offPlatformSeconds = this.getTotalOffPlatformSeconds();
+        const offPlatformSeconds = await this.getTotalOffPlatformSeconds();
         return onPlatformSeconds + offPlatformSeconds;
     }
 

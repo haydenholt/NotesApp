@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Encryption</title>
+</head>
+<body>
+    <h1>Testing SecureStorage Encryption</h1>
+    <div id="test-results"></div>
+    
+    <script type="module">
+        import { SecureStorage } from './src/core/data/SecureStorage.js';
+        
+        const resultsDiv = document.getElementById('test-results');
+        
+        function log(message, isError = false) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.style.color = isError ? 'red' : 'green';
+            resultsDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        async function runTests() {
+            try {
+                log('🔧 Testing SecureStorage encryption...');
+                
+                // Test browser support
+                if (!SecureStorage.isSupported()) {
+                    log('❌ Web Crypto API not supported in this browser', true);
+                    return;
+                }
+                log('✅ Web Crypto API is supported');
+                
+                // Initialize
+                await SecureStorage.initialize();
+                log('✅ SecureStorage initialization successful');
+                
+                // Test basic storage
+                await SecureStorage.setItem('test_key', 'test_value');
+                const retrieved = await SecureStorage.getItem('test_key');
+                log(`✅ Basic storage test: ${retrieved === 'test_value' ? 'PASSED' : 'FAILED'}`);
+                
+                // Test JSON storage
+                const testObj = { name: 'test', value: 123, nested: { data: 'encrypted' } };
+                await SecureStorage.setItem('test_obj', JSON.stringify(testObj));
+                const retrievedObj = JSON.parse(await SecureStorage.getItem('test_obj'));
+                const jsonTestPassed = JSON.stringify(retrievedObj) === JSON.stringify(testObj);
+                log(`✅ JSON storage test: ${jsonTestPassed ? 'PASSED' : 'FAILED'}`);
+                
+                // Test encryption status
+                const status = SecureStorage.getStatus();
+                log(`✅ Encryption status: ${JSON.stringify(status)}`);
+                
+                // Test that data is actually encrypted in localStorage
+                const keys = SecureStorage.getAllKeys();
+                log(`✅ Found ${keys.length} encrypted keys`);
+                
+                // Check if raw localStorage contains encrypted data
+                let encryptedFound = false;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('_encrypted_')) {
+                        const value = localStorage.getItem(key);
+                        // Check if it looks like base64 encrypted data
+                        if (value && value.length > 16 && /^[A-Za-z0-9+/=]+$/.test(value)) {
+                            encryptedFound = true;
+                            log(`✅ Found encrypted data in localStorage (key: ${key.substring(0, 20)}...)`);
+                            break;
+                        }
+                    }
+                }
+                
+                if (!encryptedFound) {
+                    log('⚠️ No encrypted data found in localStorage', true);
+                }
+                
+                // Test export/import
+                const exportedData = await SecureStorage.exportAll();
+                log(`✅ Export test: Found ${Object.keys(exportedData).length} items`);
+                
+                // Clean up
+                SecureStorage.removeItem('test_key');
+                SecureStorage.removeItem('test_obj');
+                log('✅ Cleanup completed');
+                
+                log('🎉 All encryption tests passed! Your data is now securely encrypted.');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, true);
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

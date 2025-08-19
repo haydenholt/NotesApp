@@ -90,7 +90,7 @@ export class NoteApp {
 
         // Timer Controller listeners
         this.timerController.addEventListener('totalTimeChanged', () => {
-            this.updateTotalTimeDisplay();
+            this.updateTotalTimeDisplay().catch(console.error);
         });
 
         // Timer events are now handled directly by OffPlatformView
@@ -243,7 +243,7 @@ export class NoteApp {
         await this.noteController.loadNotesForDate(currentDate);
         this.timerController.loadTimerStateForDate(currentDate);
         this.updateStatistics();
-        this.updateTotalTimeDisplay();
+        this.updateTotalTimeDisplay().catch(console.error);
     }
 
     handleDateChange(newDate) {
@@ -319,9 +319,9 @@ export class NoteApp {
         this.statisticsView.renderProjectFailRates(projectStats, null, true);
     }
 
-    updateTotalTimeDisplay() {
+    async updateTotalTimeDisplay() {
         const onPlatformSeconds = this.timerController.getTotalOnPlatformSeconds(this.noteController);
-        const offPlatformSeconds = this.timerController.getTotalOffPlatformSeconds();
+        const offPlatformSeconds = await this.timerController.getTotalOffPlatformSeconds();
         const totalSeconds = onPlatformSeconds + offPlatformSeconds;
         
         const textMutedClass = this.themeManager.getColor('text', 'muted');
@@ -349,7 +349,7 @@ export class NoteApp {
 
     startTotalTimeUpdater() {
         setInterval(() => {
-            this.updateTotalTimeDisplay();
+            this.updateTotalTimeDisplay().catch(console.error);
         }, 1000);
     }
 
@@ -380,7 +380,7 @@ export class NoteApp {
         this.offPlatformView.updateTheme();
         
         // Update total time display with new theme colors
-        this.updateTotalTimeDisplay();
+        this.updateTotalTimeDisplay().catch(console.error);
         
         if (this.searchController.isSearchActive()) {
             const results = this.searchController.getSearchResults();
@@ -403,7 +403,7 @@ export class NoteApp {
     }
 
     updateTotalTime() {
-        this.updateTotalTimeDisplay();
+        this.updateTotalTimeDisplay().catch(console.error);
     }
 
     // Export functionality

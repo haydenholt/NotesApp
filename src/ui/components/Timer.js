@@ -1,6 +1,8 @@
 /**
  * Timer class for tracking time spent on notes
  */
+import { NotesRepository } from '../../core/data/NotesRepository.js';
+
 export class Timer {
     constructor(startTimestamp = null, endTimestamp = null) {
         this.startTimestamp = startTimestamp;
@@ -91,16 +93,20 @@ export class Timer {
         }
     }
 
-    saveState() {
+    async saveState() {
         if (this.noteId && window.app) {
-            const savedNotes = JSON.parse(localStorage.getItem(window.app.currentDate) || '{}');
-            if (savedNotes[this.noteId]) {
-                savedNotes[this.noteId].startTimestamp = this.startTimestamp;
-                savedNotes[this.noteId].endTimestamp = this.endTimestamp;
-                savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
-                savedNotes[this.noteId].completed = this.completed; // Save completion status
-                savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
-                localStorage.setItem(window.app.currentDate, JSON.stringify(savedNotes));
+            try {
+                const savedNotes = await NotesRepository.getNotesForDate(window.app.currentDate);
+                if (savedNotes[this.noteId]) {
+                    savedNotes[this.noteId].startTimestamp = this.startTimestamp;
+                    savedNotes[this.noteId].endTimestamp = this.endTimestamp;
+                    savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
+                    savedNotes[this.noteId].completed = this.completed; // Save completion status
+                    savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
+                    await NotesRepository.saveNotesForDate(window.app.currentDate, savedNotes);
+                }
+            } catch (error) {
+                console.error('Error saving timer state:', error);
             }
         }
     }

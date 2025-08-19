@@ -1,3 +1,5 @@
+import { SecureStorage } from './SecureStorage.js';
+
 export class CustomTemplateManager {
     constructor() {
         this.storageKey = 'systemPromptTemplates';
@@ -12,34 +14,35 @@ export class CustomTemplateManager {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
-    initializeTemplates() {
-        const version = localStorage.getItem(this.versionKey);
-        const existingTemplates = this.getTemplates();
+    async initializeTemplates() {
+        const version = await SecureStorage.getItem(this.versionKey);
+        const existingTemplates = await this.getTemplates();
         
         // If no templates exist or version is outdated, initialize with defaults
         if (!version || parseInt(version) < this.currentVersion || existingTemplates.length === 0) {
-            this.migrateToVersion1();
+            await this.migrateToVersion1();
         }
     }
 
-    migrateToVersion1() {
-        const existingCustomTemplates = this.getTemplates().filter(t => !t.isDefault);
+    async migrateToVersion1() {
+        const templates = await this.getTemplates();
+        const existingCustomTemplates = templates.filter(t => !t.isDefault);
         const defaultTemplates = this.getDefaultTemplates();
         
         // Combine existing custom templates with fresh default templates
         const allTemplates = [...defaultTemplates, ...existingCustomTemplates];
         
-        this.saveTemplates(allTemplates);
-        localStorage.setItem(this.versionKey, this.currentVersion.toString());
+        await this.saveTemplates(allTemplates);
+        await SecureStorage.setItem(this.versionKey, this.currentVersion.toString());
     }
 
-    getAllTemplates() {
-        return this.getTemplates();
+    async getAllTemplates() {
+        return await this.getTemplates();
     }
 
-    getTemplates() {
+    async getTemplates() {
         try {
-            const data = localStorage.getItem(this.storageKey);
+            const data = await SecureStorage.getItem(this.storageKey);
             if (!data) return [];
             const parsed = JSON.parse(data);
             return parsed.templates || [];
@@ -49,10 +52,10 @@ export class CustomTemplateManager {
         }
     }
 
-    saveTemplates(templates) {
+    async saveTemplates(templates) {
         try {
             const data = { templates };
-            localStorage.setItem(this.storageKey, JSON.stringify(data));
+            await SecureStorage.setItem(this.storageKey, JSON.stringify(data));
             return true;
         } catch (error) {
             console.error('Failed to save templates:', error);
@@ -60,7 +63,7 @@ export class CustomTemplateManager {
         }
     }
 
-    createTemplate(templateData) {
+    async createTemplate(templateData) {
         const { name, description, placeholders, template } = templateData;
         
         if (!name || !template) {
@@ -78,18 +81,18 @@ export class CustomTemplateManager {
             updatedAt: Date.now()
         };
 
-        const templates = this.getTemplates();
+        const templates = await this.getTemplates();
         templates.push(newTemplate);
         
-        if (this.saveTemplates(templates)) {
+        if (await this.saveTemplates(templates)) {
             return newTemplate;
         } else {
             throw new Error('Failed to save template');
         }
     }
 
-    updateTemplate(id, templateData) {
-        const templates = this.getTemplates();
+    async updateTemplate(id, templateData) {
+        const templates = await this.getTemplates();
         const index = templates.findIndex(t => t.id === id);
         
         if (index === -1) {
@@ -104,31 +107,31 @@ export class CustomTemplateManager {
 
         templates[index] = updatedTemplate;
         
-        if (this.saveTemplates(templates)) {
+        if (await this.saveTemplates(templates)) {
             return updatedTemplate;
         } else {
             throw new Error('Failed to update template');
         }
     }
 
-    deleteTemplate(id) {
-        const templates = this.getTemplates();
+    async deleteTemplate(id) {
+        const templates = await this.getTemplates();
         const filteredTemplates = templates.filter(t => t.id !== id);
         
         if (filteredTemplates.length === templates.length) {
             throw new Error('Template not found');
         }
 
-        return this.saveTemplates(filteredTemplates);
+        return await this.saveTemplates(filteredTemplates);
     }
 
-    getTemplateById(id) {
-        const allTemplates = this.getAllTemplates();
+    async getTemplateById(id) {
+        const allTemplates = await this.getAllTemplates();
         return allTemplates.find(t => t.id === id);
     }
 
-    resetTemplateToDefault(id) {
-        const template = this.getTemplateById(id);
+    async resetTemplateToDefault(id) {
+        const template = await this.getTemplateById(id);
         
         if (!template || !template.isDefault) {
             throw new Error('Template is not a default template');
@@ -150,11 +153,11 @@ export class CustomTemplateManager {
             updatedAt: Date.now()
         };
         
-        return this.updateTemplate(id, resetData);
+        return await this.updateTemplate(id, resetData);
     }
 
-    generatePromptFromTemplate(templateId, placeholderValues) {
-        const template = this.getTemplateById(templateId);
+    async generatePromptFromTemplate(templateId, placeholderValues) {
+        const template = await this.getTemplateById(templateId);
         if (!template) {
             throw new Error('Template not found');
         }

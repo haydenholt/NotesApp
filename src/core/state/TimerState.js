@@ -103,14 +103,18 @@ export class TimerState {
 
     getCurrentSeconds(date, category) {
         const timer = this.getTimer(date, category);
-        let totalSeconds = timer.totalTime;
+        let totalSeconds = Number(timer.totalTime) || 0;
         
         if (timer.isRunning && timer.startTime) {
-            const elapsed = Math.floor((Date.now() - timer.startTime) / 1000);
-            totalSeconds += elapsed;
+            const startTime = Number(timer.startTime) || Date.now();
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            if (!isNaN(elapsed) && elapsed >= 0) {
+                totalSeconds += elapsed;
+            }
         }
         
-        return totalSeconds;
+        // Ensure we return a valid number
+        return Number(totalSeconds) || 0;
     }
 
     isTimerRunning(date, category) {

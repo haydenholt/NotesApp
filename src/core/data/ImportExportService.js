@@ -2,60 +2,69 @@
  * ImportExportService - Handles manual import/export of all localStorage data
  */
 import { SecurityUtils } from '../utils/SecurityUtils.js';
+import { SecureStorage } from './SecureStorage.js';
 
 export class ImportExportService {
     /**
-     * Export all localStorage data to a JSON file
+     * Export all localStorage data to a JSON file (unencrypted)
      */
-    static exportData() {
-        const data = {};
-        const metadata = {
-            exportDate: new Date().toISOString(),
-            version: '1.0',
-            totalKeys: localStorage.length
-        };
-        
-        // Collect all localStorage data
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            const value = localStorage.getItem(key);
+    static async exportData() {
+        try {
+            // Export decrypted data
+            const allData = await SecureStorage.exportAll();
             
-            try {
-                // Try to parse as JSON, if it fails store as string
-                data[key] = JSON.parse(value);
-            } catch {
+            // Filter out old format off-platform keys (keep only new format)
+            const data = {};
+            for (const [key, value] of Object.entries(allData)) {
+                // Skip old format offPlatform_ keys (but keep offPlatform_entries_ keys)
+                if (key.startsWith('offPlatform_') && !key.startsWith('offPlatform_entries_')) {
+                    console.log('Skipping old format key from export:', key);
+                    continue;
+                }
                 data[key] = value;
             }
+            
+            const metadata = {
+                exportDate: new Date().toISOString(),
+                version: '1.0',
+                totalKeys: Object.keys(data).length
+            };
+            
+            const exportData = {
+                metadata,
+                data
+            };
+            
+            // Create and download the file
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+                type: 'application/json' 
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            const timestamp = new Date().toISOString().split('T')[0];
+            link.href = url;
+            link.download = `notes-backup-${timestamp}.json`;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+            
+            return {
+                success: true,
+                keysExported: Object.keys(data).length,
+                filename: link.download
+            };
+        } catch (error) {
+            console.error('Export failed:', error);
+            return {
+                success: false,
+                error: error.message
+            };
         }
-        
-        const exportData = {
-            metadata,
-            data
-        };
-        
-        // Create and download the file
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-            type: 'application/json' 
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        const timestamp = new Date().toISOString().split('T')[0];
-        link.href = url;
-        link.download = `notes-backup-${timestamp}.json`;
-        link.style.display = 'none';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        URL.revokeObjectURL(url);
-        
-        return {
-            success: true,
-            keysExported: localStorage.length,
-            filename: link.download
-        };
     }
     
     /**
@@ -72,7 +81,7 @@ export class ImportExportService {
             
             const reader = new FileReader();
             
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const importData = JSON.parse(e.target.result);
                     
@@ -91,13 +100,13 @@ export class ImportExportService {
                     }
                     
                     // Store current data for potential rollback
-                    const backup = this.createBackup();
+                    const backup = await this.createBackup();
                     
                     try {
-                        // Clear existing localStorage
-                        localStorage.clear();
+                        // Clear existing encrypted data
+                        SecureStorage.clear();
                         
-                        // Import all data
+                        // Import all data (will be encrypted when stored)
                         let importedKeys = 0;
                         for (const [key, value] of Object.entries(importData.data)) {
                             // Validate the key format
@@ -109,7 +118,11 @@ export class ImportExportService {
                             let valueToStore;
                             
                             // For date keys (note data), validate and sanitize
-                            if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+                            // Also handle keys that start with 'notes_' prefix
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(key) || (key.startsWith('notes_') && /^\d{4}-\d{2}-\d{2}$/.test(key.substring(6)))) {
+                                // Extract the actual date key (remove 'notes_' prefix if present)
+                                const actualKey = key.startsWith('notes_') ? key.substring(6) : key;
+                                
                                 if (typeof value === 'object') {
                                     const sanitizedNotes = {};
                                     for (const [noteId, noteData] of Object.entries(value)) {
@@ -117,6 +130,11 @@ export class ImportExportService {
                                         sanitizedNotes[noteId] = SecurityUtils.sanitizeNoteData(noteData);
                                     }
                                     valueToStore = JSON.stringify(sanitizedNotes);
+                                    
+                                    // Store with the clean date key (without 'notes_' prefix)
+                                    await SecureStorage.setItem(actualKey, valueToStore);
+                                    importedKeys++;
+                                    continue;
                                 } else {
                                     continue; // Skip invalid note data
                                 }
@@ -138,13 +156,94 @@ export class ImportExportService {
                                 }
                                 valueToStore = value;
                             }
-                            // For off-platform timer data
-                            else if (key.startsWith('offPlatform_')) {
+                            // For off-platform timer data - handle new format first, then old format
+                            else if (key.startsWith('offPlatform_entries_')) {
+                                // New format: offPlatform_entries_YYYY-MM-DD
+                                const dateKey = key.substring(20);
+                                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                                    console.warn('Skipping invalid off-platform entries key:', key);
+                                    continue;
+                                }
+                                valueToStore = typeof value === 'object' 
+                                    ? JSON.stringify(value) 
+                                    : value;
+                                
+                                // Store the new format entries
+                                await SecureStorage.setItem(key, valueToStore);
+                                importedKeys++;
+                                continue;
+                            }
+                            else if (key.startsWith('offPlatform_') && !key.startsWith('offPlatform_entries_')) {
+                                // Old format: offPlatform_YYYY-MM-DD - convert to new format during import
                                 const dateKey = key.substring(12);
+                                
+                                // Skip special keys like offPlatform_shared, offPlatform_activeTimers
+                                if (dateKey === 'shared' || dateKey === 'activeTimers') {
+                                    // These are special keys, store them as-is
+                                    valueToStore = typeof value === 'object' 
+                                        ? JSON.stringify(value) 
+                                        : value;
+                                    await SecureStorage.setItem(key, valueToStore);
+                                    importedKeys++;
+                                    continue;
+                                }
+                                
                                 if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
                                     console.warn('Skipping invalid off-platform key:', key);
                                     continue;
                                 }
+                                
+                                // Convert old format to new format during import
+                                if (typeof value === 'object' && value.timers) {
+                                    // This is old format, convert to new entries format
+                                    const entries = [];
+                                    const categoryTitles = {
+                                        projectTraining: 'Project Training',
+                                        sheetwork: 'Sheet Work',
+                                        blocked: 'Blocked from Working'
+                                    };
+                                    
+                                    let migrationOffset = 0;
+                                    const baseTime = Date.now() - 86400000; // Mark as legacy
+                                    
+                                    Object.entries(value.timers).forEach(([category, timer]) => {
+                                        if (timer.totalSeconds > 0 || timer.startTime) {
+                                            const createdAt = baseTime + migrationOffset;
+                                            migrationOffset += 1000;
+                                            
+                                            const entry = {
+                                                id: `legacy_${category}_${createdAt}_${Math.random().toString(36).substr(2, 9)}`,
+                                                title: categoryTitles[category] || category,
+                                                totalSeconds: timer.totalSeconds || 0,
+                                                isRunning: !!timer.startTime,
+                                                startTime: timer.startTime || null,
+                                                endTime: timer.startTime ? null : createdAt,
+                                                createdAt,
+                                                migrated: true
+                                            };
+                                            entries.push(entry);
+                                        }
+                                    });
+                                    
+                                    // Store as new format
+                                    const newKey = `offPlatform_entries_${dateKey}`;
+                                    await SecureStorage.setItem(newKey, JSON.stringify(entries));
+                                    importedKeys++;
+                                    continue; // Skip storing the old format
+                                } else {
+                                    // Skip old format keys that don't have the expected structure
+                                    console.warn('Skipping old format off-platform key during import:', key);
+                                    continue;
+                                }
+                            }
+                            // Handle timer_ keys (legacy timer format)
+                            else if (key.startsWith('timer_')) {
+                                // These are legacy individual timer keys, skip them
+                                console.warn('Skipping legacy timer key:', key);
+                                continue;
+                            }
+                            // Handle systemPromptTemplates
+                            else if (key === 'systemPromptTemplates') {
                                 valueToStore = typeof value === 'object' 
                                     ? JSON.stringify(value) 
                                     : value;
@@ -155,7 +254,7 @@ export class ImportExportService {
                                 continue;
                             }
                             
-                            localStorage.setItem(key, valueToStore);
+                            await SecureStorage.setItem(key, valueToStore);
                             importedKeys++;
                         }
                         
@@ -168,7 +267,7 @@ export class ImportExportService {
                         
                     } catch (importError) {
                         // Rollback on error
-                        this.restoreBackup(backup);
+                        await this.restoreBackup(backup);
                         throw importError;
                     }
                     
@@ -186,67 +285,75 @@ export class ImportExportService {
     }
     
     /**
-     * Create a backup of current localStorage
+     * Create a backup of current encrypted storage
      * @private
      */
-    static createBackup() {
-        const backup = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            backup[key] = localStorage.getItem(key);
-        }
-        return backup;
+    static async createBackup() {
+        return await SecureStorage.exportAll();
     }
     
     /**
-     * Restore localStorage from backup
+     * Restore encrypted storage from backup
      * @private
      */
-    static restoreBackup(backup) {
-        localStorage.clear();
-        for (const [key, value] of Object.entries(backup)) {
-            localStorage.setItem(key, value);
-        }
+    static async restoreBackup(backup) {
+        SecureStorage.clear();
+        await SecureStorage.importAll(backup);
     }
     
     /**
-     * Get statistics about current localStorage data
+     * Get statistics about current encrypted storage data
      */
-    static getDataStats() {
-        let noteCount = 0;
-        let offPlatformCount = 0;
-        let otherCount = 0;
-        let totalSize = 0;
-        
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            const value = localStorage.getItem(key);
+    static async getDataStats() {
+        try {
+            const data = await SecureStorage.exportAll();
+            let noteCount = 0;
+            let offPlatformCount = 0;
+            let otherCount = 0;
+            let totalSize = 0;
             
-            // Estimate size in bytes
-            totalSize += key.length + value.length;
-            
-            // Categorize keys
-            if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
-                // Date keys for notes
-                try {
-                    const data = JSON.parse(value);
-                    noteCount += Object.keys(data).length;
-                } catch {
-                    noteCount++;
+            for (const [key, value] of Object.entries(data)) {
+                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                
+                // Estimate size in bytes
+                totalSize += key.length + stringValue.length;
+                
+                // Categorize keys
+                if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+                    // Date keys for notes
+                    try {
+                        const noteData = typeof value === 'object' ? value : JSON.parse(value);
+                        noteCount += Object.keys(noteData).length;
+                    } catch {
+                        noteCount++;
+                    }
+                } else if (key.startsWith('offPlatform_entries_')) {
+                    // New format entries
+                    offPlatformCount++;
+                } else if (key.startsWith('offPlatform_')) {
+                    // Old format (shouldn't be exported anymore, but count if present)
+                    offPlatformCount++;
+                } else {
+                    otherCount++;
                 }
-            } else if (key.startsWith('offPlatform_')) {
-                offPlatformCount++;
-            } else {
-                otherCount++;
             }
+            
+            return {
+                totalKeys: Object.keys(data).length,
+                noteCount,
+                offPlatformCount,
+                otherCount,
+                estimatedSizeKB: (totalSize / 1024).toFixed(2)
+            };
+        } catch (error) {
+            console.error('Error getting data stats:', error);
+            return {
+                totalKeys: 0,
+                noteCount: 0,
+                offPlatformCount: 0,
+                otherCount: 0,
+                estimatedSizeKB: '0.00'
+            };
         }
-        
-        return {
-            totalKeys: localStorage.length,
-            noteCount,
-            offPlatformCount,
-            otherCount,
-            estimatedSizeKB: (totalSize / 1024).toFixed(2)
-        };
     }
 }

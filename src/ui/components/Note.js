@@ -1,5 +1,6 @@
 import Timer from './Timer.js';
 import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
+import { NotesRepository } from '../../core/data/NotesRepository.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -15,8 +16,9 @@ export class Note {
 
 
         // Load saved note data for this date and ID
-        const savedNotes = JSON.parse(localStorage.getItem(date) || '{}');
-        const noteData = savedNotes[number] || {};
+        // Note: Data will be loaded asynchronously
+        const noteData = {};
+        this.loadNoteDataAsync(date, number);
         // Migrate and default fields
         let failingIssues = '';
         let nonFailingIssues = '';
@@ -302,7 +304,7 @@ export class Note {
                     timer.hasStarted = true;
                     timer.start();
                 }
-                this.save(timer.startTimestamp, timer.endTimestamp, completed);
+                this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
             });
 
 
@@ -319,7 +321,7 @@ export class Note {
                 timer.hasStarted = true;
                 timer.start();
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
         
         projectIDInput.addEventListener('input', () => {
@@ -327,7 +329,7 @@ export class Note {
                 timer.hasStarted = true;
                 timer.start();
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
 
         // Add event listener for Operation ID
@@ -336,7 +338,7 @@ export class Note {
                 timer.hasStarted = true;
                 timer.start();
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
 
         // Add event listeners for F1 to copy IDs
@@ -938,8 +940,7 @@ export class Note {
     /**
      * Save this note to localStorage.
      */
-    save(startTimestamp, endTimestamp, completed, canceled = false) {
-        const savedNotes = JSON.parse(localStorage.getItem(this.date) || '{}');
+    async save(startTimestamp, endTimestamp, completed, canceled = false) {
         const number = this.container.dataset.noteId;
         // Sanitize all user input fields before saving
         const noteData = {
@@ -956,8 +957,60 @@ export class Note {
             hasStarted: this.timer.hasStarted,
             canceled: canceled || this.canceled
         };
-        savedNotes[number] = noteData;
-        localStorage.setItem(this.date, JSON.stringify(savedNotes));
+        await NotesRepository.saveNote(this.date, number, noteData);
+    }
+
+    /**
+     * Load note data asynchronously
+     */
+    async loadNoteDataAsync(date, number) {
+        try {
+            const savedNotes = await NotesRepository.getNotesForDate(date);
+            const noteData = savedNotes[number] || {};
+            
+            // Update fields with loaded data if they exist
+            if (noteData.failingIssues && this.elements.failingIssues) {
+                this.elements.failingIssues.value = noteData.failingIssues;
+            }
+            if (noteData.nonFailingIssues && this.elements.nonFailingIssues) {
+                this.elements.nonFailingIssues.value = noteData.nonFailingIssues;
+            }
+            if (noteData.discussion && this.elements.discussion) {
+                this.elements.discussion.value = noteData.discussion;
+            }
+            if (noteData.attemptID && this.elements.attemptID) {
+                this.elements.attemptID.value = noteData.attemptID;
+            }
+            if (noteData.projectID && this.elements.projectID) {
+                this.elements.projectID.value = noteData.projectID;
+            }
+            if (noteData.operationID && this.elements.operationID) {
+                this.elements.operationID.value = noteData.operationID;
+            }
+            
+            // Update timer if it exists
+            if (this.timer && noteData.startTimestamp) {
+                this.timer.startTimestamp = noteData.startTimestamp;
+                this.timer.endTimestamp = noteData.endTimestamp;
+                this.timer.additionalTime = noteData.additionalTime || 0;
+                this.timer.hasStarted = noteData.hasStarted || false;
+                this.timer.updateDisplay();
+            }
+            
+            // Update completed/canceled status
+            if (noteData.completed) {
+                const completedClass = noteData.canceled ? 
+                    (this.themeManager?.getColor('note', 'cancelled') || 'bg-red-50') :
+                    (this.themeManager?.getColor('note', 'completed') || 'bg-gray-50');
+                this.container.className = this.container.className.replace(/bg-\w+-\d+/, '') + ' ' + completedClass;
+                
+                if (noteData.canceled) {
+                    this.canceled = true;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading note data:', error);
+        }
     }
 
     /** Format this note's full text for copying */

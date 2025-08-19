@@ -1,5 +1,7 @@
 import { TimerEntryRepository } from '../../core/data/TimerEntryRepository.js';
 import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
+import { SecureStorage } from '../../core/data/SecureStorage.js';
+import { NotesRepository } from '../../core/data/NotesRepository.js';
 
 export class PayAnalysis {
     constructor(themeManager) {
@@ -9,10 +11,21 @@ export class PayAnalysis {
         this.selectedMonday = null;
         
         // Load saved payrate from localStorage, default to $60
-        const savedRate = localStorage.getItem('pay_rate');
-        this.ratePerHour = savedRate ? parseFloat(savedRate) : 60;
+        this.ratePerHour = 60; // Default
+        this.loadPayRate();
         
         this.init();
+    }
+
+    async loadPayRate() {
+        try {
+            const savedRate = await SecureStorage.getItem('pay_rate');
+            if (savedRate) {
+                this.ratePerHour = parseFloat(savedRate);
+            }
+        } catch (error) {
+            console.error('Error loading pay rate:', error);
+        }
     }
 
     init() {
@@ -31,7 +44,7 @@ export class PayAnalysis {
                 this.renderCalendar();
             }
             if (this.selectedMonday) {
-                this.generateReport();
+                this.generateReport().catch(console.error);
             }
             
             // Restore scroll position after rendering updates
@@ -41,7 +54,7 @@ export class PayAnalysis {
         });
     }
 
-    generateReport() {
+    async generateReport() {
         if (!this.selectedMonday) return;
         const [year, month, day] = this.selectedMonday.split('-').map(Number);
         const startDate = new Date(year, month - 1, day);
@@ -66,9 +79,9 @@ export class PayAnalysis {
             date.setDate(startDate.getDate() + i);
             const dateKey = date.toLocaleDateString('sv-SE');
 
-            const onSeconds = this.getOnSecondsForDate(dateKey, now);
-            const offSeconds = this.getOffSecondsForDate(dateKey);
-            const tasksCount = this.getCompletedCountForDate(dateKey);
+            const onSeconds = await this.getOnSecondsForDate(dateKey, now);
+            const offSeconds = await this.getOffSecondsForDate(dateKey);
+            const tasksCount = await this.getCompletedCountForDate(dateKey);
             totalTasks += tasksCount;
 
             totalOnSeconds += onSeconds;
@@ -222,10 +235,9 @@ export class PayAnalysis {
                                        value="${this.ratePerHour.toFixed(2)}" 
                                        min="0" 
                                        step="0.01" 
-                                       class="ml-1 w-16 text-sm ${textSecondary} bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:rounded px-1"
-                                       onchange="window.payAnalysis.savePayRate(parseFloat(this.value) || 60)"
-                                       onblur="this.style.backgroundColor = 'transparent'; this.style.border = 'none'"
-                                       onfocus="this.style.backgroundColor = 'white'; this.style.border = '1px solid #d1d5db'">
+                                       class="ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300"
+                                       style="width: 80px;"
+                                       onchange="window.payAnalysis.savePayRate(parseFloat(this.value) || 60)">
                             </div>
                         </div>
                         <div class="flex justify-between items-center mb-2">
@@ -267,31 +279,46 @@ export class PayAnalysis {
         return ISOweekStart;
     }
 
-    getOnSecondsForDate(dateKey, now) {
-        const notesData = JSON.parse(localStorage.getItem(dateKey) || '{}');
+    async getOnSecondsForDate(dateKey, now) {
+        const notesData = await NotesRepository.getNotesForDate(dateKey);
         let total = 0;
         Object.values(notesData).forEach(note => {
-            const start = note.startTimestamp;
-            const end = note.endTimestamp;
-            const additional = note.additionalTime || 0;
+            const start = Number(note.startTimestamp) || 0;
+            const end = Number(note.endTimestamp) || 0;
+            const additional = Number(note.additionalTime) || 0;
             let seconds = additional;
-            if (start && end) {
-                seconds += Math.floor((end - start) / 1000);
+            
+            if (start && end && end > start) {
+                const duration = Math.floor((end - start) / 1000);
+                if (!isNaN(duration) && duration >= 0) {
+                    seconds += duration;
+                }
             } else if (start && !end) {
-                seconds += Math.floor((now - start) / 1000);
+                const elapsed = Math.floor((now - start) / 1000);
+                if (!isNaN(elapsed) && elapsed >= 0) {
+                    seconds += elapsed;
+                }
             }
+            
+            // Ensure seconds is a valid number
+            if (isNaN(seconds) || seconds < 0) {
+                seconds = 0;
+            }
+            
             total += seconds;
         });
-        return total;
+        return Number(total) || 0;
     }
 
-    getOffSecondsForDate(dateKey) {
-        return TimerEntryRepository.getTotalSecondsForDate(dateKey);
+    async getOffSecondsForDate(dateKey) {
+        const result = await TimerEntryRepository.getTotalSecondsForDate(dateKey);
+        // Ensure we return a valid number, default to 0 for any invalid values
+        return Number(result) || 0;
     }
 
     // Count completed (not canceled) tasks for a date
-    getCompletedCountForDate(dateKey) {
-        const notesData = JSON.parse(localStorage.getItem(dateKey) || '{}');
+    async getCompletedCountForDate(dateKey) {
+        const notesData = await NotesRepository.getNotesForDate(dateKey);
         return Object.values(notesData).filter(note => note.completed && !note.canceled).length;
     }
 
@@ -304,13 +331,13 @@ export class PayAnalysis {
 
 
     // Save payrate to localStorage and update internal value
-    savePayRate(rate) {
+    async savePayRate(rate) {
         this.ratePerHour = rate;
-        localStorage.setItem('pay_rate', rate.toString());
+        await SecureStorage.setItem('pay_rate', rate.toString());
         
         // Regenerate report if a week is selected
         if (this.selectedMonday) {
-            this.generateReport();
+            this.generateReport().catch(console.error);
         }
     }
 
@@ -338,13 +365,13 @@ export class PayAnalysis {
             calendarClasses.border
         );
         
-        const buttonHoverBg = this.themeManager.getColor('background', 'secondary');
-        const buttonTextColor = this.themeManager.getColor('text', 'muted');
-        
         const prevBtn = document.createElement('button');
         const prevSvg = this.createPrevIcon();
         prevBtn.appendChild(prevSvg);
-        prevBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
+        prevBtn.className = this.themeManager.combineClasses(
+            'p-1.5 rounded-full transition-colors',
+            this.themeManager.getButtonClasses('secondary', 'sm')
+        );
         prevBtn.title = 'Previous Month';
         prevBtn.addEventListener('click', () => this.changeMonth(-1));
         
@@ -357,7 +384,10 @@ export class PayAnalysis {
         const nextBtn = document.createElement('button');
         const nextSvg = this.createNextIcon();
         nextBtn.appendChild(nextSvg);
-        nextBtn.className = `p-1.5 rounded-full hover:${buttonHoverBg} ${buttonTextColor} transition-colors`;
+        nextBtn.className = this.themeManager.combineClasses(
+            'p-1.5 rounded-full transition-colors',
+            this.themeManager.getButtonClasses('secondary', 'sm')
+        );
         nextBtn.title = 'Next Month';
         nextBtn.addEventListener('click', () => this.changeMonth(1));
         
@@ -458,13 +488,12 @@ export class PayAnalysis {
             // Create the inner content of the date cell with theme styling
             const innerContent = document.createElement('div');
             const lightBorder = this.themeManager.getColor('border', 'light');
-            const hoverBg = this.themeManager.getColor('background', 'secondary');
             const payCalendarClasses = this.themeManager.getPayAnalysisCalendarClasses();
             
             innerContent.className = this.themeManager.combineClasses(
                 'h-9 flex items-center justify-center cursor-pointer border-b transition-colors',
                 lightBorder,
-                isInSelectedWeek ? `${payCalendarClasses.selected} ${payCalendarClasses.selectedHover}` : `hover:${hoverBg}`
+                isInSelectedWeek ? `${payCalendarClasses.selected} ${payCalendarClasses.selectedHover}` : payCalendarClasses.hover
             );
             
             // Date number with theme styling
@@ -536,7 +565,7 @@ export class PayAnalysis {
         }
         
         this.updateCalendar();
-        this.generateReport();
+        this.generateReport().catch(console.error);
     }
 
     // Helper to get month name by index
@@ -545,19 +574,20 @@ export class PayAnalysis {
     }
 
     // Export all localStorage data to JSON file for import/export
-    exportAllData() {
-        const data = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            data[key] = localStorage.getItem(key);
+    async exportAllData() {
+        try {
+            const data = await SecureStorage.exportAll();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'notes_data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            alert('Failed to export data: ' + error.message);
         }
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'notes_data.json';
-        link.click();
-        URL.revokeObjectURL(url);
     }
 
     // Show file input to import JSON data into localStorage
@@ -570,11 +600,10 @@ export class PayAnalysis {
             try {
                 const text = await input.files[0].text();
                 const data = JSON.parse(text);
-                Object.keys(data).forEach(key => {
-                    localStorage.setItem(key, data[key]);
-                });
+                await SecureStorage.importAll(data);
                 window.location.reload();
             } catch (err) {
+                console.error('Error importing data:', err);
                 alert('Failed to import JSON: ' + err.message);
             }
         });
@@ -776,17 +805,10 @@ export class PayAnalysis {
         rateInput.value = this.ratePerHour.toFixed(2);
         rateInput.min = '0';
         rateInput.step = '0.01';
-        rateInput.className = `ml-1 w-16 text-sm ${textSecondary} bg-transparent border-none focus:outline-none focus:bg-white focus:border focus:rounded px-1`;
+        rateInput.className = `ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300`;
+        rateInput.style.width = '80px';
         rateInput.addEventListener('change', () => {
             window.payAnalysis.savePayRate(parseFloat(rateInput.value) || 60);
-        });
-        rateInput.addEventListener('blur', () => {
-            rateInput.style.backgroundColor = 'transparent';
-            rateInput.style.border = 'none';
-        });
-        rateInput.addEventListener('focus', () => {
-            rateInput.style.backgroundColor = 'white';
-            rateInput.style.border = '1px solid #d1d5db';
         });
         rateInputContainer.appendChild(rateDollarSign);
         rateInputContainer.appendChild(rateInput);

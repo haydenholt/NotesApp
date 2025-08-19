@@ -12,11 +12,16 @@ export class SystemPromptView {
             console.error("System Prompt View container not found!");
             return;
         }
-        this.render();
+        this.render().catch(console.error);
         this.initializeSystemPromptHandlers();
+        
+        // Listen for theme changes
+        document.addEventListener('themeChanged', () => {
+            this.render().catch(console.error);
+        });
     }
 
-    render() {
+    async render() {
         const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
         const primaryButtonClasses = this.themeManager ? this.themeManager.getPrimaryButtonClasses() : 'bg-blue-600 hover:bg-blue-700';
         const secondaryButtonClasses = this.themeManager ? this.themeManager.getSecondaryButtonClasses() : 'bg-gray-500 hover:bg-gray-600';
@@ -24,17 +29,23 @@ export class SystemPromptView {
         const inputClasses = this.themeManager ? this.themeManager.getInputClasses() : 'border border-gray-300 rounded-md';
         const textareaClasses = this.themeManager ? this.themeManager.getTextareaClasses() : 'border border-gray-300 rounded-md';
         
+        const templateManagementSection = await this.renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses);
+        const templateEditor = await this.renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses);
+        
         this.container.innerHTML = `
             <div class="max-w-4xl mx-auto">
-                ${this.renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
-                ${this.renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses)}
+                ${templateManagementSection}
+                ${templateEditor}
             </div>
             ${this.renderToastNotification()}
         `;
+        
+        // Populate existing placeholders if editing
+        await this.populateExistingPlaceholders();
     }
 
-    renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
-        const templates = this.templateManager.getAllTemplates();
+    async renderTemplateManagementSection(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        const templates = await this.templateManager.getAllTemplates();
         
         // Group evaluation templates
         const standardEval = templates.find(t => t.id === 'builtin-response-evaluation-standard');
@@ -63,15 +74,17 @@ export class SystemPromptView {
 
     renderCombinedEvaluationTemplate(standardTemplate, rubricTemplate, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
         const templateId = 'response-evaluation-combined';
+        const textSecondaryColor = this.themeManager ? this.themeManager.getColor('text', 'secondary') : 'text-gray-800';
+        const textMutedColor = this.themeManager ? this.themeManager.getColor('text', 'muted') : 'text-gray-600';
         
         return `
-            <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 mb-6" data-combined-eval="true">
+            <div class="${cardClasses} rounded-lg p-6 mb-6" data-combined-eval="true">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <h3 class="text-lg font-medium text-gray-800">Response Evaluation</h3>
+                            <h3 class="text-lg font-medium ${textSecondaryColor}">Response Evaluation</h3>
                         </div>
-                        <p class="text-sm text-gray-600 mt-1">Evaluate AI responses for code review with optional rubric mode</p>
+                        <p class="text-sm mt-1 ${textMutedColor}">Evaluate AI responses for code review with optional rubric mode</p>
                     </div>
                     <div class="flex gap-2">
                         <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${templateId}" title="Edit">
@@ -118,16 +131,20 @@ export class SystemPromptView {
         `;
     }
 
-    renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {        
+    renderTemplateCard(template, primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+        const badgeClasses = this.themeManager ? this.themeManager.getStatusClasses('info') : 'bg-blue-100 text-blue-800';
+        const textSecondaryColor = this.themeManager ? this.themeManager.getColor('text', 'secondary') : 'text-gray-800';
+        const textMutedColor = this.themeManager ? this.themeManager.getColor('text', 'muted') : 'text-gray-600';
+        
         return `
-            <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 mb-6">
+            <div class="${cardClasses} rounded-lg p-6 mb-6">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <h3 class="text-lg font-medium text-gray-800">${template.name}</h3>
-                            ${template.isDefault ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>` : ''}
+                            <h3 class="text-lg font-medium ${textSecondaryColor}">${template.name}</h3>
+                            ${template.isDefault ? `<span class="text-xs px-2 py-1 rounded ${badgeClasses}">Default</span>` : ''}
                         </div>
-                        ${template.description ? `<p class="text-sm text-gray-600 mt-1">${template.description}</p>` : ''}
+                        ${template.description ? `<p class="text-sm mt-1 ${textMutedColor}">${template.description}</p>` : ''}
                     </div>
                     <div class="flex gap-2">
                         <button class="editTemplateBtn text-blue-600 hover:text-blue-800 text-sm p-1" data-template-id="${template.id}" title="Edit">
@@ -216,12 +233,12 @@ export class SystemPromptView {
         `;
     }
 
-    renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
+    async renderTemplateEditor(primaryButtonClasses, secondaryButtonClasses, cardClasses, inputClasses, textareaClasses, focusClasses) {
         if (!this.isEditorOpen) {
             return '';
         }
         
-        const template = this.editingTemplateId ? this.templateManager.getTemplateById(this.editingTemplateId) : null;
+        const template = this.editingTemplateId ? await this.templateManager.getTemplateById(this.editingTemplateId) : null;
         const isEditing = !!template;
         
         return `
@@ -266,7 +283,7 @@ export class SystemPromptView {
                                 <p class="text-xs text-gray-500 mt-1">Define input fields that users will fill in</p>
                             </div>
                             <div id="placeholderList" class="space-y-4 mb-4">
-                                ${isEditing && template && template.placeholders ? template.placeholders.map((p, index) => this.renderPlaceholderEditor(p, index, inputClasses, secondaryButtonClasses, focusClasses)).join('') : ''}
+                                <!-- Placeholders will be populated via DOM methods -->
                             </div>
                             <div class="flex justify-center">
                                 <button id="addPlaceholderBtn" class="${secondaryButtonClasses} text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
@@ -315,34 +332,6 @@ Input to process:
         `;
     }
     
-    renderPlaceholderEditor(placeholder, index, inputClasses, secondaryButtonClasses, focusClasses) {
-        return `
-            <div class="flex gap-3 items-end p-4" data-placeholder-index="${index}">
-                <div class="flex-1">
-                    <label class="block text-xs font-semibold text-gray-700 mb-2">Placeholder Name</label>
-                    <input type="text" class="placeholderName w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
-                           value="${placeholder ? placeholder.name : ''}" 
-                           placeholder="e.g., USER_INPUT">
-                </div>
-                <div class="flex-2">
-                    <label class="block text-xs font-semibold text-gray-700 mb-2">Label for User</label>
-                    <input type="text" class="placeholderDescription w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm" 
-                           value="${placeholder ? placeholder.description : ''}" 
-                           placeholder="e.g., Enter your text here">
-                </div>
-                <div class="w-32">
-                    <label class="block text-xs font-semibold text-gray-700 mb-2">Input Type</label>
-                    <select class="placeholderType w-full h-10 p-2 ${inputClasses} text-sm">
-                        <option value="input" ${placeholder && placeholder.type === 'input' ? 'selected' : ''}>Single Line</option>
-                        <option value="textarea" ${placeholder && placeholder.type === 'textarea' ? 'selected' : ''}>Multi-line</option>
-                    </select>
-                </div>
-                <button class="removePlaceholderBtn ${secondaryButtonClasses} text-white h-10 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors">
-                    Remove
-                </button>
-            </div>
-        `;
-    }
     
     renderToastNotification() {
         return `
@@ -386,174 +375,175 @@ Input to process:
     }
 
     initializeSystemPromptHandlers() {
+        // Only initialize once to avoid duplicate listeners
+        if (this._handlersInitialized) {
+            return;
+        }
+        this._handlersInitialized = true;
+        
         this.initializeTemplateManagement();
         this.initializeTemplateEditor();
         this.initializeTemplateUsage();
     }
     
     initializeTemplateManagement() {
-        const createTemplateBtn = document.getElementById('createTemplateBtn');
-        
-        if (createTemplateBtn) {
-            createTemplateBtn.addEventListener('click', () => {
+        // Use event delegation to handle dynamically created buttons
+        this.container.addEventListener('click', (e) => {
+            // Handle create template button
+            if (e.target.id === 'createTemplateBtn') {
                 this.openTemplateEditor();
-            });
-        }
-        
-        document.querySelectorAll('.editTemplateBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+                return;
+            }
+            
+            // Handle edit template buttons
+            if (e.target.closest('.editTemplateBtn')) {
                 const templateId = e.target.closest('.editTemplateBtn').getAttribute('data-template-id');
                 this.openTemplateEditor(templateId);
-            });
-        });
-        
-        document.querySelectorAll('.deleteTemplateBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+                return;
+            }
+            
+            // Handle delete template buttons
+            if (e.target.closest('.deleteTemplateBtn')) {
                 const templateId = e.target.closest('.deleteTemplateBtn').getAttribute('data-template-id');
-                this.deleteTemplate(templateId);
-            });
-        });
-        
-        document.querySelectorAll('.resetTemplateBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+                this.deleteTemplate(templateId).catch(console.error);
+                return;
+            }
+            
+            // Handle reset template buttons
+            if (e.target.closest('.resetTemplateBtn')) {
                 const templateId = e.target.closest('.resetTemplateBtn').getAttribute('data-template-id');
-                this.resetTemplate(templateId);
-            });
+                this.resetTemplate(templateId).catch(console.error);
+                return;
+            }
         });
     }
     
     initializeTemplateEditor() {
-        const closeEditorBtn = document.getElementById('closeEditorBtn');
-        const cancelEditorBtn = document.getElementById('cancelEditorBtn');
-        const saveTemplateBtn = document.getElementById('saveTemplateBtn');
-        const addPlaceholderBtn = document.getElementById('addPlaceholderBtn');
-        const editorOverlay = document.getElementById('templateEditorOverlay');
-        
-        if (editorOverlay) {
-            let dragStartTime = 0;
-            let isDragging = false;
-            
-            // Track when user starts any kind of interaction within the modal
-            const templateEditor = document.getElementById('templateEditor');
-            if (templateEditor) {
-                templateEditor.addEventListener('mousedown', (e) => {
-                    dragStartTime = Date.now();
-                    isDragging = true;
-                });
-                
-                // Stop propagation to prevent overlay clicks
-                templateEditor.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                });
+        // Use event delegation for template editor buttons
+        this.container.addEventListener('click', (e) => {
+            // Handle close editor button
+            if (e.target.id === 'closeEditorBtn' || e.target.closest('#closeEditorBtn')) {
+                this.closeTemplateEditor();
+                return;
             }
             
-            // Reset dragging state on any mouseup
+            // Handle cancel editor button
+            if (e.target.id === 'cancelEditorBtn') {
+                this.closeTemplateEditor();
+                return;
+            }
+            
+            // Handle save template button
+            if (e.target.id === 'saveTemplateBtn') {
+                this.saveTemplate().catch(console.error);
+                return;
+            }
+            
+            // Handle add placeholder button
+            if (e.target.id === 'addPlaceholderBtn') {
+                this.addPlaceholder();
+                return;
+            }
+            
+            // Handle clicking on overlay to close
+            if (e.target.id === 'templateEditorOverlay') {
+                // Check if we're not dragging/resizing
+                if (!this._isDragging) {
+                    this.closeTemplateEditor();
+                }
+                return;
+            }
+        });
+        
+        // Track dragging state for overlay click handling
+        this.container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#templateEditor')) {
+                this._isDragging = true;
+                this._dragStartTime = Date.now();
+            }
+        });
+        
+        // Reset dragging state (only add once)
+        if (!this._mouseupInitialized) {
+            this._mouseupInitialized = true;
             document.addEventListener('mouseup', () => {
-                // Give a longer delay for resize operations
                 setTimeout(() => {
-                    isDragging = false;
-                    dragStartTime = 0;
+                    this._isDragging = false;
+                    this._dragStartTime = 0;
                 }, 200);
             });
+        }
+        
+        
+        // Handle removePlaceholderBtn using event delegation on document (only once)
+        if (!this._removePlaceholderInitialized) {
+            this._removePlaceholderInitialized = true;
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('removePlaceholderBtn')) {
+                    e.target.closest('[data-placeholder-index]').remove();
+                }
+            });
+        }
+    }
+    
+    initializeTemplateUsage() {
+        // Use event delegation for template usage buttons
+        this.container.addEventListener('click', (e) => {
+            // Handle copy template prompt buttons
+            if (e.target.closest('.copyTemplatePromptBtn')) {
+                const templateId = e.target.closest('.copyTemplatePromptBtn').getAttribute('data-template-id');
+                this.copyGeneratedPrompt(templateId).catch(console.error);
+                return;
+            }
             
-            editorOverlay.addEventListener('click', (e) => {
-                // Only close if:
-                // 1. Clicking directly on the overlay
-                // 2. Not currently dragging/resizing
-                // 3. Some time has passed since last mouse interaction
-                const timeSinceInteraction = Date.now() - dragStartTime;
-                if (e.target === editorOverlay && !isDragging && timeSinceInteraction > 200) {
+            // Handle clear template inputs buttons
+            if (e.target.closest('.clearTemplateInputsBtn')) {
+                const templateId = e.target.closest('.clearTemplateInputsBtn').getAttribute('data-template-id');
+                this.clearTemplateInputs(templateId);
+                return;
+            }
+            
+            // Handle copy evaluation prompt buttons
+            if (e.target.closest('.copyEvaluationPromptBtn')) {
+                const templateId = e.target.closest('.copyEvaluationPromptBtn').getAttribute('data-template-id');
+                this.copyEvaluationPrompt(templateId);
+                return;
+            }
+            
+            // Handle clear evaluation inputs buttons
+            if (e.target.closest('.clearEvaluationInputsBtn')) {
+                const templateId = e.target.closest('.clearEvaluationInputsBtn').getAttribute('data-template-id');
+                this.clearEvaluationInputs(templateId);
+                return;
+            }
+        });
+        
+        // Keyboard shortcuts - only add once
+        if (!this._keyboardInitialized) {
+            this._keyboardInitialized = true;
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'x') {
+                    const activeElement = document.activeElement;
+                    if (activeElement && activeElement.hasAttribute('data-template-id')) {
+                        e.preventDefault();
+                        const templateId = activeElement.getAttribute('data-template-id');
+                        if (activeElement.id.includes('evalPromptInput') || activeElement.id.includes('evalResponse')) {
+                            this.copyEvaluationPrompt(templateId).catch(console.error);
+                        } else {
+                            this.copyGeneratedPrompt(templateId).catch(console.error);
+                        }
+                    }
+                }
+                if (e.ctrlKey && e.key === 't' && !this.isEditorOpen) {
+                    e.preventDefault();
+                    this.openTemplateEditor();
+                }
+                if (e.key === 'Escape' && this.isEditorOpen) {
+                    e.preventDefault();
                     this.closeTemplateEditor();
                 }
             });
         }
-        
-        if (closeEditorBtn) {
-            closeEditorBtn.addEventListener('click', () => {
-                this.closeTemplateEditor();
-            });
-        }
-        
-        if (cancelEditorBtn) {
-            cancelEditorBtn.addEventListener('click', () => {
-                this.closeTemplateEditor();
-            });
-        }
-        
-        if (saveTemplateBtn) {
-            saveTemplateBtn.addEventListener('click', () => {
-                this.saveTemplate();
-            });
-        }
-        
-        if (addPlaceholderBtn) {
-            addPlaceholderBtn.addEventListener('click', () => {
-                this.addPlaceholder();
-            });
-        }
-        
-        
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('removePlaceholderBtn')) {
-                e.target.closest('[data-placeholder-index]').remove();
-            }
-        });
-    }
-    
-    initializeTemplateUsage() {
-        // Standard template handlers
-        document.querySelectorAll('.copyTemplatePromptBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const templateId = e.target.closest('.copyTemplatePromptBtn').getAttribute('data-template-id');
-                this.copyGeneratedPrompt(templateId);
-            });
-        });
-        
-        document.querySelectorAll('.clearTemplateInputsBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const templateId = e.target.closest('.clearTemplateInputsBtn').getAttribute('data-template-id');
-                this.clearTemplateInputs(templateId);
-            });
-        });
-
-        // Evaluation template handlers
-        document.querySelectorAll('.copyEvaluationPromptBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const templateId = e.target.closest('.copyEvaluationPromptBtn').getAttribute('data-template-id');
-                this.copyEvaluationPrompt(templateId);
-            });
-        });
-        
-        document.querySelectorAll('.clearEvaluationInputsBtn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const templateId = e.target.closest('.clearEvaluationInputsBtn').getAttribute('data-template-id');
-                this.clearEvaluationInputs(templateId);
-            });
-        });
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'x') {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.hasAttribute('data-template-id')) {
-                    e.preventDefault();
-                    const templateId = activeElement.getAttribute('data-template-id');
-                    if (activeElement.id.includes('evalPromptInput') || activeElement.id.includes('evalResponse')) {
-                        this.copyEvaluationPrompt(templateId);
-                    } else {
-                        this.copyGeneratedPrompt(templateId);
-                    }
-                }
-            }
-            if (e.ctrlKey && e.key === 't' && !this.isEditorOpen) {
-                e.preventDefault();
-                this.openTemplateEditor();
-            }
-            if (e.key === 'Escape' && this.isEditorOpen) {
-                e.preventDefault();
-                this.closeTemplateEditor();
-            }
-        });
     }
     
     openTemplateEditor(templateId = null) {
@@ -582,7 +572,6 @@ Input to process:
         this.editingTemplateId = templateId;
         
         this.render();
-        this.initializeSystemPromptHandlers();
         
         // For new templates, add a placeholder
         if (!templateId) {
@@ -602,7 +591,6 @@ Input to process:
         this.isEditorOpen = false;
         this.editingTemplateId = null;
         this.render();
-        this.initializeSystemPromptHandlers();
     }
     
     addPlaceholder() {
@@ -614,11 +602,11 @@ Input to process:
         const inputClasses = this.themeManager ? this.themeManager.getInputClasses() : 'border border-gray-300 rounded-md';
         const secondaryButtonClasses = this.themeManager ? this.themeManager.getSecondaryButtonClasses() : 'bg-gray-500 hover:bg-gray-600';
         
-        const placeholderHtml = this.renderPlaceholderEditor(null, index, inputClasses, secondaryButtonClasses, focusClasses);
-        placeholderList.insertAdjacentHTML('beforeend', placeholderHtml);
+        const placeholderElement = this.createPlaceholderEditor(null, index, inputClasses, secondaryButtonClasses, focusClasses);
+        placeholderList.appendChild(placeholderElement);
     }
     
-    saveTemplate() {
+    async saveTemplate() {
         try {
             const templateName = document.getElementById('templateName').value.trim();
             const templateDescription = document.getElementById('templateDescription').value.trim();
@@ -662,10 +650,10 @@ Input to process:
             }
             
             if (this.editingTemplateId) {
-                this.templateManager.updateTemplate(this.editingTemplateId, templateData);
+                await this.templateManager.updateTemplate(this.editingTemplateId, templateData);
                 this.showToast('Template updated successfully!', 'success');
             } else {
-                this.templateManager.createTemplate(templateData);
+                await this.templateManager.createTemplate(templateData);
                 this.showToast('Template created successfully!', 'success');
             }
             
@@ -675,7 +663,7 @@ Input to process:
         }
     }
     
-    deleteTemplate(templateId) {
+    async deleteTemplate(templateId) {
         // Find the template card
         const deleteBtn = document.querySelector(`[data-template-id="${templateId}"].deleteTemplateBtn`);
         if (!deleteBtn) return;
@@ -686,25 +674,8 @@ Input to process:
         // Check if confirmation is already showing
         if (templateCard.querySelector('.delete-confirmation')) return;
         
-        // Create inline confirmation
-        const confirmationDiv = document.createElement('div');
-        confirmationDiv.className = 'delete-confirmation mt-4 p-4 bg-red-50 border border-red-200 rounded-md';
-        confirmationDiv.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="text-sm font-medium text-red-800">Delete Template</h4>
-                    <p class="text-xs text-red-600 mt-1">This action cannot be undone.</p>
-                </div>
-                <div class="flex gap-2">
-                    <button class="confirm-delete px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded">
-                        Delete
-                    </button>
-                    <button class="cancel-delete px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded">
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        `;
+        // Create inline confirmation using secure DOM methods
+        const confirmationDiv = this.createDeleteConfirmation();
         
         templateCard.appendChild(confirmationDiv);
         
@@ -712,12 +683,11 @@ Input to process:
         const confirmBtn = confirmationDiv.querySelector('.confirm-delete');
         const cancelBtn = confirmationDiv.querySelector('.cancel-delete');
         
-        confirmBtn.addEventListener('click', () => {
+        confirmBtn.addEventListener('click', async () => {
             try {
-                this.templateManager.deleteTemplate(templateId);
+                await this.templateManager.deleteTemplate(templateId);
                 this.showToast('Template deleted successfully.', 'success');
-                this.render();
-                this.initializeSystemPromptHandlers();
+                this.render().catch(console.error);
             } catch (error) {
                 this.showToast(`Error deleting template: ${error.message}`, 'error');
             }
@@ -728,18 +698,17 @@ Input to process:
         });
     }
     
-    resetTemplate(templateId) {
+    async resetTemplate(templateId) {
         try {
-            this.templateManager.resetTemplateToDefault(templateId);
+            await this.templateManager.resetTemplateToDefault(templateId);
             this.showToast('Template reset to default successfully!', 'success');
-            this.render();
-            this.initializeSystemPromptHandlers();
+            this.render().catch(console.error);
         } catch (error) {
             this.showToast(`Error resetting template: ${error.message}`, 'error');
         }
     }
     
-    copyGeneratedPrompt(templateId) {
+    async copyGeneratedPrompt(templateId) {
         try {
             const placeholderValues = {};
             const inputs = document.querySelectorAll(`[data-template-id="${templateId}"][data-placeholder-name]`);
@@ -749,7 +718,7 @@ Input to process:
                 placeholderValues[placeholderName] = input.value;
             }
             
-            const generatedPrompt = this.templateManager.generatePromptFromTemplate(
+            const generatedPrompt = await this.templateManager.generatePromptFromTemplate(
                 templateId, 
                 placeholderValues
             );
@@ -766,7 +735,7 @@ Input to process:
         }
     }
 
-    copyEvaluationPrompt(templateId) {
+    async copyEvaluationPrompt(templateId) {
         try {
             // Handle combined evaluation template
             let actualTemplateId = templateId;
@@ -824,7 +793,7 @@ Input to process:
                 'RESPONSE_PLACEHOLDER': aiResponse
             };
 
-            const generatedPrompt = this.templateManager.generatePromptFromTemplate(
+            const generatedPrompt = await this.templateManager.generatePromptFromTemplate(
                 actualTemplateId,
                 placeholderValues
             );
@@ -883,6 +852,172 @@ Input to process:
         }
         
         document.body.removeChild(textArea);
+    }
+
+    /**
+     * Populate existing placeholders when editing a template
+     */
+    async populateExistingPlaceholders() {
+        const placeholderList = document.getElementById('placeholderList');
+        if (!placeholderList || !this.editingTemplate) return;
+
+        // Get theme classes
+        const focusClasses = this.themeManager ? this.themeManager.getFocusClasses().combined : 'focus:outline-none';
+        const inputClasses = this.themeManager ? this.themeManager.getInputClasses() : 'border border-gray-300 rounded-md';
+        const secondaryButtonClasses = this.themeManager ? this.themeManager.getSecondaryButtonClasses() : 'bg-gray-500 hover:bg-gray-600';
+
+        // Clear existing content
+        placeholderList.textContent = '';
+
+        // Add existing placeholders if available
+        if (this.editingTemplate.placeholders && this.editingTemplate.placeholders.length > 0) {
+            this.editingTemplate.placeholders.forEach((placeholder, index) => {
+                const placeholderElement = this.createPlaceholderEditor(
+                    placeholder, 
+                    index, 
+                    inputClasses, 
+                    secondaryButtonClasses, 
+                    focusClasses
+                );
+                placeholderList.appendChild(placeholderElement);
+            });
+        }
+    }
+
+    /**
+     * Create a placeholder editor element using secure DOM methods
+     */
+    createPlaceholderEditor(placeholder, index, inputClasses, secondaryButtonClasses, focusClasses) {
+        // Create main container
+        const container = document.createElement('div');
+        container.className = 'flex gap-3 items-end p-4';
+        container.dataset.placeholderIndex = index.toString();
+
+        // Create name input section
+        const nameSection = document.createElement('div');
+        nameSection.className = 'flex-1';
+        
+        const nameLabel = document.createElement('label');
+        nameLabel.className = 'block text-xs font-semibold text-gray-700 mb-2';
+        nameLabel.textContent = 'Placeholder Name';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = `placeholderName w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm`;
+        nameInput.value = placeholder ? placeholder.name : '';
+        nameInput.placeholder = 'e.g., USER_INPUT';
+        
+        nameSection.appendChild(nameLabel);
+        nameSection.appendChild(nameInput);
+
+        // Create description input section
+        const descSection = document.createElement('div');
+        descSection.className = 'flex-2';
+        
+        const descLabel = document.createElement('label');
+        descLabel.className = 'block text-xs font-semibold text-gray-700 mb-2';
+        descLabel.textContent = 'Label for User';
+        
+        const descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.className = `placeholderDescription w-full h-10 p-3 ${inputClasses} ${focusClasses} text-sm`;
+        descInput.value = placeholder ? placeholder.description : '';
+        descInput.placeholder = 'e.g., Enter your text here';
+        
+        descSection.appendChild(descLabel);
+        descSection.appendChild(descInput);
+
+        // Create type select section
+        const typeSection = document.createElement('div');
+        typeSection.className = 'w-32';
+        
+        const typeLabel = document.createElement('label');
+        typeLabel.className = 'block text-xs font-semibold text-gray-700 mb-2';
+        typeLabel.textContent = 'Input Type';
+        
+        const typeSelect = document.createElement('select');
+        typeSelect.className = `placeholderType w-full h-10 p-2 ${inputClasses} text-sm`;
+        
+        const inputOption = document.createElement('option');
+        inputOption.value = 'input';
+        inputOption.textContent = 'Single Line';
+        if (placeholder && placeholder.type === 'input') {
+            inputOption.selected = true;
+        }
+        
+        const textareaOption = document.createElement('option');
+        textareaOption.value = 'textarea';
+        textareaOption.textContent = 'Multi-line';
+        if (placeholder && placeholder.type === 'textarea') {
+            textareaOption.selected = true;
+        }
+        
+        typeSelect.appendChild(inputOption);
+        typeSelect.appendChild(textareaOption);
+        typeSection.appendChild(typeLabel);
+        typeSection.appendChild(typeSelect);
+
+        // Create remove button
+        const removeButton = document.createElement('button');
+        removeButton.className = `removePlaceholderBtn ${secondaryButtonClasses} text-white h-10 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors`;
+        removeButton.textContent = 'Remove';
+
+        // Assemble the container
+        container.appendChild(nameSection);
+        container.appendChild(descSection);
+        container.appendChild(typeSection);
+        container.appendChild(removeButton);
+
+        return container;
+    }
+
+    /**
+     * Create delete confirmation dialog using secure DOM methods
+     */
+    createDeleteConfirmation() {
+        // Create main container
+        const confirmationDiv = document.createElement('div');
+        confirmationDiv.className = 'delete-confirmation mt-4 p-4 bg-red-50 border border-red-200 rounded-md';
+
+        // Create flex container
+        const flexContainer = document.createElement('div');
+        flexContainer.className = 'flex items-center justify-between';
+
+        // Create text section
+        const textSection = document.createElement('div');
+        
+        const title = document.createElement('h4');
+        title.className = 'text-sm font-medium text-red-800';
+        title.textContent = 'Delete Template';
+        
+        const description = document.createElement('p');
+        description.className = 'text-xs text-red-600 mt-1';
+        description.textContent = 'This action cannot be undone.';
+        
+        textSection.appendChild(title);
+        textSection.appendChild(description);
+
+        // Create button section
+        const buttonSection = document.createElement('div');
+        buttonSection.className = 'flex gap-2';
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'confirm-delete px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded';
+        deleteButton.textContent = 'Delete';
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'cancel-delete px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded';
+        cancelButton.textContent = 'Cancel';
+        
+        buttonSection.appendChild(deleteButton);
+        buttonSection.appendChild(cancelButton);
+
+        // Assemble the confirmation dialog
+        flexContainer.appendChild(textSection);
+        flexContainer.appendChild(buttonSection);
+        confirmationDiv.appendChild(flexContainer);
+
+        return confirmationDiv;
     }
 }
 

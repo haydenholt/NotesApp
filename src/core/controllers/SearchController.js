@@ -14,7 +14,7 @@ export class SearchController {
         };
     }
 
-    searchNotes(query) {
+    async searchNotes(query) {
         if (!query || query.trim() === '') {
             this.clearSearch();
             return [];
@@ -24,15 +24,15 @@ export class SearchController {
         this.appState.setSearchState(true, trimmedQuery);
         this.notifyListeners('searchStarted', { query: trimmedQuery });
 
-        const results = NotesRepository.searchNotes(trimmedQuery);
+        const results = await NotesRepository.searchNotes(trimmedQuery);
         
-        const enhancedResults = results.map(result => {
+        const enhancedResults = await Promise.all(results.map(async result => {
             return {
                 ...result,
                 formattedDate: DateUtils.formatDate(result.dateKey),
-                displayIndex: this.calculateDisplayIndex(result.dateKey, result.id, result.note)
+                displayIndex: await this.calculateDisplayIndex(result.dateKey, result.id, result.note)
             };
-        });
+        }));
 
         this.searchResults = enhancedResults;
         this.notifyListeners('searchCompleted', { 
@@ -44,10 +44,10 @@ export class SearchController {
         return enhancedResults;
     }
 
-    calculateDisplayIndex(dateKey, noteId, note) {
+    async calculateDisplayIndex(dateKey, noteId, note) {
         if (note.canceled) return null;
         
-        const allNotesForDate = NotesRepository.getNotesForDate(dateKey);
+        const allNotesForDate = await NotesRepository.getNotesForDate(dateKey);
         const nonCanceledNotes = Object.entries(allNotesForDate)
             .filter(([, noteData]) => !noteData.canceled)
             .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));

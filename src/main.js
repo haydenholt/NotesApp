@@ -8,8 +8,19 @@ import NavigationManager from './ui/components/NavigationManager.js';
 import PayAnalysis from './ui/components/PayAnalysis.js';
 import HelpOverlay from './ui/components/HelpOverlay.js';
 import ThemeManager from './ui/components/ThemeManager.js';
+import { SecureStorage } from './core/data/SecureStorage.js';
+
 // Wait for DOM to be fully loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize secure storage first
+    try {
+        await SecureStorage.initialize();
+        console.log('SecureStorage initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize SecureStorage:', error);
+        alert('Failed to initialize secure storage. The application may not work correctly.');
+        return;
+    }
     // Initialize theme manager first
     const themeManager = new ThemeManager();
     

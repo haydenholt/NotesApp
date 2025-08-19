@@ -1,12 +1,14 @@
+import { SecureStorage } from './SecureStorage.js';
+
 export class TimerRepository {
     static getOffPlatformKey(dateKey) {
         return `offPlatform_${dateKey}`;
     }
 
-    static getOffPlatformData(dateKey) {
+    static async getOffPlatformData(dateKey) {
         try {
             const key = this.getOffPlatformKey(dateKey);
-            const data = localStorage.getItem(key);
+            const data = await SecureStorage.getItem(key);
             return data ? JSON.parse(data) : {
                 timers: {
                     projectTraining: {
@@ -35,9 +37,9 @@ export class TimerRepository {
         }
     }
 
-    static getTimerState(dateKey, category) {
+    static async getTimerState(dateKey, category) {
         try {
-            const offPlatformData = this.getOffPlatformData(dateKey);
+            const offPlatformData = await this.getOffPlatformData(dateKey);
             const timer = offPlatformData.timers[category];
             return timer ? {
                 startTime: timer.startTime,
@@ -55,15 +57,15 @@ export class TimerRepository {
         }
     }
 
-    static saveTimerState(dateKey, category, state) {
+    static async saveTimerState(dateKey, category, state) {
         try {
-            const offPlatformData = this.getOffPlatformData(dateKey);
+            const offPlatformData = await this.getOffPlatformData(dateKey);
             offPlatformData.timers[category] = {
                 startTime: state.startTime,
                 totalSeconds: state.totalTime
             };
             const key = this.getOffPlatformKey(dateKey);
-            localStorage.setItem(key, JSON.stringify(offPlatformData));
+            await SecureStorage.setItem(key, JSON.stringify(offPlatformData));
             return true;
         } catch (error) {
             console.error('Error saving timer state:', dateKey, category, error);
@@ -71,35 +73,35 @@ export class TimerRepository {
         }
     }
 
-    static getAllTimerStatesForDate(dateKey) {
+    static async getAllTimerStatesForDate(dateKey) {
         const categories = ['projectTraining', 'sheetwork', 'blocked'];
         const states = {};
         
-        categories.forEach(category => {
-            states[category] = this.getTimerState(dateKey, category);
-        });
+        for (const category of categories) {
+            states[category] = await this.getTimerState(dateKey, category);
+        }
         
         return states;
     }
 
-    static startTimer(dateKey, category) {
-        const state = this.getTimerState(dateKey, category);
+    static async startTimer(dateKey, category) {
+        const state = await this.getTimerState(dateKey, category);
         state.startTime = Date.now();
-        return this.saveTimerState(dateKey, category, state);
+        return await this.saveTimerState(dateKey, category, state);
     }
 
-    static stopTimer(dateKey, category) {
-        const state = this.getTimerState(dateKey, category);
+    static async stopTimer(dateKey, category) {
+        const state = await this.getTimerState(dateKey, category);
         if (state.startTime) {
             const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
             state.totalTime += elapsed;
             state.startTime = null;
         }
-        return this.saveTimerState(dateKey, category, state);
+        return await this.saveTimerState(dateKey, category, state);
     }
 
-    static setTimer(dateKey, category, hours, minutes, seconds) {
-        const state = this.getTimerState(dateKey, category);
+    static async setTimer(dateKey, category, hours, minutes, seconds) {
+        const state = await this.getTimerState(dateKey, category);
         const wasRunning = !!state.startTime;
         
         state.totalTime = (hours * 3600) + (minutes * 60) + seconds;
@@ -108,11 +110,11 @@ export class TimerRepository {
             state.startTime = Date.now();
         }
         
-        return this.saveTimerState(dateKey, category, state);
+        return await this.saveTimerState(dateKey, category, state);
     }
 
-    static getCurrentSeconds(dateKey, category) {
-        const state = this.getTimerState(dateKey, category);
+    static async getCurrentSeconds(dateKey, category) {
+        const state = await this.getTimerState(dateKey, category);
         let totalSeconds = state.totalTime;
         
         if (state.startTime) {
@@ -123,15 +125,17 @@ export class TimerRepository {
         return totalSeconds;
     }
 
-    static isRunning(dateKey, category) {
-        const state = this.getTimerState(dateKey, category);
+    static async isRunning(dateKey, category) {
+        const state = await this.getTimerState(dateKey, category);
         return !!state.startTime;
     }
 
-    static getTotalSecondsForDate(dateKey) {
+    static async getTotalSecondsForDate(dateKey) {
         const categories = ['projectTraining', 'sheetwork', 'blocked'];
-        return categories.reduce((total, category) => {
-            return total + this.getCurrentSeconds(dateKey, category);
-        }, 0);
+        let total = 0;
+        for (const category of categories) {
+            total += await this.getCurrentSeconds(dateKey, category);
+        }
+        return total;
     }
 }

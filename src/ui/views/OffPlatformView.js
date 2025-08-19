@@ -15,6 +15,11 @@ export class OffPlatformView {
             timerStopRequested: [],
             timerEditRequested: []
         };
+        
+        // Listen for theme changes
+        document.addEventListener('themeChanged', () => {
+            this.updateTheme();
+        });
     }
 
     render(containerElement) {
@@ -62,7 +67,7 @@ export class OffPlatformView {
 
         // Load entries for current date
         if (this.currentDate) {
-            this.loadEntriesForCurrentDate();
+            this.loadEntriesForCurrentDate().catch(console.error);
         }
 
         offPlatformSection.appendChild(this.entryList.getContainer());
@@ -71,10 +76,10 @@ export class OffPlatformView {
         this.setupScrollBehavior();
     }
 
-    loadEntriesForCurrentDate() {
+    async loadEntriesForCurrentDate() {
         if (!this.currentDate || !this.entryList) return;
         
-        const entries = TimerEntryRepository.getEntries(this.currentDate);
+        const entries = await TimerEntryRepository.getEntries(this.currentDate);
         this.entryList.loadEntries(entries);
     }
 
@@ -104,7 +109,7 @@ export class OffPlatformView {
 
     handleEntryDeleted(entryData) {
         if (this.currentDate) {
-            TimerEntryRepository.deleteEntry(this.currentDate, entryData.id);
+            TimerEntryRepository.deleteEntry(this.currentDate, entryData.id).catch(console.error);
         }
         this.updateStickyVisibility();
     }
@@ -112,7 +117,7 @@ export class OffPlatformView {
     saveCurrentEntries() {
         if (this.entryList && this.currentDate) {
             const entries = this.entryList.getAllEntries();
-            TimerEntryRepository.saveEntries(this.currentDate, entries);
+            TimerEntryRepository.saveEntries(this.currentDate, entries).catch(console.error);
         }
     }
 
@@ -124,7 +129,7 @@ export class OffPlatformView {
     
     setCurrentDate(date) {
         this.currentDate = date;
-        this.loadEntriesForCurrentDate();
+        this.loadEntriesForCurrentDate().catch(console.error);
         this.updateStickyVisibility();
     }
 
@@ -237,6 +242,17 @@ export class OffPlatformView {
     }
 
     updateTheme() {
+        // Update main off-platform section container
+        if (this.container && this.container.firstElementChild) {
+            const offPlatformSection = this.container.querySelector('.off-platform-section');
+            if (offPlatformSection) {
+                offPlatformSection.className = this.themeManager.combineClasses(
+                    'mb-5 p-4 rounded-lg shadow off-platform-section',
+                    this.themeManager.getColor('background', 'card')
+                );
+            }
+        }
+
         // Update entry list theme
         if (this.entryList) {
             this.entryList.updateTheme();
@@ -249,6 +265,15 @@ export class OffPlatformView {
                 this.themeManager.getColor('background', 'primary'),
                 this.themeManager.getColor('border', 'primary')
             );
+            
+            // If sticky timer is visible, update its content
+            const activeTimer = this.stickyContainer.querySelector('.flex');
+            if (activeTimer && !this.stickyContainer.classList.contains('hidden')) {
+                const runningEntry = this.getRunningEntry();
+                if (runningEntry) {
+                    this.showStickyTimer(runningEntry);
+                }
+            }
         }
     }
 

@@ -2,6 +2,8 @@
  * TimerEntryRepository - Manages off-platform timer entries in localStorage
  * Handles the new entry-based system while providing backward compatibility
  */
+import { SecureStorage } from './SecureStorage.js';
+
 export class TimerEntryRepository {
     static getEntriesKey(dateKey) {
         return `offPlatform_entries_${dateKey}`;
@@ -14,19 +16,19 @@ export class TimerEntryRepository {
     /**
      * Get entries for a specific date, migrating legacy data if needed
      */
-    static getEntries(dateKey) {
+    static async getEntries(dateKey) {
         try {
             const entriesKey = this.getEntriesKey(dateKey);
-            const entriesData = localStorage.getItem(entriesKey);
+            const entriesData = await SecureStorage.getItem(entriesKey);
             
             if (entriesData) {
                 // Return existing entry data
                 return JSON.parse(entriesData);
             } else {
                 // Check for legacy data and migrate if it exists
-                const legacyEntries = this.migrateLegacyData(dateKey);
+                const legacyEntries = await this.migrateLegacyData(dateKey);
                 if (legacyEntries.length > 0) {
-                    this.saveEntries(dateKey, legacyEntries);
+                    await this.saveEntries(dateKey, legacyEntries);
                     return legacyEntries;
                 }
                 
@@ -42,10 +44,10 @@ export class TimerEntryRepository {
     /**
      * Save entries for a specific date
      */
-    static saveEntries(dateKey, entries) {
+    static async saveEntries(dateKey, entries) {
         try {
             const entriesKey = this.getEntriesKey(dateKey);
-            localStorage.setItem(entriesKey, JSON.stringify(entries));
+            await SecureStorage.setItem(entriesKey, JSON.stringify(entries));
             return true;
         } catch (error) {
             console.error('Error saving timer entries:', dateKey, error);
@@ -56,8 +58,8 @@ export class TimerEntryRepository {
     /**
      * Add or update a specific entry
      */
-    static saveEntry(dateKey, entry) {
-        const entries = this.getEntries(dateKey);
+    static async saveEntry(dateKey, entry) {
+        const entries = await this.getEntries(dateKey);
         const existingIndex = entries.findIndex(e => e.id === entry.id);
         
         if (existingIndex >= 0) {
@@ -66,30 +68,39 @@ export class TimerEntryRepository {
             entries.push({ ...entry });
         }
         
-        return this.saveEntries(dateKey, entries);
+        return await this.saveEntries(dateKey, entries);
     }
 
     /**
      * Remove an entry by ID
      */
-    static deleteEntry(dateKey, entryId) {
-        const entries = this.getEntries(dateKey);
+    static async deleteEntry(dateKey, entryId) {
+        const entries = await this.getEntries(dateKey);
         const filteredEntries = entries.filter(e => e.id !== entryId);
-        return this.saveEntries(dateKey, filteredEntries);
+        return await this.saveEntries(dateKey, filteredEntries);
     }
 
     /**
      * Get total seconds for a date (for compatibility with PayAnalysis)
      */
-    static getTotalSecondsForDate(dateKey) {
-        const entries = this.getEntries(dateKey);
+    static async getTotalSecondsForDate(dateKey) {
+        const entries = await this.getEntries(dateKey);
         return entries.reduce((total, entry) => {
-            let entrySeconds = entry.totalSeconds || 0;
+            // Ensure we have valid numbers, default to 0 for any invalid values
+            let entrySeconds = Number(entry.totalSeconds) || 0;
             
             // Add running time if timer is active
             if (entry.isRunning && entry.startTime) {
-                const elapsed = Math.floor((Date.now() - entry.startTime) / 1000);
-                entrySeconds += elapsed;
+                const startTime = Number(entry.startTime) || Date.now();
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                if (!isNaN(elapsed) && elapsed >= 0) {
+                    entrySeconds += elapsed;
+                }
+            }
+            
+            // Ensure entrySeconds is a valid number
+            if (isNaN(entrySeconds) || entrySeconds < 0) {
+                entrySeconds = 0;
             }
             
             return total + entrySeconds;
@@ -99,16 +110,16 @@ export class TimerEntryRepository {
     /**
      * Get running entry for a date (if any)
      */
-    static getRunningEntry(dateKey) {
-        const entries = this.getEntries(dateKey);
+    static async getRunningEntry(dateKey) {
+        const entries = await this.getEntries(dateKey);
         return entries.find(entry => entry.isRunning) || null;
     }
 
     /**
      * Stop all running entries for a date
      */
-    static stopAllRunningEntries(dateKey) {
-        const entries = this.getEntries(dateKey);
+    static async stopAllRunningEntries(dateKey) {
+        const entries = await this.getEntries(dateKey);
         let hasChanges = false;
         
         const updatedEntries = entries.map(entry => {
@@ -127,7 +138,7 @@ export class TimerEntryRepository {
         });
         
         if (hasChanges) {
-            this.saveEntries(dateKey, updatedEntries);
+            await this.saveEntries(dateKey, updatedEntries);
         }
         
         return updatedEntries;
@@ -136,10 +147,10 @@ export class TimerEntryRepository {
     /**
      * Migrate legacy timer data to entry format
      */
-    static migrateLegacyData(dateKey) {
+    static async migrateLegacyData(dateKey) {
         try {
             const legacyKey = this.getLegacyKey(dateKey);
-            const legacyData = localStorage.getItem(legacyKey);
+            const legacyData = await SecureStorage.getItem(legacyKey);
             
             if (!legacyData) {
                 return [];
@@ -215,22 +226,22 @@ export class TimerEntryRepository {
     /**
      * Check if legacy data exists for backward compatibility
      */
-    static hasLegacyData(dateKey) {
+    static async hasLegacyData(dateKey) {
         const legacyKey = this.getLegacyKey(dateKey);
-        const legacyData = localStorage.getItem(legacyKey);
+        const legacyData = await SecureStorage.getItem(legacyKey);
         return !!legacyData;
     }
 
     /**
      * For compatibility - get data in legacy format for PayAnalysis
      */
-    static getLegacyCompatibleData(dateKey) {
-        const entries = this.getEntries(dateKey);
+    static async getLegacyCompatibleData(dateKey) {
+        const entries = await this.getEntries(dateKey);
         
         // If no entries, check for actual legacy data
         if (entries.length === 0) {
             const legacyKey = this.getLegacyKey(dateKey);
-            const legacyData = localStorage.getItem(legacyKey);
+            const legacyData = await SecureStorage.getItem(legacyKey);
             if (legacyData) {
                 return JSON.parse(legacyData);
             }
