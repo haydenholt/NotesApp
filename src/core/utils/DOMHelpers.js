@@ -49,10 +49,66 @@ export class DOMHelpers {
         }
     }
 
-    static showFeedback(element, successIcon, originalIcon, duration = 1000) {
-        element.innerHTML = successIcon;
+    static showFeedback(element, successContent, originalContent, duration = 1000) {
+        // Clear element and add success content
+        element.textContent = '';
+        if (typeof successContent === 'string') {
+            // If it's a string, try to parse as HTML safely using DOMParser
+            if (successContent.startsWith('<svg')) {
+                // For SVG strings, use DOMParser for secure parsing
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(successContent, 'image/svg+xml');
+                    const svg = doc.documentElement;
+                    
+                    // Check for parsing errors
+                    const parseError = doc.querySelector('parsererror');
+                    if (!parseError && svg && svg.tagName === 'svg') {
+                        element.appendChild(svg.cloneNode(true));
+                    } else {
+                        // Fallback to text content if parsing fails
+                        element.textContent = successContent;
+                    }
+                } catch (error) {
+                    console.warn('Failed to parse SVG content safely:', error);
+                    element.textContent = successContent;
+                }
+            } else {
+                element.textContent = successContent;
+            }
+        } else {
+            // If it's already a DOM element
+            element.appendChild(successContent.cloneNode(true));
+        }
+        
         setTimeout(() => {
-            element.innerHTML = originalIcon;
+            element.textContent = '';
+            if (typeof originalContent === 'string') {
+                if (originalContent.startsWith('<svg')) {
+                    // For SVG strings, use DOMParser for secure parsing
+                    try {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(originalContent, 'image/svg+xml');
+                        const svg = doc.documentElement;
+                        
+                        // Check for parsing errors
+                        const parseError = doc.querySelector('parsererror');
+                        if (!parseError && svg && svg.tagName === 'svg') {
+                            element.appendChild(svg.cloneNode(true));
+                        } else {
+                            // Fallback to text content if parsing fails
+                            element.textContent = originalContent;
+                        }
+                    } catch (error) {
+                        console.warn('Failed to parse SVG content safely:', error);
+                        element.textContent = originalContent;
+                    }
+                } else {
+                    element.textContent = originalContent;
+                }
+            } else {
+                element.appendChild(originalContent.cloneNode(true));
+            }
         }, duration);
     }
 
@@ -74,5 +130,43 @@ export class DOMHelpers {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => func.apply(this, args), delay);
         };
+    }
+
+    static saveScrollPosition() {
+        return {
+            x: window.pageXOffset || document.documentElement.scrollLeft,
+            y: window.pageYOffset || document.documentElement.scrollTop
+        };
+    }
+
+    static restoreScrollPosition(position, behavior = 'instant') {
+        if (!position || typeof position.x === 'undefined' || typeof position.y === 'undefined') {
+            return;
+        }
+        
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            window.scrollTo({
+                left: position.x,
+                top: position.y,
+                behavior: behavior
+            });
+        });
+    }
+
+    static preserveScrollDuring(operation) {
+        const scrollPos = this.saveScrollPosition();
+        const result = operation();
+        
+        // Handle both sync and async operations
+        if (result && typeof result.then === 'function') {
+            return result.then(res => {
+                this.restoreScrollPosition(scrollPos);
+                return res;
+            });
+        } else {
+            this.restoreScrollPosition(scrollPos);
+            return result;
+        }
     }
 }

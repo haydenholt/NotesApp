@@ -1,5 +1,6 @@
 import { NotesRepository } from './NotesRepository.js';
 import { TimeFormatter } from '../utils/TimeFormatter.js';
+import { SecurityUtils } from '../utils/SecurityUtils.js';
 
 export class ExportService {
     static exportNotesToCSV() {
@@ -36,27 +37,22 @@ export class ExportService {
             
             const canceled = note.canceled ? 'Yes' : 'No';
             
-            // Escape and quote fields that might contain commas or quotes
-            const escapeCSVField = (field) => {
-                if (!field) return '';
-                const str = String(field).replace(/"/g, '""');
-                return str.includes(',') || str.includes('"') || str.includes('\n') ? 
-                    `"${str}"` : str;
-            };
+            // Use secure CSV field escaping
+            const escapeCSVField = SecurityUtils.escapeCsvField;
             
             const row = [
                 escapeCSVField(dateKey),
                 escapeCSVField(id),
-                escapeCSVField(note.projectID || ''),
-                escapeCSVField(note.attemptID || ''),
-                escapeCSVField(note.operationID || ''),
+                escapeCSVField(SecurityUtils.sanitizeInput(note.projectID || '')),
+                escapeCSVField(SecurityUtils.sanitizeInput(note.attemptID || '')),
+                escapeCSVField(SecurityUtils.sanitizeInput(note.operationID || '')),
                 escapeCSVField(startDate),
                 escapeCSVField(endDate),
                 escapeCSVField(duration),
                 escapeCSVField(canceled),
-                escapeCSVField(note.failingIssues || ''),
-                escapeCSVField(note.nonFailingIssues || ''),
-                escapeCSVField(note.discussion || '')
+                escapeCSVField(SecurityUtils.sanitizeInput(note.failingIssues || '')),
+                escapeCSVField(SecurityUtils.sanitizeInput(note.nonFailingIssues || '')),
+                escapeCSVField(SecurityUtils.sanitizeInput(note.discussion || ''))
             ];
             csvRows.push(row.join(','));
         });

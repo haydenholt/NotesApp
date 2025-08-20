@@ -1,4 +1,6 @@
 import Timer from './Timer.js';
+import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
+import { NotesRepository } from '../../core/data/NotesRepository.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -14,8 +16,9 @@ export class Note {
 
 
         // Load saved note data for this date and ID
-        const savedNotes = JSON.parse(localStorage.getItem(date) || '{}');
-        const noteData = savedNotes[number] || {};
+        // Note: Data will be loaded asynchronously
+        const noteData = {};
+        this.loadNoteDataAsync(date, number);
         // Migrate and default fields
         let failingIssues = '';
         let nonFailingIssues = '';
@@ -56,47 +59,79 @@ export class Note {
         noteContainer.dataset.noteId = number;
         noteContainer._noteInstance = this; // Store reference for cleanup
 
-        // Create action buttons
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
+        // Create menu button container with explicit positioning
+        const menuContainer = document.createElement('div');
+        menuContainer.style.position = 'absolute';
+        menuContainer.style.top = '8px';
+        menuContainer.style.right = '8px';
+        menuContainer.style.zIndex = '30';
+        menuContainer.style.width = '32px';
+        menuContainer.style.height = '32px';
         
-        const editButton = document.createElement('button');
-        editButton.className = this.themeManager.combineClasses(
-            'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
-            this.themeManager.getPrimaryButtonClasses('sm')
+        // Create hamburger menu button with completely inline styles
+        const menuButton = document.createElement('button');
+        menuButton.style.width = '32px';
+        menuButton.style.height = '32px';
+        menuButton.style.backgroundColor = 'transparent';
+        menuButton.style.border = 'none';
+        menuButton.style.borderRadius = '4px';
+        menuButton.style.display = 'flex';
+        menuButton.style.flexDirection = 'column';
+        menuButton.style.alignItems = 'center';
+        menuButton.style.justifyContent = 'center';
+        menuButton.style.cursor = 'pointer';
+        menuButton.style.padding = '4px';
+        
+        // Create three visible hamburger bars with explicit styling
+        for (let i = 0; i < 3; i++) {
+            const bar = document.createElement('div');
+            bar.style.width = '16px';
+            bar.style.height = '1.5px';
+            bar.style.backgroundColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
+            bar.style.borderRadius = '1px';
+            bar.style.margin = '0px';
+            if (i === 1) {
+                bar.style.marginTop = '2px';
+                bar.style.marginBottom = '2px';
+            }
+            bar.style.display = 'block';
+            menuButton.appendChild(bar);
+        }
+        
+        menuButton.title = 'Note options';
+        console.log('Creating hamburger menu button:', menuButton);
+        
+        // Create dropdown menu
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className = this.themeManager.combineClasses(
+            'fixed mt-1 py-2 w-48 rounded-lg shadow-xl border hidden z-50',
+            this.themeManager.getColor('background', 'card'),
+            this.themeManager.getColor('border', 'primary')
         );
-        editButton.innerHTML = '✎';
-        editButton.title = 'Edit note';
-        editButton.style.display = completed ? 'block' : 'none';
-        editButton.style.textIndent = '-1px';
-
-        const saveButton = document.createElement('button');
-        saveButton.className = 'w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center justify-center';
-        saveButton.innerHTML = '✓';
-        saveButton.title = 'Save note';
-        saveButton.style.display = 'none';
-
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded text-sm flex items-center justify-center';
-        deleteButton.innerHTML = '×';
-        deleteButton.title = 'Delete note';
-
-
-        // Wire up actions
-        editButton.addEventListener('click', () => {
-            this._enableNoteEditing(number);
-            editButton.style.display = 'none';
-            saveButton.style.display = 'block';
+        
+        // Store references for later updates
+        this.menuButton = menuButton;
+        this.dropdownMenu = dropdownMenu;
+        
+        // Build menu options based on note state (defer until after container setup)
+        setTimeout(() => this.buildMenuOptions(), 0);
+        
+        // Toggle dropdown on button click
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown();
         });
-        saveButton.addEventListener('click', () => {
-            this._completeNoteEditing(number);
-            saveButton.style.display = 'none';
-            editButton.style.display = 'block';
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuContainer.contains(e.target)) {
+                this.closeDropdown();
+            }
         });
-        deleteButton.addEventListener('click', () => this._deleteNote(number));
-
-        actionsDiv.append(editButton, saveButton, deleteButton);
-        noteContainer.appendChild(actionsDiv);
+        
+        menuContainer.appendChild(menuButton);
+        menuContainer.appendChild(dropdownMenu);
+        noteContainer.appendChild(menuContainer);
 
         // Left sidebar with number, timer and ID fields
         const leftSidebar = document.createElement('div');
@@ -118,12 +153,19 @@ export class Note {
         // Timer display with theme-aware colors
         const timerDisplay = document.createElement('div');
         let timerColorClass;
+        const hasStarted = startTimestamp !== null || failingIssues || nonFailingIssues || discussion || attemptID || projectID || operationID;
+        const isRunning = hasStarted && !endTimestamp;
+        
         if (completed) {
             timerColorClass = canceled ? 
                 this.themeManager.getStatusClasses('error') : 
                 this.themeManager.getStatusClasses('success');
+        } else if (isRunning) {
+            timerColorClass = this.themeManager.getColor('timer', 'inactive'); // Grey for running
+        } else if (hasStarted && endTimestamp) {
+            timerColorClass = this.themeManager.getColor('timer', 'active'); // Green for stopped
         } else {
-            timerColorClass = this.themeManager.getColor('timer', 'inactive');
+            timerColorClass = this.themeManager.getColor('timer', 'inactive'); // Grey for not started
         }
         timerDisplay.className = `font-mono text-base mb-3 ${timerColorClass}`;
         timerDisplay.textContent = '00:00:00';
@@ -271,13 +313,8 @@ export class Note {
             // Store reference to the textarea
             sectionElements[section.key] = textarea;
 
-            // Auto-resize textarea
-            setTimeout(() => {
-                Object.values(sectionElements).forEach(textarea => {
-                    textarea.style.height = 'auto';
-                    textarea.style.height = textarea.scrollHeight + 'px';
-                });
-            }, 0);
+            // Auto-resize textarea with proper timing
+            this.adjustTextareaHeights(sectionElements);
             
 
             textarea.addEventListener('input', () => {
@@ -295,10 +332,8 @@ export class Note {
                 if (!timer.hasStarted && !completed) {
                     timer.hasStarted = true;
                     timer.start();
-                    // Show save button when editing begins
-                    saveButton.style.display = 'block';
                 }
-                this.save(timer.startTimestamp, timer.endTimestamp, completed);
+                this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
             });
 
 
@@ -314,18 +349,16 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
-                saveButton.style.display = 'block';
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
         
         projectIDInput.addEventListener('input', () => {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
-                saveButton.style.display = 'block';
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
 
         // Add event listener for Operation ID
@@ -333,9 +366,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
-                saveButton.style.display = 'block';
             }
-            this.save(timer.startTimestamp, timer.endTimestamp, completed);
+            this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
 
         // Add event listeners for F1 to copy IDs
@@ -348,21 +380,8 @@ export class Note {
                     console.warn('Cannot copy empty formatted IDs');
                     return;
                 }
-                // Use clipboard API or fallback
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(formattedIDs)
-                            .catch(err => {
-                                console.error('Failed to copy formatted IDs: ', err);
-                                this.fallbackCopy(formattedIDs);
-                            });
-                    } else {
-                        this.fallbackCopy(formattedIDs);
-                    }
-                } catch (err) {
-                    console.error('Clipboard operation failed:', err);
-                    this.fallbackCopy(formattedIDs);
-                }
+                // Use the new copyFormattedIDs method
+                this.copyFormattedIDs();
                 // Show inline cancel confirmation on this note
                 this.showCancelConfirmation();
             }
@@ -373,21 +392,8 @@ export class Note {
                     console.warn('Cannot copy empty text');
                     return;
                 }
-                // Check if clipboard API is available
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text)
-                            .catch(err => {
-                                console.error('Failed to copy: ', err);
-                                this.fallbackCopy(text);
-                            });
-                    } else {
-                        this.fallbackCopy(text);
-                    }
-                } catch (err) {
-                    console.error('Clipboard operation failed:', err);
-                    this.fallbackCopy(text);
-                }
+                // Use the new copyFormattedText method
+                this.copyFormattedText();
             }
             if (e.ctrlKey && e.shiftKey && e.key === 'V') {
                 e.preventDefault();
@@ -434,8 +440,6 @@ export class Note {
         this.container = noteContainer;
         this.elements = { ...sectionElements, attemptID: attemptIDInput, projectID: projectIDInput, operationID: operationIDInput };
         this.labels = sectionLabels;
-        this.editButton = editButton;
-        this.saveButton = saveButton;
         this.completed = completed;
         this.canceled = canceled;
 
@@ -450,6 +454,7 @@ export class Note {
             this.updateTextFieldStyles();
             this.updateButtonStyles();
             this.updateLabelStyles();
+            this.buildMenuOptions(); // Rebuild menu with new theme
         };
         document.addEventListener('themeChanged', this.themeChangeHandler);
     }
@@ -464,6 +469,46 @@ export class Note {
         }
     }
     
+    /**
+     * Adjusts textarea heights with proper timing to ensure all CSS and fonts are loaded
+     */
+    adjustTextareaHeights(sectionElements) {
+        const adjustHeights = () => {
+            Object.values(sectionElements).forEach(textarea => {
+                if (textarea && textarea.tagName === 'TEXTAREA') {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                }
+            });
+        };
+
+        // Wait for all stylesheets to load, fonts to be ready, and DOM to be fully rendered
+        Promise.all([
+            document.fonts ? document.fonts.ready : Promise.resolve(),
+            new Promise(resolve => {
+                if (document.readyState === 'complete') {
+                    resolve();
+                } else {
+                    window.addEventListener('load', resolve, { once: true });
+                }
+            })
+        ]).then(() => {
+            // Use requestAnimationFrame to ensure DOM is fully rendered
+            requestAnimationFrame(() => {
+                // Double requestAnimationFrame for better reliability
+                requestAnimationFrame(() => {
+                    adjustHeights();
+                    
+                    // Additional fallback adjustment after a short delay
+                    setTimeout(adjustHeights, 10);
+                });
+            });
+        }).catch(() => {
+            // Fallback if promises fail
+            setTimeout(adjustHeights, 100);
+        });
+    }
+    
     updateNumberDisplay() {
         const numberDisplay = this.container.querySelector('.font-bold.mb-2');
         if (!numberDisplay) return;
@@ -471,10 +516,13 @@ export class Note {
         // Remove all color classes
         numberDisplay.classList.remove('text-gray-600', 'text-red-600');
         
-        if (this.canceled) {
+        if (this.completed && this.canceled) {
+            // Update text to show "Cancelled" for cancelled notes
+            numberDisplay.textContent = "Cancelled";
             const cancelledTextColor = this.themeManager.getColor('note', 'cancelledText');
             numberDisplay.classList.add(cancelledTextColor);
         } else {
+            // For non-cancelled notes, keep the current number text but update color
             const tertiaryTextColor = this.themeManager.getColor('text', 'tertiary');
             numberDisplay.classList.add(tertiaryTextColor);
         }
@@ -483,11 +531,8 @@ export class Note {
     updateTimerDisplay() {
         if (!this.timer || !this.timer.displayElement) return;
         
-        // Remove all possible timer color classes
-        const oldClasses = Array.from(this.timer.displayElement.classList).filter(cls => 
-            cls.startsWith('text-') || cls.includes('green') || cls.includes('gray') || cls.includes('red')
-        );
-        oldClasses.forEach(cls => this.timer.displayElement.classList.remove(cls));
+        // Remove all theme-related classes
+        this.removeAllThemeClasses(this.timer.displayElement);
         
         // Apply new color based on state
         let colorClass;
@@ -495,55 +540,84 @@ export class Note {
             colorClass = this.canceled ? 
                 this.themeManager.getStatusClasses('error') : 
                 this.themeManager.getStatusClasses('success');
-        } else if (this.timer.hasStarted) {
+        } else if (this.timer.hasStarted && !this.timer.endTimestamp) {
+            // Timer is currently running - use grey (inactive color)
+            colorClass = this.themeManager.getColor('timer', 'inactive');
+        } else if (this.timer.hasStarted && this.timer.endTimestamp) {
+            // Timer has been stopped - use green (active color)
             colorClass = this.themeManager.getColor('timer', 'active');
         } else {
+            // Timer hasn't started yet - use grey
             colorClass = this.themeManager.getColor('timer', 'inactive');
         }
         
-        this.timer.displayElement.classList.add(colorClass);
+        if (colorClass && colorClass.trim() !== '') {
+            this.timer.displayElement.classList.add(colorClass);
+        }
     }
     
     updateTextFieldStyles() {
         Object.values(this.elements).forEach(element => {
             if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-                // Remove old classes
-                const oldClasses = Array.from(element.classList).filter(cls => 
-                    cls.includes('bg-') || cls.includes('text-') || cls.includes('border-')
+                // Store non-theme classes
+                const nonThemeClasses = Array.from(element.classList).filter(cls => 
+                    !cls.match(/^(bg|text|border|placeholder|hover:bg|hover:text|hover:border|focus|opacity|shadow)-/)
                 );
-                oldClasses.forEach(cls => element.classList.remove(cls));
                 
-                // Apply new classes based on state
-                if (this.completed) {
-                    const disabledClasses = this.themeManager.getTextareaClasses('disabled');
-                    element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
-                    element.className += ' ' + disabledClasses;
-                } else {
-                    if (element.tagName === 'TEXTAREA') {
-                        const textareaClasses = this.themeManager.getTextareaClasses();
-                        element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
-                        element.className += ' ' + textareaClasses;
-                    } else {
-                        const inputClasses = this.themeManager.getInputClasses();
-                        element.className = element.className.replace(/bg-\S+|text-\S+|border-\S+/g, '');
-                        element.className += ' ' + inputClasses;
-                    }
+                // Clear all classes
+                element.className = '';
+                
+                // Restore non-theme classes
+                if (nonThemeClasses.length > 0) {
+                    element.classList.add(...nonThemeClasses);
+                }
+                
+                // Apply new theme classes based on state and element type
+                if (element.tagName === 'INPUT') {
+                    const baseClasses = 'w-full rounded px-2 py-1 text-sm border';
+                    const themeClasses = [
+                        this.themeManager.getColor('border', 'secondary'),
+                        this.themeManager.getFocusClasses().combined,
+                        this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
+                        this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+                    ].filter(cls => cls && cls.trim() !== '').join(' ');
+                    
+                    element.className = `${baseClasses} ${themeClasses}`;
+                } else if (element.tagName === 'TEXTAREA') {
+                    const baseClasses = 'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border';
+                    const paddingClass = this.completed ? '' : 'pb-6';
+                    const themeClasses = [
+                        this.themeManager.getColor('border', 'secondary'),
+                        this.themeManager.getFocusClasses().combined,
+                        this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
+                        this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
+                    ].filter(cls => cls && cls.trim() !== '').join(' ');
+                    
+                    element.className = `${baseClasses} ${paddingClass} ${themeClasses}`;
                 }
             }
         });
     }
     
     updateButtonStyles() {
-        if (this.editButton) {
-            const oldClasses = Array.from(this.editButton.classList).filter(cls => 
-                cls.includes('bg-') || cls.includes('hover:bg-') || cls.includes('text-')
-            );
-            oldClasses.forEach(cls => this.editButton.classList.remove(cls));
+        if (this.menuButton) {
+            // Update button background for theme (keep transparent)
+            this.menuButton.style.backgroundColor = 'transparent';
             
-            const newClasses = this.themeManager.getPrimaryButtonClasses('sm');
-            this.editButton.className = this.themeManager.combineClasses(
-                'w-6 h-6 text-white rounded text-sm flex items-center justify-center leading-none',
-                newClasses
+            // Update bar colors for theme with lighter colors
+            const bars = this.menuButton.querySelectorAll('div');
+            const barColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
+            bars.forEach(bar => {
+                bar.style.backgroundColor = barColor;
+            });
+        }
+        if (this.dropdownMenu) {
+            // Update dropdown styling
+            const baseClasses = 'fixed mt-1 py-2 w-48 rounded-lg shadow-xl border hidden z-50';
+            this.dropdownMenu.className = this.themeManager.combineClasses(
+                baseClasses,
+                this.themeManager.getColor('background', 'card'),
+                this.themeManager.getColor('border', 'primary')
             );
         }
     }
@@ -572,9 +646,11 @@ export class Note {
         this.completed = true;
         this.canceled = isCanceled;
         
-        // Update button visibility - edit button should show for completed notes
-        this.editButton.style.display = 'block';
-        this.saveButton.style.display = 'none';
+        // Update number display (for cancelled notes)
+        this.updateNumberDisplay();
+        
+        // Rebuild menu options for completed state
+        this.buildMenuOptions();
         
         // Update placeholders (hide them)
         Object.values(this.elements).forEach(element => {
@@ -595,9 +671,13 @@ export class Note {
         this.completed = false;
         // Note: preserve this.canceled state
         
-        // Update button visibility - save button should show for editing notes
-        this.editButton.style.display = 'none';
-        this.saveButton.style.display = 'block';
+        // Restart the timer - clear endTimestamp and start display updates
+        if (this.timer && this.timer.hasStarted) {
+            this.timer.restart();
+        }
+        
+        // Rebuild menu options for editing state
+        this.buildMenuOptions();
         
         // Restore placeholders
         Object.values(this.elements).forEach(element => {
@@ -611,6 +691,18 @@ export class Note {
     }
     
     /**
+     * Helper method to remove all theme-related classes from an element
+     */
+    removeAllThemeClasses(element) {
+        // Remove all Tailwind color classes
+        const classesToRemove = Array.from(element.classList).filter(cls => 
+            cls.match(/^(bg|text|border|placeholder|hover:bg|hover:text|hover:border)-/) ||
+            cls.match(/^(opacity|shadow)-/)
+        );
+        classesToRemove.forEach(cls => element.classList.remove(cls));
+    }
+
+    /**
      * Update all styling based on current state
      */
     updateStyling() {
@@ -619,39 +711,8 @@ export class Note {
             (this.canceled ? this.themeManager.getColor('note', 'cancelled') : this.themeManager.getColor('note', 'completed')) :
             this.themeManager.getColor('background', 'card');
         
-        // Remove all possible background classes more comprehensively
-        // First remove hardcoded classes
-        this.container.classList.remove('bg-white', 'bg-gray-50', 'bg-red-50', 'bg-neutral-700', 'bg-neutral-800');
-        
-        // Remove theme-aware background classes for both light and dark themes
-        const allBackgroundVariants = ['primary', 'secondary', 'tertiary', 'card', 'overlay'];
-        const allNoteVariants = ['completed', 'cancelled'];
-        
-        // Get classes for both light and dark themes to ensure complete cleanup
-        const currentTheme = this.themeManager.currentTheme;
-        ['light', 'dark'].forEach(themeName => {
-            // Temporarily switch theme to get the classes
-            this.themeManager.currentTheme = themeName;
-            
-            // Remove background classes
-            allBackgroundVariants.forEach(variant => {
-                const cls = this.themeManager.getColor('background', variant);
-                if (cls && cls.trim() !== '') {
-                    this.container.classList.remove(cls);
-                }
-            });
-            
-            // Remove note state classes
-            allNoteVariants.forEach(variant => {
-                const cls = this.themeManager.getColor('note', variant);
-                if (cls && cls.trim() !== '') {
-                    this.container.classList.remove(cls);
-                }
-            });
-        });
-        
-        // Restore original theme
-        this.themeManager.currentTheme = currentTheme;
+        // Remove all theme-related classes from container
+        this.removeAllThemeClasses(this.container);
         
         // Add correct background for current theme
         if (backgroundClass && backgroundClass.trim() !== '') {
@@ -672,73 +733,25 @@ export class Note {
             if (errorClass) this.container.classList.add(errorClass);
         }
         
-        // Update input and textarea styling - reconstruct classes completely
+        // Update input and textarea styling using the helper method
+        this.updateTextFieldStyles();
+        
+        // Preserve special styles
         Object.values(this.elements).forEach(element => {
             // Update disabled state
             element.disabled = this.completed;
             
             if (element.tagName === 'INPUT') {
-                // Reconstruct input classes
-                const classes = [
-                    'w-full rounded px-2 py-1 text-sm border',
-                    this.themeManager.getColor('border', 'secondary'),
-                    this.themeManager.getFocusClasses().combined,
-                    this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
-                    this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
-                ].filter(cls => cls && cls.trim() !== '');
-                
-                element.className = classes.join(' ');
                 // Preserve direction
                 element.style.direction = 'rtl';
             } else if (element.tagName === 'TEXTAREA') {
-                // Reconstruct textarea classes
-                const baseClasses = 'w-full p-2 rounded text-base min-h-5 resize-none overflow-hidden border';
-                const paddingClass = this.completed ? '' : 'pb-6';
-                const classes = [
-                    baseClasses,
-                    paddingClass,
-                    this.themeManager.getColor('border', 'secondary'),
-                    this.themeManager.getFocusClasses().combined,
-                    this.completed ? this.themeManager.getColor('background', 'secondary') : this.themeManager.getColor('background', 'card'),
-                    this.completed ? this.themeManager.getColor('text', 'muted') : this.themeManager.getColor('text', 'primary')
-                ].filter(cls => cls && cls.trim() !== '');
-                
-                element.className = classes.join(' ');
                 // Preserve font family
                 element.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
             }
         });
         
-        // Update timer display color
-        const timerDisplay = this.timer.displayElement;
-        
-        // Remove all possible timer color classes
-        const statusClasses = ['success', 'error', 'info'].map(status => 
-            this.themeManager.getStatusClasses(status)
-        ).filter(cls => cls && cls.trim() !== '');
-        
-        // Remove hardcoded classes first
-        timerDisplay.classList.remove('text-gray-600', 'text-green-600', 'text-red-600', 'text-gray-700');
-        
-        // Remove theme-aware status classes
-        if (statusClasses.length > 0) {
-            timerDisplay.classList.remove(...statusClasses);
-        }
-        
-        // Add correct timer color
-        let timerColorClass;
-        if (this.completed) {
-            timerColorClass = this.canceled ? 
-                this.themeManager.getStatusClasses('error') : 
-                this.themeManager.getStatusClasses('success');
-        } else {
-            timerColorClass = this.themeManager.getColor('timer', 'inactive');
-        }
-        
-        // Only add the class if it's valid
-        if (timerColorClass && timerColorClass.trim() !== '') {
-            timerDisplay.classList.add(timerColorClass);
-        }
+        // Update timer display color using dedicated method
+        this.updateTimerDisplay();
     }
 
     /**
@@ -797,7 +810,217 @@ export class Note {
         confirmBtn.focus();
     }
 
+    /**
+     * Show delete confirmation inline within this note.
+     */
+    showDeleteConfirmation() {
+        // Only one confirmation at a time
+        if (this.confirmationDiv) return;
+        const container = this.container;
+        container.style.position = 'relative';
+        const confirmationDiv = document.createElement('div');
+        confirmationDiv.className = `absolute inset-0 ${this.themeManager.getColor('background', 'overlay')} bg-opacity-90 flex flex-col items-center justify-center p-4 z-10`;
+        confirmationDiv.dataset.confirmation = 'delete';
+        this.confirmationDiv = confirmationDiv;
+
+        // Grab note ID for callbacks
+        const number = this.container.dataset.noteId;
+
+        const title = document.createElement('h3');
+        title.className = `text-lg font-bold ${this.themeManager.getColor('text', 'primary')} mb-2`;
+        title.textContent = 'Delete Note';
+        confirmationDiv.appendChild(title);
+
+        const message = document.createElement('p');
+        message.className = `${this.themeManager.getColor('text', 'secondary')} mb-4 text-center`;
+        message.textContent = 'Are you sure you want to delete this note? This action cannot be undone.';
+        confirmationDiv.appendChild(message);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'flex gap-2';
+        confirmationDiv.appendChild(buttonContainer);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded';
+        cancelBtn.textContent = 'No, Keep Note';
+        cancelBtn.addEventListener('click', () => {
+            container.removeChild(confirmationDiv);
+            delete this.confirmationDiv;
+        });
+        buttonContainer.appendChild(cancelBtn);
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded';
+        confirmBtn.textContent = 'Yes, Delete Note';
+        confirmBtn.addEventListener('click', () => {
+            this._deleteNote(number);
+            container.removeChild(confirmationDiv);
+            delete this.confirmationDiv;
+        });
+        buttonContainer.appendChild(confirmBtn);
+
+        container.appendChild(confirmationDiv);
+        confirmBtn.focus();
+    }
+
     
+    /**
+     * Build menu options based on current note state
+     */
+    buildMenuOptions() {
+        if (!this.dropdownMenu || !this.container) return;
+        
+        // Clear existing options
+        this.dropdownMenu.innerHTML = '';
+        
+        const number = this.container.dataset.noteId || this.number;
+        
+        if (this.completed) {
+            // Options for completed notes
+            this.addMenuOption('Edit Note', () => {
+                this._enableNoteEditing(number);
+                this.closeDropdown();
+            });
+            
+            this.addMenuOption('Copy Content', () => {
+                this.copyFormattedText();
+                this.closeDropdown();
+            });
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        } else {
+            // Options for active/editing notes
+            this.addMenuOption('Save Note', () => {
+                this._completeNoteEditing(number);
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('success') || 'text-green-600 hover:text-green-700');
+            
+            this.addMenuOption('Cancel Note', () => {
+                this.showCancelConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('warning') || 'text-yellow-600 hover:text-yellow-700');
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Copy Content', () => {
+                this.copyFormattedText();
+                this.closeDropdown();
+            });
+            
+            this.addMenuSeparator();
+            
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        }
+    }
+    
+    /**
+     * Add a menu option to the dropdown
+     */
+    addMenuOption(text, onClick, extraClasses = '') {
+        const option = document.createElement('button');
+        const baseHoverClass = this.themeManager.getColor('background', 'hover') || 'hover:bg-gray-100';
+        
+        option.className = this.themeManager.combineClasses(
+            'w-full px-4 py-2 text-left text-sm transition-colors whitespace-nowrap overflow-hidden text-ellipsis',
+            baseHoverClass,
+            this.themeManager.getColor('text', 'primary'),
+            extraClasses
+        );
+        
+        option.textContent = text;
+        option.addEventListener('click', onClick);
+        
+        this.dropdownMenu.appendChild(option);
+    }
+    
+    /**
+     * Add a separator to the dropdown menu
+     */
+    addMenuSeparator() {
+        const separator = document.createElement('div');
+        separator.className = this.themeManager.combineClasses(
+            'h-px mx-2 my-1',
+            this.themeManager.getColor('border', 'secondary')
+        );
+        this.dropdownMenu.appendChild(separator);
+    }
+    
+    /**
+     * Toggle dropdown visibility
+     */
+    toggleDropdown() {
+        if (this.dropdownMenu.classList.contains('hidden')) {
+            // Position the fixed dropdown relative to the menu button
+            const buttonRect = this.menuButton.getBoundingClientRect();
+            this.dropdownMenu.style.top = (buttonRect.bottom + 4) + 'px';
+            this.dropdownMenu.style.right = (window.innerWidth - buttonRect.right) + 'px';
+            this.dropdownMenu.classList.remove('hidden');
+        } else {
+            this.dropdownMenu.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Close dropdown menu
+     */
+    closeDropdown() {
+        if (this.dropdownMenu) {
+            this.dropdownMenu.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Copy formatted text with clipboard API
+     */
+    async copyFormattedText() {
+        const text = this.getFormattedText();
+        if (!text || text.trim() === '') {
+            console.warn('Cannot copy empty text');
+            return;
+        }
+        
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                this.fallbackCopy(text);
+            }
+        } catch (err) {
+            console.error('Failed to copy formatted text:', err);
+            this.fallbackCopy(text);
+        }
+    }
+    
+    /**
+     * Copy formatted IDs with clipboard API
+     */
+    async copyFormattedIDs() {
+        const formattedIDs = this.getFormattedIDs();
+        if (!formattedIDs || formattedIDs.trim() === '') {
+            console.warn('Cannot copy empty formatted IDs');
+            return;
+        }
+        
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(formattedIDs);
+            } else {
+                this.fallbackCopy(formattedIDs);
+            }
+        } catch (err) {
+            console.error('Failed to copy formatted IDs:', err);
+            this.fallbackCopy(formattedIDs);
+        }
+    }
+
     /** Format this note's IDs for copying */
     getFormattedIDs() {
         const project = this.elements.projectID.value || '';
@@ -866,18 +1089,19 @@ export class Note {
                 targetTextarea = this.elements.failingIssues;
             }
             
-            // Insert the formatted text at cursor position
+            // Insert the formatted text at cursor position using document.execCommand for proper undo support
             const start = targetTextarea.selectionStart;
             const end = targetTextarea.selectionEnd;
-            const value = targetTextarea.value;
-            targetTextarea.value = value.slice(0, start) + formattedText + value.slice(end);
-            targetTextarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
             
-            // Trigger input event to update height and save
-            targetTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            
-            // Focus the textarea
+            // Focus the textarea and set selection
             targetTextarea.focus();
+            targetTextarea.setSelectionRange(start, end);
+            
+            // Use execCommand to insert text so it registers in the undo stack
+            document.execCommand('insertText', false, formattedText);
+            
+            // The execCommand will trigger a natural input event, so we don't need to dispatch a synthetic one
+            // This preserves the undo stack functionality
             
         } catch (err) {
             console.error('Failed to paste formatted bullet:', err);
@@ -887,25 +1111,79 @@ export class Note {
     /**
      * Save this note to localStorage.
      */
-    save(startTimestamp, endTimestamp, completed, canceled = false) {
-        const savedNotes = JSON.parse(localStorage.getItem(this.date) || '{}');
+    async save(startTimestamp, endTimestamp, completed, canceled = false) {
         const number = this.container.dataset.noteId;
+        // Sanitize all user input fields before saving
         const noteData = {
-            failingIssues: this.elements.failingIssues.value || '',
-            nonFailingIssues: this.elements.nonFailingIssues.value || '',
-            discussion: this.elements.discussion.value || '',
+            failingIssues: SecurityUtils.sanitizeInput(this.elements.failingIssues.value || ''),
+            nonFailingIssues: SecurityUtils.sanitizeInput(this.elements.nonFailingIssues.value || ''),
+            discussion: SecurityUtils.sanitizeInput(this.elements.discussion.value || ''),
             startTimestamp: startTimestamp || this.timer.startTimestamp || Date.now(),
             endTimestamp: endTimestamp,
             completed: completed,
-            projectID: this.elements.projectID.value || '',
-            attemptID: this.elements.attemptID.value || '',
-            operationID: this.elements.operationID.value || '',
+            projectID: SecurityUtils.sanitizeInput(this.elements.projectID.value || ''),
+            attemptID: SecurityUtils.sanitizeInput(this.elements.attemptID.value || ''),
+            operationID: SecurityUtils.sanitizeInput(this.elements.operationID.value || ''),
             additionalTime: this.timer.additionalTime || 0,
             hasStarted: this.timer.hasStarted,
             canceled: canceled || this.canceled
         };
-        savedNotes[number] = noteData;
-        localStorage.setItem(this.date, JSON.stringify(savedNotes));
+        await NotesRepository.saveNote(this.date, number, noteData);
+    }
+
+    /**
+     * Load note data asynchronously
+     */
+    async loadNoteDataAsync(date, number) {
+        try {
+            const savedNotes = await NotesRepository.getNotesForDate(date);
+            const noteData = savedNotes[number] || {};
+            
+            // Update fields with loaded data if they exist
+            if (this.elements) {
+                if (noteData.failingIssues && this.elements.failingIssues) {
+                    this.elements.failingIssues.value = noteData.failingIssues;
+                }
+                if (noteData.nonFailingIssues && this.elements.nonFailingIssues) {
+                    this.elements.nonFailingIssues.value = noteData.nonFailingIssues;
+                }
+                if (noteData.discussion && this.elements.discussion) {
+                    this.elements.discussion.value = noteData.discussion;
+                }
+                if (noteData.attemptID && this.elements.attemptID) {
+                    this.elements.attemptID.value = noteData.attemptID;
+                }
+                if (noteData.projectID && this.elements.projectID) {
+                    this.elements.projectID.value = noteData.projectID;
+                }
+                if (noteData.operationID && this.elements.operationID) {
+                    this.elements.operationID.value = noteData.operationID;
+                }
+            }
+            
+            // Update timer if it exists
+            if (this.timer && noteData.startTimestamp) {
+                this.timer.startTimestamp = noteData.startTimestamp;
+                this.timer.endTimestamp = noteData.endTimestamp;
+                this.timer.additionalTime = noteData.additionalTime || 0;
+                this.timer.hasStarted = noteData.hasStarted || false;
+                this.timer.updateDisplay();
+            }
+            
+            // Update completed/canceled status
+            if (noteData.completed) {
+                const completedClass = noteData.canceled ? 
+                    (this.themeManager?.getColor('note', 'cancelled') || 'bg-red-50') :
+                    (this.themeManager?.getColor('note', 'completed') || 'bg-gray-50');
+                this.container.className = this.container.className.replace(/bg-\w+-\d+/, '') + ' ' + completedClass;
+                
+                if (noteData.canceled) {
+                    this.canceled = true;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading note data:', error);
+        }
     }
 
     /** Format this note's full text for copying */

@@ -1,17 +1,56 @@
+import { SecurityUtils } from '../utils/SecurityUtils.js';
+import { SecureStorage } from './SecureStorage.js';
+
 export class NotesRepository {
-    static getNotesForDate(dateKey) {
+    static async getNotesForDate(dateKey) {
         try {
-            const data = localStorage.getItem(dateKey);
-            return data ? JSON.parse(data) : {};
+            // Validate the dateKey format for security
+            if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                console.warn('Invalid date key format:', dateKey);
+                return {};
+            }
+            
+            const data = await SecureStorage.getItem(dateKey);
+            if (!data) return {};
+            
+            try {
+                return JSON.parse(data);
+            } catch {
+                return {};
+            }
         } catch (error) {
             console.error('Error loading notes for date:', dateKey, error);
             return {};
         }
     }
 
-    static saveNotesForDate(dateKey, notes) {
+    static async saveNotesForDate(dateKey, notes) {
         try {
-            localStorage.setItem(dateKey, JSON.stringify(notes));
+            // Validate the dateKey format
+            if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                console.error('Invalid date key format:', dateKey);
+                return false;
+            }
+            
+            // Validate and sanitize the notes object
+            if (typeof notes !== 'object' || notes === null) {
+                console.error('Invalid notes data type');
+                return false;
+            }
+            
+            const sanitizedNotes = {};
+            for (const [noteId, noteData] of Object.entries(notes)) {
+                // Validate note ID
+                if (!/^\d+$/.test(noteId)) {
+                    console.warn('Skipping note with invalid ID:', noteId);
+                    continue;
+                }
+                
+                // Sanitize note data
+                sanitizedNotes[noteId] = SecurityUtils.sanitizeNoteData(noteData);
+            }
+            
+            await SecureStorage.setItem(dateKey, JSON.stringify(sanitizedNotes));
             return true;
         } catch (error) {
             console.error('Error saving notes for date:', dateKey, error);
@@ -19,20 +58,36 @@ export class NotesRepository {
         }
     }
 
-    static saveNote(dateKey, noteId, noteData) {
-        const notes = this.getNotesForDate(dateKey);
-        notes[noteId] = noteData;
-        return this.saveNotesForDate(dateKey, notes);
+    static async saveNote(dateKey, noteId, noteData) {
+        // Validate inputs
+        if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+            console.error('Invalid date key format:', dateKey);
+            return false;
+        }
+        
+        if (!noteId || !/^\d+$/.test(String(noteId))) {
+            console.error('Invalid note ID:', noteId);
+            return false;
+        }
+        
+        if (!noteData || typeof noteData !== 'object') {
+            console.error('Invalid note data');
+            return false;
+        }
+        
+        const notes = await this.getNotesForDate(dateKey);
+        notes[noteId] = SecurityUtils.sanitizeNoteData(noteData);
+        return await this.saveNotesForDate(dateKey, notes);
     }
 
-    static deleteNote(dateKey, noteId) {
-        const notes = this.getNotesForDate(dateKey);
+    static async deleteNote(dateKey, noteId) {
+        const notes = await this.getNotesForDate(dateKey);
         delete notes[noteId];
-        return this.saveNotesForDate(dateKey, notes);
+        return await this.saveNotesForDate(dateKey, notes);
     }
 
-    static getNextNoteNumber(dateKey) {
-        const notes = this.getNotesForDate(dateKey);
+    static async getNextNoteNumber(dateKey) {
+        const notes = await this.getNotesForDate(dateKey);
         let nextNumber = 1;
         while (notes.hasOwnProperty(nextNumber)) {
             nextNumber++;
@@ -40,8 +95,8 @@ export class NotesRepository {
         return nextNumber;
     }
 
-    static renumberNotes(dateKey) {
-        const notes = this.getNotesForDate(dateKey);
+    static async renumberNotes(dateKey) {
+        const notes = await this.getNotesForDate(dateKey);
         const sortedEntries = Object.entries(notes)
             .sort(([a], [b]) => parseInt(a) - parseInt(b));
         
@@ -52,11 +107,11 @@ export class NotesRepository {
             renumberedNotes[index + 1] = note;
         });
         
-        return this.saveNotesForDate(dateKey, renumberedNotes);
+        return await this.saveNotesForDate(dateKey, renumberedNotes);
     }
 
-    static cleanupCorruptNotes(dateKey) {
-        const notes = this.getNotesForDate(dateKey);
+    static async cleanupCorruptNotes(dateKey) {
+        const notes = await this.getNotesForDate(dateKey);
         let hasChanges = false;
         
         Object.keys(notes).forEach(key => {
@@ -68,27 +123,35 @@ export class NotesRepository {
         });
         
         if (hasChanges) {
-            this.saveNotesForDate(dateKey, notes);
+            await this.saveNotesForDate(dateKey, notes);
         }
         
         return notes;
     }
 
-    static searchNotes(query) {
+    static async searchNotes(query) {
         const results = [];
-        const queryLower = query.toLowerCase();
         
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
+        // Sanitize search query
+        const sanitizedQuery = SecurityUtils.sanitizeInput(query);
+        if (!sanitizedQuery) {
+            return results;
+        }
+        
+        const queryLower = sanitizedQuery.toLowerCase();
+        
+        const allKeys = SecureStorage.getAllKeys();
+        for (const key of allKeys) {
             if (key && /^\d{4}-\d{2}-\d{2}$/.test(key)) {
-                const notes = this.getNotesForDate(key);
+                const notes = await this.getNotesForDate(key);
                 
                 Object.entries(notes)
                     .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
                     .forEach(([id, note]) => {
-                        const projectID = (note.projectID || '').toLowerCase();
-                        const attemptID = (note.attemptID || '').toLowerCase();
-                        const operationID = (note.operationID || '').toLowerCase();
+                        // Sanitize note fields before searching
+                        const projectID = SecurityUtils.sanitizeInput(note.projectID || '').toLowerCase();
+                        const attemptID = SecurityUtils.sanitizeInput(note.attemptID || '').toLowerCase();
+                        const operationID = SecurityUtils.sanitizeInput(note.operationID || '').toLowerCase();
                         
                         if (projectID.includes(queryLower) || 
                             operationID.includes(queryLower) || 
@@ -118,13 +181,13 @@ export class NotesRepository {
         return results;
     }
 
-    static getAllCompletedNotes() {
+    static async getAllCompletedNotes() {
         const allNotes = [];
         
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
+        const allKeys = SecureStorage.getAllKeys();
+        for (const key of allKeys) {
             if (key && /^\d{4}-\d{2}-\d{2}$/.test(key)) {
-                const notes = this.getNotesForDate(key);
+                const notes = await this.getNotesForDate(key);
                 
                 Object.entries(notes).forEach(([id, note]) => {
                     if (note.completed) {

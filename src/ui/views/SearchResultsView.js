@@ -225,14 +225,16 @@ export class SearchResultsView {
             )
         );
 
-        copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z" /></svg>';
+        // Create copy SVG safely
+        const copySvg = this.createCopyIcon();
+        copyBtn.appendChild(copySvg);
         copyBtn.title = `Copy ${labelText}`;
 
-        const originalIcon = copyBtn.innerHTML;
+        const originalIcon = copySvg.cloneNode(true);
 
         copyBtn.addEventListener('click', () => {
             DOMHelpers.copyToClipboard(value).then(() => {
-                const successIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ${this.themeManager.getStatusClasses('success')}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+                const successIcon = this.createCheckIcon();
                 DOMHelpers.showFeedback(copyBtn, successIcon, originalIcon);
             }).catch(err => {
                 console.error('Copy failed', err);
@@ -240,6 +242,40 @@ export class SearchResultsView {
         });
 
         return copyBtn;
+    }
+
+    createCopyIcon() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'w-4 h-4');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('stroke', 'currentColor');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('d', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2v0a2 2 0 012-2z');
+        
+        svg.appendChild(path);
+        return svg;
+    }
+
+    createCheckIcon() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', `w-4 h-4 ${this.themeManager.getStatusClasses('success')}`);
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('stroke', 'currentColor');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('d', 'M5 13l4 4L19 7');
+        
+        svg.appendChild(path);
+        return svg;
     }
 
     createViewButton(dateKey, noteId) {
@@ -304,7 +340,7 @@ export class SearchResultsView {
 
     clear() {
         if (this.container) {
-            this.container.innerHTML = '';
+            this.container.textContent = '';
         }
     }
 

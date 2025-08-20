@@ -12,6 +12,7 @@ import { ModalView } from '../ui/views/ModalView.js';
 import { ExportService } from './data/ExportService.js';
 import { DOMHelpers } from './utils/DOMHelpers.js';
 import { TimeFormatter } from './utils/TimeFormatter.js';
+import { SecurityUtils } from './utils/SecurityUtils.js';
 import Timer from '../ui/components/Timer.js';
 
 export class NoteApp {
@@ -52,8 +53,8 @@ export class NoteApp {
 
     setupEventListeners() {
         // App State listeners
-        this.appState.addEventListener('dateChange', ({ newDate }) => {
-            this.handleDateChange(newDate);
+        this.appState.addEventListener('dateChange', async ({ newDate }) => {
+            await this.handleDateChange(newDate);
         });
 
         this.appState.addEventListener('searchChange', ({ isActive, query }) => {
@@ -76,7 +77,7 @@ export class NoteApp {
 
         this.noteController.addEventListener('noteDeleted', () => {
             this.updateStatistics();
-            this.noteListView.scrollToBottom();
+            // Don't change scroll position when deleting notes
         });
 
         this.noteController.addEventListener('notesClearing', () => {
@@ -89,27 +90,21 @@ export class NoteApp {
 
         // Timer Controller listeners
         this.timerController.addEventListener('totalTimeChanged', () => {
-            this.updateTotalTimeDisplay();
+            this.updateTotalTimeDisplay().catch(console.error);
         });
 
+        // Timer events are now handled directly by OffPlatformView
+        // These listeners are kept for any legacy timer functionality
         this.timerController.addEventListener('timerStarted', (data) => {
-            this.offPlatformView.updateTimerDisplay(data.category, 
-                this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category)), 
-                true
-            );
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         this.timerController.addEventListener('timerStopped', (data) => {
-            this.offPlatformView.updateTimerDisplay(data.category, 
-                this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category)), 
-                false
-            );
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         this.timerController.addEventListener('timerUpdated', (data) => {
-            const timeText = this.timerController.formatTime(this.timerController.getCurrentSeconds(data.category));
-            this.offPlatformView.updateTimerDisplay(data.category, timeText, data.timer.isRunning);
-            this.offPlatformView.updateStickyTimer(data.category, timeText);
+            // No-op: OffPlatformView handles display updates automatically
         });
 
         // Search Controller listeners
@@ -123,13 +118,25 @@ export class NoteApp {
         });
 
         this.searchController.addEventListener('searchCleared', () => {
-            this.showNormalMode();
-            this.noteListView.clear();
-            this.noteController.loadNotesForDate(this.appState.getCurrentDate());
+            // Don't load notes if we're in the middle of navigating to a specific note
+            if (!this.isNavigatingToNote) {
+                this.showNormalMode();
+                this.noteListView.clear();
+                this.noteController.loadNotesForDate(this.appState.getCurrentDate());
+                
+                // Restore scroll position after notes are loaded
+                if (this.searchScrollPosition) {
+                    // Wait for notes to be rendered
+                    setTimeout(() => {
+                        DOMHelpers.restoreScrollPosition(this.searchScrollPosition);
+                        this.searchScrollPosition = null;
+                    }, 200);
+                }
+            }
         });
 
-        this.searchController.addEventListener('navigateToResult', ({ dateKey, noteId }) => {
-            this.navigateToNote(dateKey, noteId);
+        this.searchController.addEventListener('navigateToResult', async ({ dateKey, noteId }) => {
+            await this.navigateToNote(dateKey, noteId);
         });
 
         // View listeners
@@ -141,16 +148,30 @@ export class NoteApp {
             this.searchController.navigateToResult(dateKey, noteId);
         });
 
-        this.offPlatformView.addEventListener('timerStartRequested', ({ categoryId }) => {
-            this.timerController.startTimer(categoryId);
+        // Off-platform view listeners - entry system handles its own timer management
+        this.offPlatformView.addEventListener('timerStartRequested', ({ entryId, entryData, categoryId }) => {
+            // Handle both new entry-based events and legacy category-based events
+            if (categoryId) {
+                // Legacy category-based timer
+                this.timerController.startTimer(categoryId);
+            }
+            // Entry-based timers are handled directly by OffPlatformView
         });
 
-        this.offPlatformView.addEventListener('timerStopRequested', ({ categoryId }) => {
-            this.timerController.stopTimer(categoryId);
+        this.offPlatformView.addEventListener('timerStopRequested', ({ entryId, entryData, categoryId }) => {
+            // Handle both new entry-based events and legacy category-based events
+            if (categoryId) {
+                // Legacy category-based timer
+                this.timerController.stopTimer(categoryId);
+            }
+            // Entry-based timers are handled directly by OffPlatformView
         });
 
         this.offPlatformView.addEventListener('timerEditRequested', async ({ categoryId, label }) => {
-            await this.handleTimerEdit(categoryId, label);
+            // Keep this for any remaining legacy edit functionality
+            if (categoryId) {
+                await this.handleTimerEdit(categoryId, label);
+            }
         });
 
         // DOM event listeners
@@ -162,11 +183,20 @@ export class NoteApp {
     }
 
     setupSearchInput() {
+        // Store scroll position at a higher scope so it persists across search sessions
+        this.searchScrollPosition = null;
+        
         const debouncedSearch = DOMHelpers.debounce((query) => {
             if (query.trim() === '') {
                 this.searchController.clearSearch();
             } else {
+                // Save scroll position before first search
+                if (!this.searchController.isSearchActive() && !this.searchScrollPosition) {
+                    this.searchScrollPosition = DOMHelpers.saveScrollPosition();
+                }
                 this.searchController.searchNotes(query);
+                // Scroll to top when searching
+                window.scrollTo(0, 0);
             }
         }, 300);
 
@@ -212,19 +242,31 @@ export class NoteApp {
     async loadCurrentDate() {
         const currentDate = this.appState.getCurrentDate();
         this.dateNavigationView.setCurrentDate(currentDate);
+        this.offPlatformView.setCurrentDate(currentDate);
         await this.noteController.loadNotesForDate(currentDate);
         this.timerController.loadTimerStateForDate(currentDate);
         this.updateStatistics();
-        this.updateTotalTimeDisplay();
+        this.updateTotalTimeDisplay().catch(console.error);
     }
 
-    handleDateChange(newDate) {
+    async handleDateChange(newDate) {
         this.dateNavigationView.setCurrentDate(newDate);
+        this.offPlatformView.setCurrentDate(newDate);
         
         if (!this.searchController.isSearchActive()) {
             this.showNormalMode();
             this.noteListView.clear(); // Clear the view before loading new notes
-            this.noteController.loadNotesForDate(newDate);
+            await this.noteController.loadNotesForDate(newDate);
+            
+            // If we have a pending note to highlight (from navigateToNote), do it now
+            if (this.pendingHighlightNote) {
+                const noteToHighlight = this.pendingHighlightNote;
+                this.pendingHighlightNote = null;
+                // Give DOM a moment to render
+                setTimeout(() => {
+                    this.noteListView.highlightNote(noteToHighlight);
+                }, 50);
+            }
         } else {
             this.searchController.searchNotes(this.searchController.getCurrentQuery());
         }
@@ -233,6 +275,11 @@ export class NoteApp {
     }
 
     handleSearchChange(isActive, query) {
+        // Don't handle search changes if we're navigating to a note
+        if (this.isNavigatingToNote) {
+            return;
+        }
+        
         if (isActive) {
             this.showSearchMode();
         } else {
@@ -243,9 +290,13 @@ export class NoteApp {
     }
 
     showSearchMode() {
+        // Don't clear notes immediately to avoid visual jump
         this.offPlatformView.hide();
         this.hideTotalTimeBar();
-        this.noteListView.clear();
+        // Only clear if we're not already in search mode
+        if (!this.searchResultsView.container?.hasChildNodes()) {
+            this.noteListView.clear();
+        }
     }
 
     showNormalMode() {
@@ -286,25 +337,37 @@ export class NoteApp {
         this.statisticsView.renderProjectFailRates(projectStats, null, true);
     }
 
-    updateTotalTimeDisplay() {
+    async updateTotalTimeDisplay() {
         const onPlatformSeconds = this.timerController.getTotalOnPlatformSeconds(this.noteController);
-        const offPlatformSeconds = this.timerController.getTotalOffPlatformSeconds();
+        const offPlatformSeconds = await this.timerController.getTotalOffPlatformSeconds();
         const totalSeconds = onPlatformSeconds + offPlatformSeconds;
         
-        this.elements.totalTimeDisplay.innerHTML = `
-            <div class="flex items-center justify-between gap-4">
-                <div class="text-sm text-gray-600 space-y-1">
-                    <div>On-platform: ${TimeFormatter.formatTime(onPlatformSeconds)}</div>
-                    <div>Off-platform: ${TimeFormatter.formatTime(offPlatformSeconds)}</div>
-                </div>
-                <div class="font-semibold text-lg">Total: ${TimeFormatter.formatTime(totalSeconds)}</div>
-            </div>
-        `;
+        const textMutedClass = this.themeManager.getColor('text', 'muted');
+        const textPrimaryClass = this.themeManager.getColor('text', 'primary');
+        
+        // Clear and rebuild total time display safely
+        this.elements.totalTimeDisplay.textContent = '';
+        
+        const container = SecurityUtils.createElement('div', '', 'flex items-center justify-between gap-4');
+        
+        // Left side - breakdown
+        const breakdown = SecurityUtils.createElement('div', '', `text-sm ${textMutedClass} space-y-1`);
+        const onPlatformDiv = SecurityUtils.createElement('div', `On-platform: ${TimeFormatter.formatTime(onPlatformSeconds)}`);
+        const offPlatformDiv = SecurityUtils.createElement('div', `Off-platform: ${TimeFormatter.formatTime(offPlatformSeconds)}`);
+        breakdown.appendChild(onPlatformDiv);
+        breakdown.appendChild(offPlatformDiv);
+        
+        // Right side - total
+        const totalDiv = SecurityUtils.createElement('div', `Total: ${TimeFormatter.formatTime(totalSeconds)}`, `font-semibold text-lg ${textPrimaryClass}`);
+        
+        container.appendChild(breakdown);
+        container.appendChild(totalDiv);
+        this.elements.totalTimeDisplay.appendChild(container);
     }
 
     startTotalTimeUpdater() {
         setInterval(() => {
-            this.updateTotalTimeDisplay();
+            this.updateTotalTimeDisplay().catch(console.error);
         }, 1000);
     }
 
@@ -317,22 +380,50 @@ export class NoteApp {
             this.timerController.editTimer(categoryId, result.hours, result.minutes, result.seconds);
         } catch (error) {
             // User cancelled or error occurred
-            console.log('Timer edit cancelled or failed:', error.message);
         }
     }
 
-    navigateToNote(dateKey, noteId) {
-        this.appState.setCurrentDate(dateKey);
+    async navigateToNote(dateKey, noteId) {
+        // Set flag to prevent duplicate loads
+        this.isNavigatingToNote = true;
+        
+        // Clear the search state and input
+        this.searchController.clearSearch();
         this.elements.searchInput.value = '';
         
+        // Show normal mode
+        this.showNormalMode();
+        
+        // Clear and load notes for the target date
+        this.noteListView.clear();
+        
+        // Change date if needed (this updates the UI date display)
+        if (this.appState.getCurrentDate() !== dateKey) {
+            // Just update the date display, don't trigger full date change
+            this.appState.currentDate = dateKey;
+            this.dateNavigationView.setCurrentDate(dateKey);
+            this.offPlatformView.setCurrentDate(dateKey);
+            this.timerController.loadTimerStateForDate(dateKey);
+        }
+        
+        // Load notes for the target date
+        await this.noteController.loadNotesForDate(dateKey);
+        
+        // Reset flag
+        this.isNavigatingToNote = false;
+        
+        // Highlight the note after a short delay for DOM to update
         setTimeout(() => {
             this.noteListView.highlightNote(noteId);
-        }, 100);
+        }, 50);
     }
 
     refreshAllViews() {
         this.dateNavigationView.updateTheme();
         this.offPlatformView.updateTheme();
+        
+        // Update total time display with new theme colors
+        this.updateTotalTimeDisplay().catch(console.error);
         
         if (this.searchController.isSearchActive()) {
             const results = this.searchController.getSearchResults();
@@ -355,7 +446,7 @@ export class NoteApp {
     }
 
     updateTotalTime() {
-        this.updateTotalTimeDisplay();
+        this.updateTotalTimeDisplay().catch(console.error);
     }
 
     // Export functionality

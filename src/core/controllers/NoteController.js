@@ -20,28 +20,30 @@ export class NoteController {
     }
 
     setupEventListeners() {
-        this.appState.addEventListener('dateChange', ({ newDate }) => {
-            this.loadNotesForDate(newDate);
-        });
+        // Event listeners are set up in NoteApp to coordinate view updates
+        // No direct date change handling here to avoid duplicate loading
     }
 
     async loadNotesForDate(date) {
+        // Clear state first
         this.notesState.clearNotesForDate(date);
         
-        const savedNotes = NotesRepository.cleanupCorruptNotes(date);
+        const savedNotes = await NotesRepository.cleanupCorruptNotes(date);
         const sortedNotes = Object.entries(savedNotes)
             .sort(([a], [b]) => parseInt(a) - parseInt(b));
 
         if (sortedNotes.length === 0) {
             this.createNewNote(1, date);
         } else {
-            sortedNotes.forEach(([id]) => {
-                this.createNewNote(parseInt(id), date);
+            sortedNotes.forEach(([id, noteData]) => {
+                const note = this.createNewNote(parseInt(id), date);
+                // Restore the note's state from saved data
+                this.restoreNoteFromData(note, noteData);
             });
 
             const allCompleted = sortedNotes.every(([, note]) => note.completed);
             if (allCompleted) {
-                const nextNumber = NotesRepository.getNextNoteNumber(date);
+                const nextNumber = await NotesRepository.getNextNoteNumber(date);
                 this.createNewNote(nextNumber, date);
             }
         }
@@ -72,6 +74,50 @@ export class NoteController {
         this.notifyListeners('noteCreated', { note, date: noteDate });
         
         return note;
+    }
+
+    restoreNoteFromData(note, noteData) {
+        if (!note || !noteData) return;
+
+        // Restore form field values
+        if (note.elements) {
+            if (noteData.discussion !== undefined) {
+                note.elements.discussion.value = noteData.discussion || '';
+            }
+            if (noteData.projectID !== undefined) {
+                note.elements.projectID.value = noteData.projectID || '';
+            }
+            if (noteData.attemptID !== undefined) {
+                note.elements.attemptID.value = noteData.attemptID || '';
+            }
+            if (noteData.operationID !== undefined) {
+                note.elements.operationID.value = noteData.operationID || '';
+            }
+            if (noteData.failingIssues !== undefined) {
+                note.elements.failingIssues.value = noteData.failingIssues || '';
+            }
+            if (noteData.nonFailingIssues !== undefined) {
+                note.elements.nonFailingIssues.value = noteData.nonFailingIssues || '';
+            }
+        }
+
+        // Restore note state
+        note.completed = noteData.completed || false;
+        note.canceled = noteData.canceled || false;
+
+        // Restore timer state
+        if (note.timer) {
+            note.timer.startTimestamp = noteData.startTimestamp || null;
+            note.timer.endTimestamp = noteData.endTimestamp || null;
+            note.timer.hasStarted = noteData.hasStarted || false;
+            note.timer.completed = noteData.completed || false;
+            note.timer.additionalTime = noteData.additionalTime || 0;
+        }
+
+        // Update visual state based on completion
+        if (noteData.completed) {
+            note.updateToCompletedState(noteData.canceled || false);
+        }
     }
 
     calculateDisplayIndex(date, number) {
@@ -162,16 +208,16 @@ export class NoteController {
         }
 
         if (!this.appState.getSearchState().isActive) {
-            this.checkAndCreateNewNote(date);
+            this.checkAndCreateNewNote(date).catch(console.error);
         }
     }
 
-    checkAndCreateNewNote(date) {
+    async checkAndCreateNewNote(date) {
         const hasInProgress = this.notesState.hasInProgressNoteForDate(date);
         const hasEmpty = this.notesState.hasEmptyNoteForDate(date);
         
         if (!hasEmpty && !hasInProgress) {
-            const nextNumber = NotesRepository.getNextNoteNumber(date);
+            const nextNumber = await NotesRepository.getNextNoteNumber(date);
             const newNote = this.createNewNote(nextNumber, date);
             this.notifyListeners('noteCreated', { 
                 note: newNote, 
@@ -181,25 +227,44 @@ export class NoteController {
         }
     }
 
-    deleteNote(number) {
+    async deleteNote(number) {
         const date = this.appState.getCurrentDate();
         const note = this.notesState.getNote(date, number);
         if (!note) return false;
 
-        // Remove from storage and renumber
-        NotesRepository.deleteNote(date, number);
-        NotesRepository.renumberNotes(date);
-        
-        // Remove from state
-        this.notesState.removeNote(date, number);
+        // Store current scroll position
+        const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+        try {
+            // Remove from storage and renumber (await these operations)
+            await NotesRepository.deleteNote(date, number);
+            await NotesRepository.renumberNotes(date);
+            
+            // Clear all notes from memory state
+            this.notesState.clearNotesForDate(date);
+            
+            // Notify that notes are clearing (this will clear the DOM)
+            this.notifyListeners('notesClearing', { date });
+            
+            // Reload notes with the new numbering
+            await this.loadNotesForDate(date);
+            
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            return false;
+        }
         
         // Notify listeners with the note being deleted
         this.notifyListeners('noteDeleted', { note, date, number });
         
-        // Reload notes to reflect the renumbering
-        this.reloadNotesForDate(date);
+        // Restore scroll position after a brief delay to allow DOM updates
+        setTimeout(() => {
+            window.scrollTo(0, scrollPosition);
+        }, 50);
+        
         return true;
     }
+
 
     markNoteAsEditing(number) {
         this.appState.markNoteAsEditing(number);
@@ -221,7 +286,7 @@ export class NoteController {
             discussion: note.elements.discussion.value
         };
 
-        NotesRepository.saveNote(note.date, note.number, noteData);
+        NotesRepository.saveNote(note.date, note.number, noteData).catch(console.error);
     }
 
     getNotesForCurrentDate() {

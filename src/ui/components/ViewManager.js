@@ -12,18 +12,12 @@ export class ViewManager {
                 element: document.getElementById('notesView'),
                 onShow: () => {
                     // Refresh notes view layout when returning from other views
-                    if (window.noteApp) {
-                        // Force a layout refresh by recreating the off-platform section
-                        window.noteApp.createOffPlatformSection();
-                        
-                        // Ensure proper textarea heights by triggering resize
-                        const textareas = document.querySelectorAll('#notesView textarea');
-                        textareas.forEach(textarea => {
-                            if (textarea.style.height) {
-                                textarea.style.height = 'auto';
-                                textarea.style.height = textarea.scrollHeight + 'px';
-                            }
-                        });
+                    if (window.noteApp && window.noteApp.offPlatformView) {
+                        // Force a layout refresh by re-rendering the off-platform section
+                        const container = document.getElementById('offPlatformContainer');
+                        if (container) {
+                            window.noteApp.offPlatformView.render(container);
+                        }
                     }
                 }
             },
@@ -121,13 +115,14 @@ export class ViewManager {
                 searchContainer.style.display = '';
             } else {
                 searchContainer.style.display = 'none';
-                // Clear search when leaving notes view
-                if (searchInput && searchInput.value.trim() !== '') {
-                    searchInput.value = '';
-                    // Trigger input event to clear search results
-                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-                }
             }
+        }
+        
+        // Clear search when switching to any non-notes view
+        if (viewName !== 'notes' && searchInput && searchInput.value.trim() !== '') {
+            searchInput.value = '';
+            // Trigger input event to clear search results
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
     }
 }

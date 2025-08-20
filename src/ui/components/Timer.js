@@ -1,6 +1,8 @@
 /**
  * Timer class for tracking time spent on notes
  */
+import { NotesRepository } from '../../core/data/NotesRepository.js';
+
 export class Timer {
     constructor(startTimestamp = null, endTimestamp = null) {
         this.startTimestamp = startTimestamp;
@@ -38,12 +40,16 @@ export class Timer {
             return
         } 
 
-        // Calculate time spent in previous session and add to additionalTime
-        this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
-
-        // Reset timestamps for new session
-        this.startTimestamp = Date.now();
-        this.endTimestamp = null;
+        // Only calculate and add previous session time if the timer was actually stopped
+        if (this.endTimestamp) {
+            this.additionalTime = Math.floor(this.additionalTime + Math.floor((this.endTimestamp - this.startTimestamp) / 1000));
+            
+            // Reset timestamps for new session
+            this.startTimestamp = Date.now();
+            this.endTimestamp = null;
+        }
+        // If endTimestamp is null, timer is already running, so just ensure display is active
+        
         this.hasStarted = true;
         this.startDisplay();
         this.saveState();
@@ -87,16 +93,21 @@ export class Timer {
         }
     }
 
-    saveState() {
-        if (this.noteId && window.app) {
-            const savedNotes = JSON.parse(localStorage.getItem(window.app.currentDate) || '{}');
-            if (savedNotes[this.noteId]) {
-                savedNotes[this.noteId].startTimestamp = this.startTimestamp;
-                savedNotes[this.noteId].endTimestamp = this.endTimestamp;
-                savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
-                savedNotes[this.noteId].completed = this.completed; // Save completion status
-                savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
-                localStorage.setItem(window.app.currentDate, JSON.stringify(savedNotes));
+    async saveState() {
+        if (this.noteId && window.noteApp) {
+            try {
+                const currentDate = window.noteApp.appState.getCurrentDate();
+                const savedNotes = await NotesRepository.getNotesForDate(currentDate);
+                if (savedNotes[this.noteId]) {
+                    savedNotes[this.noteId].startTimestamp = this.startTimestamp;
+                    savedNotes[this.noteId].endTimestamp = this.endTimestamp;
+                    savedNotes[this.noteId].additionalTime = this.additionalTime; // Save additional time
+                    savedNotes[this.noteId].completed = this.completed; // Save completion status
+                    savedNotes[this.noteId].hasStarted = this.hasStarted; // Save has started status
+                    await NotesRepository.saveNotesForDate(currentDate, savedNotes);
+                }
+            } catch (error) {
+                console.error('Error saving timer state:', error);
             }
         }
     }

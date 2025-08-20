@@ -1,6 +1,8 @@
 /**
  * OffPlatformTimer class for tracking off-platform time with multiple timer types
  */
+import { SecureStorage } from '../../core/data/SecureStorage.js';
+
 export class OffPlatformTimer {
     // Helper function to safely add/remove classes from getColor() results
     static safeClassListOperation(element, operation, colorString) {
@@ -42,13 +44,16 @@ export class OffPlatformTimer {
         this.onEditCallbacks = {}; // Add callbacks for edit events
         
         // Load active timers from localStorage or initialize empty object
-        this.activeTimers = this.loadActiveTimersFromStorage();
+        this.activeTimers = {};
+        this.loadActiveTimersFromStorage().then(timers => {
+            this.activeTimers = timers;
+        });
     }
     
     // Load active timers from localStorage
-    loadActiveTimersFromStorage() {
+    async loadActiveTimersFromStorage() {
         try {
-            const savedActiveTimers = localStorage.getItem('offPlatform_activeTimers');
+            const savedActiveTimers = await SecureStorage.getItem('offPlatform_activeTimers');
             return savedActiveTimers ? JSON.parse(savedActiveTimers) : {};
         } catch (e) {
             console.error('Error loading active timers:', e);
@@ -57,9 +62,9 @@ export class OffPlatformTimer {
     }
     
     // Save active timers to localStorage
-    saveActiveTimersToStorage() {
+    async saveActiveTimersToStorage() {
         try {
-            localStorage.setItem('offPlatform_activeTimers', JSON.stringify(this.activeTimers));
+            await SecureStorage.setItem('offPlatform_activeTimers', JSON.stringify(this.activeTimers));
         } catch (e) {
             console.error('Error saving active timers:', e);
         }
@@ -116,8 +121,9 @@ export class OffPlatformTimer {
     }
     
     // Get fresh timer data for current date
-    getTimerData() {
-        const data = JSON.parse(localStorage.getItem(this.getStorageKey()) || '{}');
+    async getTimerData() {
+        const dataStr = await SecureStorage.getItem(this.getStorageKey());
+        const data = dataStr ? JSON.parse(dataStr) : {};
         if (!data.timers) {
             data.timers = {
                 projectTraining: { startTime: null, totalSeconds: 0 },
@@ -129,21 +135,21 @@ export class OffPlatformTimer {
     }
     
     // Save timer data for current date
-    saveTimerData(data) {
-        localStorage.setItem(this.getStorageKey(), JSON.stringify(data));
+    async saveTimerData(data) {
+        await SecureStorage.setItem(this.getStorageKey(), JSON.stringify(data));
     }
     
     // Add timer start time to activeTimers and persist to localStorage
-    addToActiveTimers(date, category, startTime) {
+    async addToActiveTimers(date, category, startTime) {
         if (!this.activeTimers[date]) {
             this.activeTimers[date] = {};
         }
         this.activeTimers[date][category] = startTime;
-        this.saveActiveTimersToStorage();
+        await this.saveActiveTimersToStorage();
     }
     
     // Remove timer from activeTimers and persist to localStorage
-    removeFromActiveTimers(date, category) {
+    async removeFromActiveTimers(date, category) {
         if (this.activeTimers[date] && this.activeTimers[date][category]) {
             delete this.activeTimers[date][category];
             // Clean up empty date entries
@@ -288,12 +294,12 @@ export class OffPlatformTimer {
     }
     
     // Edit timer value for a specific category
-    editTimer(category, hours, minutes, seconds) {
+    async editTimer(category, hours, minutes, seconds) {
         // Convert to total seconds
         const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
         
         // Get fresh timer data
-        const data = this.getTimerData();
+        const data = await this.getTimerData();
         
         // Check if timer is running
         const wasRunning = !!data.timers[category].startTime;

@@ -1,5 +1,6 @@
-import NoteApp from '../../src/core/NoteApp.js';
+import { NoteApp } from '../../src/core/NoteApp.js';
 import { Note } from '../../src/ui/components/Note.js';
+import { DOMHelpers } from '../../src/core/utils/DOMHelpers.js';
 
 // Mock all the dependencies
 jest.mock('../../src/core/state/AppState.js');
@@ -13,6 +14,7 @@ jest.mock('../../src/ui/views/StatisticsView.js');
 jest.mock('../../src/ui/views/DateNavigationView.js');
 jest.mock('../../src/ui/views/OffPlatformView.js');
 jest.mock('../../src/ui/views/ModalView.js');
+jest.mock('../../src/core/utils/DOMHelpers.js');
 
 // Mock ThemeManager
 const mockThemeManager = {
@@ -66,6 +68,15 @@ const mockThemeManager = {
     combined: 'focus:ring-2 focus:border-blue-500'
   })
 };
+
+// Configure DOMHelpers mock
+DOMHelpers.debounce = jest.fn((fn) => fn);
+DOMHelpers.saveScrollPosition = jest.fn(() => ({ x: 0, y: window.pageYOffset || document.documentElement.scrollTop }));
+DOMHelpers.restoreScrollPosition = jest.fn((position) => {
+  if (position && typeof position.y !== 'undefined') {
+    window.scrollTo(position.x || 0, position.y);
+  }
+});
 
 describe('NoteApp', () => {
   let noteApp;
@@ -181,7 +192,7 @@ describe('NoteApp', () => {
       expect(mockViews.noteList.scrollToNote).toHaveBeenCalledWith(mockNote.number);
     });
 
-    test('should handle search input changes', () => {
+    test('should handle search input changes', (done) => {
       const searchInput = document.getElementById('searchInput');
       searchInput.value = 'test query';
       
@@ -192,6 +203,7 @@ describe('NoteApp', () => {
       // Wait for debounce
       setTimeout(() => {
         expect(mockControllers.search.searchNotes).toHaveBeenCalledWith('test query');
+        done();
       }, 350);
     });
 
@@ -286,7 +298,7 @@ describe('NoteApp', () => {
   });
 
   describe('Navigation', () => {
-    test('should navigate to specific note', () => {
+    test('should navigate to specific note', (done) => {
       const dateKey = '2024-01-15';
       const noteId = 5;
 
@@ -297,6 +309,7 @@ describe('NoteApp', () => {
       
       setTimeout(() => {
         expect(mockViews.noteList.highlightNote).toHaveBeenCalledWith(noteId);
+        done();
       }, 150);
     });
   });
@@ -390,6 +403,150 @@ describe('NoteApp', () => {
 
       expect(mockViews.noteList.clear).toHaveBeenCalled();
       expect(noteApp.noteController.loadNotesForDate).toHaveBeenCalledWith(currentDate);
+    });
+  });
+
+  describe('Search Scroll Behavior', () => {
+    let originalScrollTo;
+    let scrollPositions = [];
+
+    beforeEach(() => {
+      // Mock window.scrollTo
+      originalScrollTo = window.scrollTo;
+      window.scrollTo = jest.fn((x, y) => {
+        scrollPositions.push({ x: x || 0, y: y || 0 });
+      });
+
+      // Mock window scroll position getters
+      Object.defineProperty(window, 'pageYOffset', {
+        value: 500,
+        writable: true
+      });
+      Object.defineProperty(document.documentElement, 'scrollTop', {
+        value: 500,
+        writable: true
+      });
+    });
+
+    afterEach(() => {
+      window.scrollTo = originalScrollTo;
+      scrollPositions = [];
+    });
+
+    test('should save scroll position and scroll to top when starting search', (done) => {
+      const searchInput = document.getElementById('searchInput');
+      
+      // Set initial scroll position
+      window.pageYOffset = 1000;
+      document.documentElement.scrollTop = 1000;
+      
+      // Simulate typing in search
+      searchInput.value = 'test search';
+      const inputEvent = new Event('input');
+      searchInput.dispatchEvent(inputEvent);
+
+      // Wait for debounce
+      setTimeout(() => {
+        // Should have saved the scroll position
+        expect(noteApp.searchScrollPosition).toEqual({ x: 0, y: 1000 });
+        
+        // Should have scrolled to top
+        expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+        
+        done();
+      }, 350);
+    });
+
+    test('should restore scroll position when clearing search via input', (done) => {
+      // First, set up a search with saved position
+      noteApp.searchScrollPosition = { x: 0, y: 800 };
+      mockControllers.search.isSearchActive.mockReturnValue(true);
+      
+      const searchInput = document.getElementById('searchInput');
+      
+      // Clear the search input
+      searchInput.value = '';
+      const inputEvent = new Event('input');
+      searchInput.dispatchEvent(inputEvent);
+
+      // Wait for debounce
+      setTimeout(() => {
+        // Should have called clearSearch
+        expect(mockControllers.search.clearSearch).toHaveBeenCalled();
+        
+        // Trigger the searchCleared event manually
+        const searchClearedHandler = noteApp.searchController.addEventListener.mock.calls
+          .find(call => call[0] === 'searchCleared')?.[1];
+        
+        if (searchClearedHandler) {
+          searchClearedHandler();
+        }
+        
+        // Wait for scroll restoration
+        setTimeout(() => {
+          // Should have called DOMHelpers.restoreScrollPosition
+          expect(DOMHelpers.restoreScrollPosition).toHaveBeenCalledWith({ x: 0, y: 800 });
+          
+          // Should have cleared the saved position
+          expect(noteApp.searchScrollPosition).toBeNull();
+          
+          done();
+        }, 250);
+      }, 350);
+    });
+
+    test('should restore scroll position when clicking clear button', (done) => {
+      // Set up a search with saved position
+      noteApp.searchScrollPosition = { x: 0, y: 1200 };
+      mockControllers.search.isSearchActive.mockReturnValue(true);
+      
+      const clearButton = document.getElementById('clearSearchButton');
+      clearButton.click();
+
+      // Should have called clearSearch
+      expect(mockControllers.search.clearSearch).toHaveBeenCalled();
+
+      // Trigger the searchCleared event manually
+      const searchClearedHandler = noteApp.searchController.addEventListener.mock.calls
+        .find(call => call[0] === 'searchCleared')?.[1];
+      
+      if (searchClearedHandler) {
+        searchClearedHandler();
+      }
+
+      // Wait for scroll restoration from searchCleared event
+      setTimeout(() => {
+        // Should have called DOMHelpers.restoreScrollPosition
+        expect(DOMHelpers.restoreScrollPosition).toHaveBeenCalledWith({ x: 0, y: 1200 });
+        
+        // Should have cleared the saved position
+        expect(noteApp.searchScrollPosition).toBeNull();
+        
+        done();
+      }, 250);
+    });
+
+    test('should not save scroll position if already searching', (done) => {
+      // Already in search mode
+      mockControllers.search.isSearchActive.mockReturnValue(true);
+      noteApp.searchScrollPosition = { x: 0, y: 600 };
+      
+      const searchInput = document.getElementById('searchInput');
+      
+      // Type more in search
+      searchInput.value = 'another search';
+      const inputEvent = new Event('input');
+      searchInput.dispatchEvent(inputEvent);
+
+      setTimeout(() => {
+        // Should still have the original saved position
+        expect(noteApp.searchScrollPosition).toEqual({ x: 0, y: 600 });
+        
+        // Should still scroll to top
+        expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+        
+        done();
+      }, 350);
     });
   });
 });

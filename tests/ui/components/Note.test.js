@@ -603,9 +603,9 @@ describe('Note class', () => {
       note = new Note(1, '2024-01-15', 1, mockCallbacks, mockThemeManager);
       document.body.appendChild(note.container);
 
-      // Edit button should be hidden for new notes
+      // Edit button should be hidden for new notes, save button should be shown
       expect(note.editButton.style.display).toBe('none');
-      expect(note.saveButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('block');
     });
 
     test('updateToCompletedState shows edit button and hides save button', () => {
@@ -666,7 +666,7 @@ describe('Note class', () => {
 
       // Initial state: new note
       expect(note.editButton.style.display).toBe('none');
-      expect(note.saveButton.style.display).toBe('none');
+      expect(note.saveButton.style.display).toBe('block');
 
       // Complete note
       note.updateToCompletedState(false);

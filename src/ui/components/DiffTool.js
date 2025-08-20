@@ -64,7 +64,7 @@ export class DiffTool {
     updateDiffDisplay() {
         // Re-render the diff content with updated theme classes
         // Only if there's currently content to update
-        if (this.resultContainer && this.resultContainer.innerHTML.trim() !== '') {
+        if (this.resultContainer && this.resultContainer.textContent.trim() !== '') {
             this.compareTexts();
         }
     }
@@ -72,23 +72,36 @@ export class DiffTool {
     clearTexts() {
         this.originalTextArea.value = '';
         this.modifiedTextArea.value = '';
-        this.resultContainer.innerHTML = '';
+        this.resultContainer.textContent = '';
     }
     
     compareTexts() {
         const original = this.originalTextArea.value;
         const modified = this.modifiedTextArea.value;
-        const diffMode = this.diffModeSelect ? this.diffModeSelect.value : 'line';
+        const diffMode = this.diffModeSelect ? this.diffModeSelect.value : 'word';
         
         if (!original && !modified) {
-            this.resultContainer.innerHTML = '<p>Enter text in both fields to see differences</p>';
+            this.resultContainer.textContent = '';
+            const p = document.createElement('p');
+            p.textContent = 'Enter text in both fields to see differences';
+            this.resultContainer.appendChild(p);
             return;
         }
         
-        const diffResult = this.generateDiff(original, modified, diffMode);
-        const summary = this.generateDiffSummary(original, modified, diffMode);
+        // Clear container and rebuild with DOM methods
+        this.resultContainer.textContent = '';
         
-        this.resultContainer.innerHTML = summary + diffResult;
+        // Add summary
+        const summaryDiv = this.createDiffSummary(original, modified, diffMode);
+        if (summaryDiv) {
+            this.resultContainer.appendChild(summaryDiv);
+        }
+        
+        // Add diff result
+        const diffDiv = this.createDiffResult(original, modified, diffMode);
+        if (diffDiv) {
+            this.resultContainer.appendChild(diffDiv);
+        }
     }
     
     /**
@@ -395,6 +408,152 @@ export class DiffTool {
     }
     
     
+    /**
+     * Create diff summary using safe DOM methods
+     */
+    createDiffSummary(original, modified, mode) {
+        if (original === modified) {
+            const diffClasses = this.themeManager?.getDiffClasses();
+            const div = document.createElement('div');
+            div.className = diffClasses?.noDiff || 'bg-gray-100 border border-gray-300 rounded-md p-3 mb-4 text-sm text-gray-600';
+            div.textContent = 'No differences found';
+            return div;
+        }
+        
+        const diffClasses = this.themeManager?.getDiffClasses();
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = diffClasses?.summary || 'bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 text-sm';
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.className = diffClasses?.summaryTitle || 'font-medium mb-2';
+        titleDiv.textContent = 'Diff Summary:';
+        summaryDiv.appendChild(titleDiv);
+        
+        if (mode === 'line') {
+            const changes = Diff.diffLines(original, modified);
+            const hunks = this.generateHunksFromJSDiff(changes);
+            
+            hunks.forEach(hunk => {
+                const hunkDiv = document.createElement('div');
+                hunkDiv.className = diffClasses?.summaryText || 'font-mono';
+                hunkDiv.textContent = hunk.header;
+                summaryDiv.appendChild(hunkDiv);
+            });
+        } else {
+            const summaryText = `${mode.charAt(0).toUpperCase() + mode.slice(1)} mode: differences detected`;
+            const textDiv = document.createElement('div');
+            textDiv.className = diffClasses?.summaryText || 'font-mono';
+            textDiv.textContent = summaryText;
+            summaryDiv.appendChild(textDiv);
+        }
+        
+        return summaryDiv;
+    }
+
+    /**
+     * Create diff result using safe DOM methods
+     */
+    createDiffResult(original, modified, mode) {
+        const diffDiv = document.createElement('div');
+        
+        switch (mode) {
+            case 'character':
+                this.appendCharacterDiff(diffDiv, original, modified);
+                break;
+            case 'word':
+                this.appendWordDiff(diffDiv, original, modified);
+                break;
+            case 'token':
+                this.appendTokenDiff(diffDiv, original, modified);
+                break;
+            case 'line':
+            default:
+                this.appendLineDiff(diffDiv, original, modified);
+                break;
+        }
+        
+        return diffDiv;
+    }
+
+    /**
+     * Append line diff using safe DOM methods
+     */
+    appendLineDiff(container, original, modified) {
+        const changes = Diff.diffLines(original, modified);
+        
+        changes.forEach(change => {
+            if (change.added || change.removed) {
+                const div = document.createElement('div');
+                const bgClass = change.added ? 'bg-green-200' : 'bg-red-200';
+                const prefix = change.added ? '+' : '-';
+                div.className = `${bgClass} font-mono text-sm leading-relaxed whitespace-pre-wrap`;
+                div.textContent = prefix + ' ' + change.value;
+                container.appendChild(div);
+            } else {
+                const div = document.createElement('div');
+                div.className = 'font-mono text-sm leading-relaxed whitespace-pre-wrap';
+                div.textContent = '  ' + change.value;
+                container.appendChild(div);
+            }
+        });
+    }
+
+    /**
+     * Append word diff using safe DOM methods
+     */
+    appendWordDiff(container, original, modified) {
+        const changes = Diff.diffWords(original, modified);
+        
+        changes.forEach(change => {
+            const span = document.createElement('span');
+            if (change.added) {
+                span.className = 'bg-green-200';
+            } else if (change.removed) {
+                span.className = 'bg-red-200';
+            }
+            span.textContent = change.value;
+            container.appendChild(span);
+        });
+    }
+
+    /**
+     * Append character diff using safe DOM methods
+     */
+    appendCharacterDiff(container, original, modified) {
+        const changes = Diff.diffChars(original, modified);
+        
+        changes.forEach(change => {
+            const span = document.createElement('span');
+            if (change.added) {
+                span.className = 'bg-green-200';
+            } else if (change.removed) {
+                span.className = 'bg-red-200';
+            }
+            span.textContent = change.value;
+            container.appendChild(span);
+        });
+    }
+
+    /**
+     * Append token diff using safe DOM methods
+     */
+    appendTokenDiff(container, original, modified) {
+        const originalTokens = this.tokenizeCode(original);
+        const modifiedTokens = this.tokenizeCode(modified);
+        const changes = Diff.diffArrays(originalTokens, modifiedTokens);
+        
+        changes.forEach(change => {
+            const span = document.createElement('span');
+            if (change.added) {
+                span.className = 'bg-green-200';
+            } else if (change.removed) {
+                span.className = 'bg-red-200';
+            }
+            span.textContent = change.value.join('');
+            container.appendChild(span);
+        });
+    }
+
     /**
      * Escape HTML special characters
      */

@@ -36,7 +36,7 @@ export class NoteListView {
                     element._noteInstance.destroy();
                 }
             });
-            this.container.innerHTML = '';
+            this.container.textContent = '';
         }
     }
 
