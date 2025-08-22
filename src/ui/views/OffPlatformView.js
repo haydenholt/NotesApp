@@ -192,7 +192,7 @@ export class OffPlatformView {
 
         const timerDisplay = DOMHelpers.createElement('div',
             this.themeManager.combineClasses(
-                'font-mono text-xl font-semibold',
+                'font-mono text-lg',
                 this.themeManager.getColor('status', 'success')
             ),
             timerInfo.timeText

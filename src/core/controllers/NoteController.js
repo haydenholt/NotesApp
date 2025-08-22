@@ -47,6 +47,9 @@ export class NoteController {
                 this.createNewNote(nextNumber, date);
             }
         }
+        
+        // Refresh display indices after all notes are loaded to handle canceled notes correctly
+        this.refreshDisplayIndices(date);
 
         return this.notesState.getNotesForDate(date);
     }
@@ -104,6 +107,11 @@ export class NoteController {
         // Restore note state
         note.completed = noteData.completed || false;
         note.canceled = noteData.canceled || false;
+        
+        // Update the number display if the note is canceled
+        if (note.canceled && note.updateNumberDisplay) {
+            note.updateNumberDisplay();
+        }
 
         // Restore timer state
         if (note.timer) {
@@ -112,6 +120,11 @@ export class NoteController {
             note.timer.hasStarted = noteData.hasStarted || false;
             note.timer.completed = noteData.completed || false;
             note.timer.additionalTime = noteData.additionalTime || 0;
+            
+            // Restart display updates if timer is running (has started but not ended)
+            if (note.timer.startTimestamp && !note.timer.endTimestamp && !note.timer.completed) {
+                note.timer.startDisplay();
+            }
         }
 
         // Update visual state based on completion
@@ -145,19 +158,16 @@ export class NoteController {
     }
 
     updateNoteDisplayNumber(note, displayIndex) {
-        if (!note.container) return;
+        if (!note) return;
         
-        const numberDisplay = note.container.querySelector('.font-bold.mb-2');
-        if (numberDisplay) {
-            if (displayIndex === null && note.canceled) {
-                numberDisplay.textContent = "Cancelled";
-                // Apply canceled styling
-                numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} font-bold mb-2`;
-            } else if (displayIndex !== null) {
-                numberDisplay.textContent = String(displayIndex);
-                // Apply normal styling
-                numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} font-bold mb-2`;
-            }
+        // Update the note's displayIndex and call its updateNumberDisplay method
+        if (displayIndex !== null) {
+            note.displayIndex = displayIndex;
+        }
+        
+        // Use the note's own updateNumberDisplay method if available
+        if (note.updateNumberDisplay) {
+            note.updateNumberDisplay();
         }
     }
 
