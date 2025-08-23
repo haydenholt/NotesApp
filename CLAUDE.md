@@ -13,6 +13,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm start:claude` - Start local server at http://localhost:8002
 - No build or compilation needed - vanilla JavaScript application
 
+**Security:**
+- Application uses AES-GCM 256-bit encryption via Web Crypto API
+- All localStorage data is transparently encrypted/decrypted via SecureStorage
+
 ## Architecture Overview
 
 This is a vanilla JavaScript web application with a **clean, modular architecture** centered around note-taking with time tracking capabilities. The application follows a clear separation of concerns with business logic, state management, and UI components properly organized.
@@ -25,10 +29,20 @@ src/
 │   ├── NoteApp.js          # Main application orchestrator
 │   ├── controllers/        # Business logic controllers
 │   ├── data/              # Data repositories and services
+│   │   ├── SecureStorage.js      # Encrypted localStorage wrapper
+│   │   ├── NotesRepository.js    # Notes data access
+│   │   ├── TimerRepository.js    # Timer data access (legacy)
+│   │   ├── TimerEntryRepository.js # Timer entries (new format)
+│   │   ├── CustomTemplateManager.js # System prompt templates
+│   │   ├── ImportExportService.js # Import/export functionality
+│   │   └── ExportService.js      # CSV export service
 │   ├── state/             # State management
 │   └── utils/             # Core utilities
+│       └── SecurityUtils.js      # Security & sanitization
 ├── ui/                # 🎨 User Interface
 │   ├── components/         # Reusable UI components
+│   │   ├── OffPlatformEntry.js   # Individual timer entry
+│   │   └── OffPlatformEntryList.js # Timer entry management
 │   └── views/             # Specialized view components
 └── main.js            # 🚀 Application entry point
 ```
@@ -36,7 +50,8 @@ src/
 ### Core Application Structure
 
 **Main Entry Point (`src/main.js`):**
-- Initializes all major components: NoteApp, DiffTool, ViewManager, PayAnalysis
+- **IMPORTANT**: Initializes SecureStorage first (required for all data operations)
+- Initializes all major components: NoteApp, DiffTool, ViewManager, NavigationManager, PayAnalysis, HelpOverlay
 - Makes components globally accessible for debugging (window.noteApp, etc.)
 
 **View Management System:**
@@ -57,8 +72,12 @@ src/
 - `StatisticsController.js` - Analytics, fail rates, and data aggregation
 
 **Data Layer (`src/core/data/`):**
-- `NotesRepository.js` - localStorage abstraction for notes
-- `TimerRepository.js` - localStorage abstraction for timers
+- `SecureStorage.js` - **NEW**: Encrypted localStorage wrapper with AES-GCM 256-bit encryption
+- `NotesRepository.js` - Notes data access (now uses SecureStorage)
+- `TimerRepository.js` - Legacy timer data access
+- `TimerEntryRepository.js` - **NEW**: Entry-based timer system with migration from legacy format
+- `CustomTemplateManager.js` - **NEW**: Manages system prompt templates with versioning
+- `ImportExportService.js` - **NEW**: Manual import/export with encryption support
 - `ExportService.js` - CSV export and data transformation
 
 **State Management (`src/core/state/`):**
@@ -70,17 +89,20 @@ src/
 - `TimeFormatter.js` - Time formatting and duration calculations
 - `DateUtils.js` - Date manipulation and validation
 - `DOMHelpers.js` - DOM utilities and common operations
+- `SecurityUtils.js` - **NEW**: Data sanitization and security utilities
 
 ### User Interface Layer (`src/ui/`)
 
 **Components (`src/ui/components/`):**
 - `Note.js` - Individual note component with auto-theming
 - `Timer.js` - Individual note timers that start when content is entered
-- `OffPlatformTimer.js` - Tracks time for training, sheetwork, blocked time
+- `OffPlatformTimer.js` - Off-platform timer management (uses new entry system)
+- `OffPlatformEntry.js` - **NEW**: Individual timer entry component
+- `OffPlatformEntryList.js` - **NEW**: Manages list of timer entries
 - `ThemeManager.js` - Centralized theme management
 - `DiffTool.js` - Text comparison with token-based diff highlighting
 - `PayAnalysis.js` - Weekly earnings calculator with calendar interface
-- `SystemPromptView.js` - LLM prompt generators
+- `SystemPromptView.js` - LLM prompt generators with custom templates
 - `ViewManager.js` - View switching logic
 - `HelpOverlay.js` - Help system
 - `NavigationManager.js` - Keyboard navigation
@@ -95,9 +117,11 @@ src/
 
 ### Data Persistence
 
-- **localStorage** is the primary data store
+- **SecureStorage** wraps localStorage with transparent AES-GCM 256-bit encryption
+- All data is encrypted at rest with keys stored in localStorage
 - Notes are stored per date with keys like `2024-01-15`
-- Off-platform timer states stored with keys like `offPlatform_2024-01-15`
+- Off-platform timer entries stored with keys like `offPlatform_entries_2024-01-15` (new format)
+- Legacy timer format `offPlatform_2024-01-15` automatically migrated to entry format
 - No backend or database - fully client-side application
 
 #### Official localStorage Format
@@ -124,31 +148,54 @@ src/
 }
 ```
 
-**Off-Platform Timer Storage:**
+**Off-Platform Timer Storage (New Entry Format):**
 ```javascript
-// Key: "offPlatform_2025-01-01" (offPlatform_ + ISO date)
-{
-  "timers": {
-    "projectTraining": {
-      "startTime": null,              // Unix timestamp when started, null when stopped
-      "totalSeconds": 0               // Total accumulated seconds
-    },
-    "sheetwork": {
-      "startTime": null,
-      "totalSeconds": 0
-    },
-    "blocked": {
-      "startTime": null,
-      "totalSeconds": 0
-    }
+// Key: "offPlatform_entries_2025-01-01" (offPlatform_entries_ + ISO date)
+[
+  {
+    "id": "unique_id_string",        // Unique identifier for entry
+    "title": "Entry title",           // User-defined title
+    "type": "training",               // Type: training, sheetwork, blocked, other
+    "startTime": 1740514138715,       // Unix timestamp when started
+    "endTime": 1740514141826,         // Unix timestamp when ended (null if running)
+    "totalSeconds": 226,              // Total accumulated seconds
+    "isRunning": false                // Current running state
   }
-}
+]
+
+// Legacy format (auto-migrated): "offPlatform_2025-01-01"
+// Active timers tracked in: "offPlatform_activeTimers"
 ```
 
 **Theme Storage:**
 ```javascript
 // Key: "app_theme"
 // Value: "light" | "dark"
+```
+
+**System Prompt Templates:**
+```javascript
+// Key: "systemPromptTemplates"
+{
+  "templates": [
+    {
+      "id": "unique_id",
+      "name": "Template Name",
+      "content": "Template content...",
+      "variables": ["var1", "var2"],
+      "isDefault": false,
+      "category": "custom"
+    }
+  ]
+}
+// Version tracked in: "systemPromptTemplatesVersion"
+```
+
+**Encryption Keys:**
+```javascript
+// Key: "_secure_storage_key" - Exported CryptoKey for AES-GCM
+// Key: "_secure_storage_salt" - Salt for key derivation
+// Encrypted data prefix: "_encrypted_" + original key
 ```
 
 ### Testing Structure

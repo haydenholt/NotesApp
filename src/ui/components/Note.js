@@ -1,6 +1,7 @@
 import Timer from './Timer.js';
 import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
 import { NotesRepository } from '../../core/data/NotesRepository.js';
+import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -82,7 +83,6 @@ export class Note {
         }
         
         menuButton.title = 'Note options';
-        console.log('Creating hamburger menu button:', menuButton);
         
         // Create dropdown menu
         const dropdownMenu = document.createElement('div');
@@ -152,7 +152,7 @@ export class Note {
         } else {
             timerColorClass = this.themeManager.getColor('timer', 'inactive'); // Grey for not started
         }
-        timerDisplay.className = `font-mono text-sm mb-3 ${timerColorClass}`;
+        timerDisplay.className = `font-mono text-base mb-3 ${timerColorClass}`;
         timerDisplay.textContent = '00:00:00';
         leftSidebar.appendChild(timerDisplay);
 
@@ -317,6 +317,8 @@ export class Note {
                 if (!timer.hasStarted && !completed) {
                     timer.hasStarted = true;
                     timer.start();
+                    // Rebuild menu when note starts
+                    this.buildMenuOptions();
                 }
                 this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
             });
@@ -334,6 +336,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -342,6 +346,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -351,6 +357,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -370,7 +378,7 @@ export class Note {
                 // Show inline cancel confirmation on this note
                 this.showCancelConfirmation();
             }
-            if (e.ctrlKey && e.key === 'x') {
+            if (PlatformUtils.isModifierPressed(e) && e.key === 'x') {
                 // Don't prevent default to allow normal copy behavior in addition to our custom one
                 const text = this.getFormattedText();
                 if (!text || text.trim() === '') {
@@ -380,14 +388,14 @@ export class Note {
                 // Use the new copyFormattedText method
                 this.copyFormattedText();
             }
-            if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+            if (PlatformUtils.isModifierPressed(e) && e.shiftKey && e.key === 'V') {
                 e.preventDefault();
                 this.pasteAsFormattedBullet();
             }
         });
 
         contentContainer.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if (PlatformUtils.isModifierPressed(e) && e.key === 'Enter') {
                 // Always allow Ctrl+Enter for notes with content, regardless of completed state
                 if (timer.hasStarted) {
                     e.preventDefault();
@@ -866,7 +874,7 @@ export class Note {
         const number = this.container.dataset.noteId || this.number;
         
         if (this.completed) {
-            // Options for completed notes
+            // Menu options for completed notes
             this.addMenuOption('Edit Note', () => {
                 this._enableNoteEditing(number);
                 this.closeDropdown();
@@ -877,14 +885,18 @@ export class Note {
                 this.closeDropdown();
             });
             
-            this.addMenuSeparator();
-            
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        } else if (!this.timer.hasStarted) {
+            // Menu options for unstarted notes - only delete
             this.addMenuOption('Delete Note', () => {
                 this.showDeleteConfirmation();
                 this.closeDropdown();
             }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
         } else {
-            // Options for active/editing notes
+            // Menu options for started/active notes
             this.addMenuOption('Save Note', () => {
                 this._completeNoteEditing(number);
                 this.closeDropdown();
@@ -916,10 +928,13 @@ export class Note {
         const option = document.createElement('button');
         const baseHoverClass = this.themeManager.getColor('background', 'hover') || 'hover:bg-gray-100';
         
+        // If extraClasses are provided (like for Delete Note), don't add default text color
+        const textColor = extraClasses ? '' : this.themeManager.getColor('text', 'primary');
+        
         option.className = this.themeManager.combineClasses(
             'w-full px-4 py-2 text-left text-sm transition-colors whitespace-nowrap overflow-hidden text-ellipsis',
             baseHoverClass,
-            this.themeManager.getColor('text', 'primary'),
+            textColor,
             extraClasses
         );
         

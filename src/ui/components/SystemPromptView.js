@@ -1,4 +1,5 @@
 import { CustomTemplateManager } from '../../core/data/CustomTemplateManager.js';
+import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 export class SystemPromptView {
     constructor(containerId, themeManager = null) {
@@ -522,7 +523,7 @@ Input to process:
         if (!this._keyboardInitialized) {
             this._keyboardInitialized = true;
             document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'x') {
+                if (PlatformUtils.isModifierPressed(e) && e.key === 'x') {
                     const activeElement = document.activeElement;
                     if (activeElement && activeElement.hasAttribute('data-template-id')) {
                         e.preventDefault();
@@ -534,7 +535,7 @@ Input to process:
                         }
                     }
                 }
-                if (e.ctrlKey && e.key === 't' && !this.isEditorOpen) {
+                if (PlatformUtils.isModifierPressed(e) && e.key === 't' && !this.isEditorOpen) {
                     e.preventDefault();
                     this.openTemplateEditor();
                 }

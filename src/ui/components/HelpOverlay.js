@@ -3,6 +3,7 @@
  */
 import { ImportExportService } from '../../core/data/ImportExportService.js';
 import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
+import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 export default class HelpOverlay {
     constructor(themeManager = null) {
@@ -73,28 +74,29 @@ export default class HelpOverlay {
     }
 
     renderContent() {
+        const mod = PlatformUtils.getModifierDisplay();
         const shortcuts = [
             {
                 category: 'View Switching (Global)',
                 shortcuts: [
-                    { key: 'Ctrl+D', description: 'Toggle Diff Tool view' },
-                    { key: 'Ctrl+P', description: 'Toggle System Prompt Generator view' },
-                    { key: 'Ctrl+Y', description: 'Toggle Pay Analysis view' }
+                    { key: `${mod}+D`, description: 'Toggle Diff Tool view' },
+                    { key: `${mod}+P`, description: 'Toggle System Prompt Generator view' },
+                    { key: `${mod}+Y`, description: 'Toggle Pay Analysis view' }
                 ]
             },
             {
                 category: 'Note Management',
                 shortcuts: [
-                    { key: 'Ctrl+Enter', description: 'Complete the current note' },
-                    { key: 'Ctrl+X', description: 'Copy formatted feedback to clipboard' },
-                    { key: 'Ctrl+Shift+V', description: 'Paste clipboard as formatted bullet point' },
+                    { key: `${mod}+Enter`, description: 'Complete the current note' },
+                    { key: `${mod}+X`, description: 'Copy formatted feedback to clipboard' },
+                    { key: `${mod}+Shift+V`, description: 'Paste clipboard as formatted bullet point' },
                     { key: 'F1', description: 'Copy cancel message to clipboard and show cancel dialog' }
                 ]
             },
             {
                 category: 'System Prompt View',
                 shortcuts: [
-                    { key: 'Ctrl+X', description: 'Copy prompt to clipboard' },
+                    { key: `${mod}+X`, description: 'Copy prompt to clipboard' },
                 ]
             },
             {
