@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Application Overview
+
+**QC Notes** is a Progressive Web App (PWA) for secure note-taking with time tracking capabilities.
+
+- **PWA Features:** Installable, works offline, persistent storage, service worker caching
+- **Production Deployment:** Hosted on Vercel for end users
+- **Data Persistence:** Uses browser persistent storage API + PWA for maximum data retention
+
 ## Development Commands
 
 **Testing:**

@@ -3,9 +3,10 @@ import { NotesState } from '../state/NotesState.js';
 import Note from '../../ui/components/Note.js';
 
 export class NoteController {
-    constructor(appState, themeManager) {
+    constructor(appState, themeManager, toast = null) {
         this.appState = appState;
         this.themeManager = themeManager;
+        this.toast = toast;
         this.notesState = new NotesState();
         
         this.listeners = {
@@ -71,7 +72,7 @@ export class NoteController {
             completeEditing: this.completeNoteEditing.bind(this),
             deleteNote: this.deleteNote.bind(this),
             markEditing: this.markNoteAsEditing.bind(this)
-        }, this.themeManager);
+        }, this.themeManager, this.toast);
 
         this.notesState.addNote(note);
         this.notifyListeners('noteCreated', { note, date: noteDate });

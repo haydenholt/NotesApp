@@ -98,16 +98,7 @@ export class PayAnalysis {
         const grandTotalSeconds = totalOnSeconds + totalOffSeconds;
         const totalHours = grandTotalSeconds / 3600;
         const hourlyPay = totalHours * this.ratePerHour;
-        
-        // Calculate bonus based on task count
-        let bonus = 0;
-        if (totalTasks >= 25) {
-            bonus = 200;
-        } else if (totalTasks >= 1) {
-            bonus = 135;
-        }
-        
-        const payAmount = (hourlyPay + bonus).toFixed(2);
+        const payAmount = hourlyPay.toFixed(2);
     
 
         // Balanced summary cards with subtle color accents
@@ -228,14 +219,14 @@ export class PayAnalysis {
                     <h4 class="text-base font-medium ${textPrimary} mb-3">Payment Details</h4>
                     <div class="${bgSecondary} p-3 rounded-md border ${sectionBorder}">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm ${textSecondary}">Rate per hour:</span>
+                            <span class="text-sm ${textSecondary}">Hourly Rate:</span>
                             <div class="flex items-center">
                                 <span class="text-sm ${textSecondary}">$</span>
                                 <input type="number" 
                                        value="${this.ratePerHour.toFixed(2)}" 
                                        min="0" 
                                        step="0.01" 
-                                       class="ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300"
+                                       class="ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                        style="width: 80px;"
                                        onchange="window.payAnalysis.savePayRate(parseFloat(this.value) || 60)">
                             </div>
@@ -243,14 +234,6 @@ export class PayAnalysis {
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm ${textSecondary}">Total hours:</span>
                             <span class="text-sm ${textSecondary}">${totalHours.toFixed(2)}</span>
-                        </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm ${textSecondary}">Hourly pay:</span>
-                            <span class="text-sm ${textSecondary}">$${hourlyPay.toFixed(2)}</span>
-                        </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm ${textSecondary}">Bonus (${totalTasks} tasks):</span>
-                            <span class="text-sm ${textSecondary} ${bonus > 0 ? 'text-green-600' : ''}">$${bonus.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between items-center pt-2 border-t ${sectionBorder}">
                             <span class="text-sm font-medium ${textPrimary}">Total pay:</span>
@@ -617,16 +600,7 @@ export class PayAnalysis {
         const grandTotalSeconds = totalOnSeconds + totalOffSeconds;
         const totalHours = grandTotalSeconds / 3600;
         const hourlyPay = totalHours * this.ratePerHour;
-        
-        // Calculate bonus based on task count
-        let bonus = 0;
-        if (totalTasks >= 25) {
-            bonus = 200;
-        } else if (totalTasks >= 1) {
-            bonus = 135;
-        }
-        
-        const payAmount = (hourlyPay + bonus).toFixed(2);
+        const payAmount = hourlyPay.toFixed(2);
         
         // Create summary cards
         const summaryGrid = SecurityUtils.createElement('div', '', 'mb-6 grid grid-cols-1 md:grid-cols-3 gap-4');
@@ -798,9 +772,9 @@ export class PayAnalysis {
         const paymentTitle = SecurityUtils.createElement('h4', 'Payment Details', `text-base font-medium ${textPrimary} mb-3`);
         const paymentCard = SecurityUtils.createElement('div', '', `${bgSecondary} p-3 rounded-md border ${sectionBorder}`);
         
-        // Rate per hour
+        // Hourly Rate
         const rateRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
-        const rateLabel = SecurityUtils.createElement('span', 'Rate per hour:', `text-sm ${textSecondary}`);
+        const rateLabel = SecurityUtils.createElement('span', 'Hourly Rate:', `text-sm ${textSecondary}`);
         const rateInputContainer = SecurityUtils.createElement('div', '', 'flex items-center');
         const rateDollarSign = SecurityUtils.createElement('span', '$', `text-sm ${textSecondary}`);
         const rateInput = SecurityUtils.createElement('input');
@@ -808,7 +782,7 @@ export class PayAnalysis {
         rateInput.value = this.ratePerHour.toFixed(2);
         rateInput.min = '0';
         rateInput.step = '0.01';
-        rateInput.className = `ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300`;
+        rateInput.className = `ml-1 text-sm ${this.themeManager.getInputClasses()} px-1 py-0 border-transparent focus:border-gray-300 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`;
         rateInput.style.width = '80px';
         rateInput.addEventListener('change', () => {
             window.payAnalysis.savePayRate(parseFloat(rateInput.value) || 60);
@@ -825,20 +799,6 @@ export class PayAnalysis {
         totalHoursRow.appendChild(totalHoursLabel);
         totalHoursRow.appendChild(totalHoursValue);
         
-        // Hourly pay
-        const hourlyPayRowElement = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
-        const hourlyPayLabelElement = SecurityUtils.createElement('span', 'Hourly pay:', `text-sm ${textSecondary}`);
-        const hourlyPayValueElement = SecurityUtils.createElement('span', '$' + hourlyPay.toFixed(2), `text-sm ${textSecondary}`);
-        hourlyPayRowElement.appendChild(hourlyPayLabelElement);
-        hourlyPayRowElement.appendChild(hourlyPayValueElement);
-        
-        // Bonus
-        const bonusRow = SecurityUtils.createElement('div', '', 'flex justify-between items-center mb-2');
-        const bonusLabel = SecurityUtils.createElement('span', `Bonus (${totalTasks} tasks):`, `text-sm ${textSecondary}`);
-        const bonusValue = SecurityUtils.createElement('span', '$' + bonus.toFixed(2), `text-sm ${textSecondary} ${bonus > 0 ? 'text-green-600' : ''}`);
-        bonusRow.appendChild(bonusLabel);
-        bonusRow.appendChild(bonusValue);
-        
         // Total pay
         const totalPayRow = SecurityUtils.createElement('div', '', `flex justify-between items-center pt-2 border-t ${sectionBorder}`);
         const totalPayLabel = SecurityUtils.createElement('span', 'Total pay:', `text-sm font-medium ${textPrimary}`);
@@ -848,8 +808,6 @@ export class PayAnalysis {
         
         paymentCard.appendChild(rateRow);
         paymentCard.appendChild(totalHoursRow);
-        paymentCard.appendChild(hourlyPayRowElement);
-        paymentCard.appendChild(bonusRow);
         paymentCard.appendChild(totalPayRow);
         
         paymentColumn.appendChild(paymentTitle);
