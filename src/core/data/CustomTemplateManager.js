@@ -5,9 +5,7 @@ export class CustomTemplateManager {
         this.storageKey = 'systemPromptTemplates';
         this.versionKey = 'systemPromptTemplatesVersion';
         this.currentVersion = 1;
-        
-        // Initialize templates (migrate if needed)
-        this.initializeTemplates();
+        this.initPromise = null;
     }
 
     generateId() {
@@ -15,6 +13,14 @@ export class CustomTemplateManager {
     }
 
     async initializeTemplates() {
+        // Use singleton pattern to ensure initialization happens only once
+        if (!this.initPromise) {
+            this.initPromise = this._doInitialize();
+        }
+        return this.initPromise;
+    }
+    
+    async _doInitialize() {
         const version = await SecureStorage.getItem(this.versionKey);
         const storedData = await SecureStorage.getItem(this.storageKey);
         
@@ -46,6 +52,8 @@ export class CustomTemplateManager {
     }
 
     async getAllTemplates() {
+        // Ensure initialization before getting templates
+        await this.initializeTemplates();
         return await this.getTemplates();
     }
 
