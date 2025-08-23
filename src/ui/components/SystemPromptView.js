@@ -13,13 +13,21 @@ export class SystemPromptView {
             console.error("System Prompt View container not found!");
             return;
         }
-        this.render().catch(console.error);
-        this.initializeSystemPromptHandlers();
+        
+        // Initialize templates and then render
+        this.initialize().catch(console.error);
         
         // Listen for theme changes
         document.addEventListener('themeChanged', () => {
             this.render().catch(console.error);
         });
+    }
+    
+    async initialize() {
+        // Ensure templates are initialized before rendering
+        await this.templateManager.initializeTemplates();
+        await this.render();
+        this.initializeSystemPromptHandlers();
     }
 
     async render() {
