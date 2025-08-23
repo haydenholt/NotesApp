@@ -16,11 +16,20 @@ export class CustomTemplateManager {
 
     async initializeTemplates() {
         const version = await SecureStorage.getItem(this.versionKey);
-        const existingTemplates = await this.getTemplates();
+        const storedData = await SecureStorage.getItem(this.storageKey);
         
-        // If no templates exist or version is outdated, initialize with defaults
-        if (!version || parseInt(version) < this.currentVersion || existingTemplates.length === 0) {
+        // Initialize with defaults if:
+        // 1. No stored data exists (first-time user)
+        // 2. Version is outdated
+        // 3. Stored templates array is empty
+        if (!storedData || !version || parseInt(version) < this.currentVersion) {
             await this.migrateToVersion1();
+        } else {
+            // Check if existing templates are empty and reinitialize if needed
+            const existingTemplates = await this.getTemplates();
+            if (existingTemplates.length === 0) {
+                await this.migrateToVersion1();
+            }
         }
     }
 
