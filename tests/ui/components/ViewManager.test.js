@@ -1,4 +1,5 @@
 import ViewManager from '../../../src/ui/components/ViewManager.js';
+import { PlatformUtils } from '../../../src/core/utils/PlatformUtils.js';
 
 describe('ViewManager', () => {
   let viewManager;
@@ -25,10 +26,11 @@ describe('ViewManager', () => {
   });
   
   test('should toggle to diff view', () => {
-    // Mock the keyboard event
+    // Mock the keyboard event with proper modifier key
+    const modifierKey = PlatformUtils.getModifierKey();
     const event = new KeyboardEvent('keydown', {
       key: 'd',
-      ctrlKey: true,
+      [modifierKey]: true,
     });
     
     // Dispatch the event
@@ -43,16 +45,17 @@ describe('ViewManager', () => {
   });
   
   test('should toggle back to notes view', () => {
+    const modifierKey = PlatformUtils.getModifierKey();
     // First toggle to diff view
     document.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'd',
-      ctrlKey: true,
+      [modifierKey]: true,
     }));
     
     // Then toggle back to notes view
     document.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'd',
-      ctrlKey: true,
+      [modifierKey]: true,
     }));
     
     // Check if views are toggled correctly

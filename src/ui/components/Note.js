@@ -1,6 +1,7 @@
 import Timer from './Timer.js';
 import { SecurityUtils } from '../../core/utils/SecurityUtils.js';
 import { NotesRepository } from '../../core/data/NotesRepository.js';
+import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
@@ -47,6 +48,10 @@ export class Note {
         completed = noteData.completed || false;
         additionalTime = noteData.additionalTime || 0;
         canceled = noteData.canceled || false;
+        
+        // Store as instance properties for later updates
+        this.completed = completed;
+        this.canceled = canceled;
         // Create the note container with theme-aware classes
         const noteContainer = document.createElement('div');
         const backgroundClass = completed ?
@@ -59,47 +64,25 @@ export class Note {
         noteContainer.dataset.noteId = number;
         noteContainer._noteInstance = this; // Store reference for cleanup
 
-        // Create menu button container with explicit positioning
+        // Create menu button container with Tailwind classes
         const menuContainer = document.createElement('div');
-        menuContainer.style.position = 'absolute';
-        menuContainer.style.top = '8px';
-        menuContainer.style.right = '8px';
-        menuContainer.style.zIndex = '30';
-        menuContainer.style.width = '32px';
-        menuContainer.style.height = '32px';
+        menuContainer.className = 'absolute top-2 right-2 z-30 w-8 h-8';
         
-        // Create hamburger menu button with completely inline styles
+        // Create hamburger menu button with Tailwind classes
         const menuButton = document.createElement('button');
-        menuButton.style.width = '32px';
-        menuButton.style.height = '32px';
-        menuButton.style.backgroundColor = 'transparent';
-        menuButton.style.border = 'none';
-        menuButton.style.borderRadius = '4px';
-        menuButton.style.display = 'flex';
-        menuButton.style.flexDirection = 'column';
-        menuButton.style.alignItems = 'center';
-        menuButton.style.justifyContent = 'center';
-        menuButton.style.cursor = 'pointer';
-        menuButton.style.padding = '4px';
+        menuButton.className = 'w-8 h-8 bg-transparent border-none rounded flex flex-col items-center justify-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors';
         
-        // Create three visible hamburger bars with explicit styling
+        // Create three visible hamburger bars with Tailwind classes
         for (let i = 0; i < 3; i++) {
             const bar = document.createElement('div');
-            bar.style.width = '16px';
-            bar.style.height = '1.5px';
-            bar.style.backgroundColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
-            bar.style.borderRadius = '1px';
-            bar.style.margin = '0px';
+            bar.className = 'w-4 h-0.5 bg-gray-500 dark:bg-gray-400 rounded-sm block';
             if (i === 1) {
-                bar.style.marginTop = '2px';
-                bar.style.marginBottom = '2px';
+                bar.className += ' my-0.5';
             }
-            bar.style.display = 'block';
             menuButton.appendChild(bar);
         }
         
         menuButton.title = 'Note options';
-        console.log('Creating hamburger menu button:', menuButton);
         
         // Create dropdown menu
         const dropdownMenu = document.createElement('div');
@@ -139,11 +122,13 @@ export class Note {
 
         // Number display - hide for cancelled notes, use provided displayIndex for non-cancelled notes
         const numberDisplay = document.createElement('div');
-        numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} font-bold mb-2`;
-        // If note is completed and cancelled, show "Cancelled"; otherwise, show its position among non-cancelled notes
+        this.numberDisplay = numberDisplay; // Store reference for later updates
+        this.displayIndex = displayIndex; // Store the original display index
+        numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} text-base mb-2`;
+        // If note is completed and cancelled, show "CANCELED"; otherwise, show its position among non-cancelled notes
         if (completed && canceled) {
-            numberDisplay.textContent = "Cancelled";
-            numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} font-bold mb-2`;
+            numberDisplay.textContent = "CANCELED";
+            numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} text-base mb-2`;
         } else {
             // Use provided displayIndex
             numberDisplay.textContent = String(displayIndex);
@@ -332,6 +317,8 @@ export class Note {
                 if (!timer.hasStarted && !completed) {
                     timer.hasStarted = true;
                     timer.start();
+                    // Rebuild menu when note starts
+                    this.buildMenuOptions();
                 }
                 this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
             });
@@ -349,6 +336,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -357,6 +346,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -366,6 +357,8 @@ export class Note {
             if (!timer.hasStarted && !completed) {
                 timer.hasStarted = true;
                 timer.start();
+                // Rebuild menu when note starts
+                this.buildMenuOptions();
             }
             this.save(timer.startTimestamp, timer.endTimestamp, completed).catch(console.error);
         });
@@ -385,7 +378,7 @@ export class Note {
                 // Show inline cancel confirmation on this note
                 this.showCancelConfirmation();
             }
-            if (e.ctrlKey && e.key === 'x') {
+            if (PlatformUtils.isModifierPressed(e) && e.key === 'x') {
                 // Don't prevent default to allow normal copy behavior in addition to our custom one
                 const text = this.getFormattedText();
                 if (!text || text.trim() === '') {
@@ -395,14 +388,14 @@ export class Note {
                 // Use the new copyFormattedText method
                 this.copyFormattedText();
             }
-            if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+            if (PlatformUtils.isModifierPressed(e) && e.shiftKey && e.key === 'V') {
                 e.preventDefault();
                 this.pasteAsFormattedBullet();
             }
         });
 
         contentContainer.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if (PlatformUtils.isModifierPressed(e) && e.key === 'Enter') {
                 // Always allow Ctrl+Enter for notes with content, regardless of completed state
                 if (timer.hasStarted) {
                     e.preventDefault();
@@ -465,7 +458,8 @@ export class Note {
             document.removeEventListener('themeChanged', this.themeChangeHandler);
         }
         if (this.timer) {
-            this.timer.stop();
+            // Only stop display updates, don't stop the timer itself
+            this.timer.stopDisplay();
         }
     }
     
@@ -510,21 +504,19 @@ export class Note {
     }
     
     updateNumberDisplay() {
-        const numberDisplay = this.container.querySelector('.font-bold.mb-2');
-        if (!numberDisplay) return;
+        if (!this.numberDisplay) return;
         
-        // Remove all color classes
-        numberDisplay.classList.remove('text-gray-600', 'text-red-600');
+        // Clear existing classes and rebuild
+        this.numberDisplay.className = '';
         
         if (this.completed && this.canceled) {
-            // Update text to show "Cancelled" for cancelled notes
-            numberDisplay.textContent = "Cancelled";
-            const cancelledTextColor = this.themeManager.getColor('note', 'cancelledText');
-            numberDisplay.classList.add(cancelledTextColor);
+            // Update text to show "CANCELED" for cancelled notes
+            this.numberDisplay.textContent = "CANCELED";
+            this.numberDisplay.className = `${this.themeManager.getColor('note', 'cancelledNumber')} text-base mb-2`;
         } else {
-            // For non-cancelled notes, keep the current number text but update color
-            const tertiaryTextColor = this.themeManager.getColor('text', 'tertiary');
-            numberDisplay.classList.add(tertiaryTextColor);
+            // For non-cancelled notes, show the original display index
+            this.numberDisplay.textContent = String(this.displayIndex);
+            this.numberDisplay.className = `${this.themeManager.getColor('text', 'tertiary')} text-base mb-2`;
         }
     }
     
@@ -601,14 +593,16 @@ export class Note {
     
     updateButtonStyles() {
         if (this.menuButton) {
-            // Update button background for theme (keep transparent)
-            this.menuButton.style.backgroundColor = 'transparent';
+            // Update button with Tailwind classes for theme
+            this.menuButton.className = 'w-8 h-8 bg-transparent border-none rounded flex flex-col items-center justify-center cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors';
             
-            // Update bar colors for theme with lighter colors
+            // Update bar colors with Tailwind classes
             const bars = this.menuButton.querySelectorAll('div');
-            const barColor = this.themeManager.currentTheme === 'dark' ? '#9ca3af' : '#6b7280';
-            bars.forEach(bar => {
-                bar.style.backgroundColor = barColor;
+            bars.forEach((bar, index) => {
+                bar.className = 'w-4 h-0.5 bg-gray-500 dark:bg-gray-400 rounded-sm block';
+                if (index === 1) {
+                    bar.className += ' my-0.5';
+                }
             });
         }
         if (this.dropdownMenu) {
@@ -801,6 +795,10 @@ export class Note {
         confirmBtn.textContent = 'Yes, Cancel Note';
         confirmBtn.addEventListener('click', () => {
             this._completeNoteEditing(number, true);
+            // Mark as canceled and update display immediately
+            this.completed = true;
+            this.canceled = true;
+            this.updateNumberDisplay();
             container.removeChild(confirmationDiv);
             delete this.confirmationDiv;
         });
@@ -876,43 +874,45 @@ export class Note {
         const number = this.container.dataset.noteId || this.number;
         
         if (this.completed) {
-            // Options for completed notes
+            // Menu options for completed notes
             this.addMenuOption('Edit Note', () => {
                 this._enableNoteEditing(number);
                 this.closeDropdown();
             });
             
-            this.addMenuOption('Copy Content', () => {
+            this.addMenuOption('Copy Feedback', () => {
                 this.copyFormattedText();
                 this.closeDropdown();
             });
-            
-            this.addMenuSeparator();
             
             this.addMenuOption('Delete Note', () => {
                 this.showDeleteConfirmation();
                 this.closeDropdown();
             }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
+        } else if (!this.timer.hasStarted) {
+            // Menu options for unstarted notes - only delete
+            this.addMenuOption('Delete Note', () => {
+                this.showDeleteConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('error') || 'text-red-600 hover:text-red-700');
         } else {
-            // Options for active/editing notes
+            // Menu options for started/active notes
             this.addMenuOption('Save Note', () => {
                 this._completeNoteEditing(number);
                 this.closeDropdown();
             }, this.themeManager.getStatusClasses('success') || 'text-green-600 hover:text-green-700');
             
-            this.addMenuOption('Cancel Note', () => {
+            this.addMenuOption('Cancel Operation', () => {
+                // Copy formatted IDs like F1 does
+                this.copyFormattedIDs();
                 this.showCancelConfirmation();
                 this.closeDropdown();
             }, this.themeManager.getStatusClasses('warning') || 'text-yellow-600 hover:text-yellow-700');
             
-            this.addMenuSeparator();
-            
-            this.addMenuOption('Copy Content', () => {
+            this.addMenuOption('Copy Feedback', () => {
                 this.copyFormattedText();
                 this.closeDropdown();
             });
-            
-            this.addMenuSeparator();
             
             this.addMenuOption('Delete Note', () => {
                 this.showDeleteConfirmation();
@@ -928,10 +928,13 @@ export class Note {
         const option = document.createElement('button');
         const baseHoverClass = this.themeManager.getColor('background', 'hover') || 'hover:bg-gray-100';
         
+        // If extraClasses are provided (like for Delete Note), don't add default text color
+        const textColor = extraClasses ? '' : this.themeManager.getColor('text', 'primary');
+        
         option.className = this.themeManager.combineClasses(
             'w-full px-4 py-2 text-left text-sm transition-colors whitespace-nowrap overflow-hidden text-ellipsis',
             baseHoverClass,
-            this.themeManager.getColor('text', 'primary'),
+            textColor,
             extraClasses
         );
         
@@ -1172,6 +1175,7 @@ export class Note {
             
             // Update completed/canceled status
             if (noteData.completed) {
+                this.completed = true;
                 const completedClass = noteData.canceled ? 
                     (this.themeManager?.getColor('note', 'cancelled') || 'bg-red-50') :
                     (this.themeManager?.getColor('note', 'completed') || 'bg-gray-50');
@@ -1179,6 +1183,8 @@ export class Note {
                 
                 if (noteData.canceled) {
                     this.canceled = true;
+                    // Update the number display to show "CANCELED"
+                    this.updateNumberDisplay();
                 }
             }
         } catch (error) {

@@ -41,7 +41,7 @@ export class OffPlatformEntryList {
         // Total time display
         this.totalDisplay = DOMHelpers.createElement('div',
             this.themeManager.combineClasses(
-                'font-mono text-lg font-semibold',
+                'font-mono text-base',
                 this.themeManager.getColor('text', 'primary')
             ),
             '00:00:00'

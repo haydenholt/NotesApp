@@ -1,5 +1,6 @@
 import { SystemPromptView } from '../../../src/ui/components/SystemPromptView.js';
 import { ThemeManager } from '../../../src/ui/components/ThemeManager.js';
+import { PlatformUtils } from '../../../src/core/utils/PlatformUtils.js';
 
 describe('SystemPromptView Component', () => {
     let container;
@@ -117,7 +118,8 @@ ${testCode}
 
         test('Ctrl+X in code input should trigger copy and show success toast', async () => {
             codeInput.value = 'some code';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             codeInput.dispatchEvent(event);
             expect(navigator.clipboard.writeText).toHaveBeenCalled();
             await Promise.resolve();
@@ -242,7 +244,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
         test('Ctrl+X in prompt input should show warning toast and not copy', () => {
             promptInput.value = 'Original Prompt';
             responseInput1.value = 'AI Response 1';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             promptInput.dispatchEvent(event);
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
             expect(systemPromptView.showToast).toHaveBeenCalledWith('Ctrl+X disabled for prompt. Use in response fields.', 'warning');
@@ -253,7 +256,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
             const testResponse1 = 'Response for R1';
             promptInput.value = testPrompt;
             responseInput1.value = testResponse1;
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput1.dispatchEvent(event);
             
             const expectedPrompt = baseExpectedPromptTemplate
@@ -268,7 +272,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
         test('Ctrl+X in response 1 input with empty prompt should show error toast', () => {
             promptInput.value = '';
             responseInput1.value = 'Some response';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput1.dispatchEvent(event);
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
             expect(systemPromptView.showToast).toHaveBeenCalledWith('Original prompt cannot be empty.', 'error');
@@ -277,7 +282,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
         test('Ctrl+X in response 1 input with empty response 1 should show error toast', () => {
             promptInput.value = 'Some prompt';
             responseInput1.value = '';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput1.dispatchEvent(event);
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
             expect(systemPromptView.showToast).toHaveBeenCalledWith('Fill Prompt & Response 1', 'error');
@@ -289,7 +295,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
             const testResponse2 = 'Response for R2';
             promptInput.value = testPrompt;
             responseInput2.value = testResponse2;
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput2.dispatchEvent(event);
 
             const expectedPrompt = baseExpectedPromptTemplate
@@ -304,7 +311,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
         test('Ctrl+X in response 2 input with empty prompt should show error toast', () => {
             promptInput.value = '';
             responseInput2.value = 'Some response';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput2.dispatchEvent(event);
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
             expect(systemPromptView.showToast).toHaveBeenCalledWith('Original prompt cannot be empty.', 'error');
@@ -313,7 +321,8 @@ Be very critical in your evaluation. Rate 1 = completely wrong/missing, 5 = perf
         test('Ctrl+X in response 2 input with empty response 2 should show error toast', () => {
             promptInput.value = 'Some prompt';
             responseInput2.value = '';
-            const event = new KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true });
+            const modifierKey = PlatformUtils.getModifierKey();
+            const event = new KeyboardEvent('keydown', { key: 'x', [modifierKey]: true, bubbles: true });
             responseInput2.dispatchEvent(event);
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
             expect(systemPromptView.showToast).toHaveBeenCalledWith('Fill Prompt & Response 2', 'error');

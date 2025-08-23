@@ -283,9 +283,9 @@ export class NoteApp {
         if (isActive) {
             this.showSearchMode();
         } else {
+            // Don't load notes here - the searchCleared event handler will do it
+            // This prevents duplicate loading when clearing search
             this.showNormalMode();
-            this.noteListView.clear();
-            this.noteController.loadNotesForDate(this.appState.getCurrentDate());
         }
     }
 

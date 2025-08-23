@@ -1,4 +1,5 @@
 import SystemPromptView from './SystemPromptView.js';
+import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 /**
  * Manages switching between Notes view, Diff view, and System Prompt view
@@ -34,7 +35,7 @@ export class ViewManager {
         this.currentView = 'notes';
 
         document.addEventListener('keydown', (e) => {
-            if (!e.ctrlKey) return;
+            if (!PlatformUtils.isModifierPressed(e)) return;
             const key = e.key.toLowerCase();
             if (key === 'd') {
                 e.preventDefault();
