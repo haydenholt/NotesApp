@@ -31,20 +31,10 @@ export class SecureStorage {
                         // 2. High site engagement
                         // 3. PWA is installed
                         // 4. User grants permission
-                        const result = await navigator.storage.persist();
-                        
-                        if (result) {
-                            console.log('✅ Persistent storage granted - your data is protected!');
-                        } else {
-                            console.log('⚠️ Persistent storage denied - install as PWA for better data protection');
-                            // Still works, just less protected from cleanup
-                        }
-                    } else {
-                        console.log('✅ Storage already persisted');
+                        await navigator.storage.persist();
                     }
                 } catch (error) {
-                    console.log('Persistent storage not available:', error);
-                    // Continue anyway - storage still works
+                    // Persistent storage not available - continue anyway
                 }
             }
 

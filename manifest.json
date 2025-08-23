@@ -1,7 +1,7 @@
 {
   "name": "QC Notes - Secure Note Taking",
   "short_name": "QC Notes",
-  "description": "Secure note-taking application with time tracking and encrypted local storage",
+  "description": "Note-taking application with time tracking and encrypted local storage",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
