@@ -20,6 +20,34 @@ export class SecureStorage {
         }
 
         try {
+            // Request persistent storage to prevent data loss
+            // Note: This requires user interaction or the app to be installed as PWA
+            if (navigator.storage && navigator.storage.persist) {
+                try {
+                    const isPersisted = await navigator.storage.persisted();
+                    if (!isPersisted) {
+                        // This will be auto-granted if:
+                        // 1. Site is bookmarked
+                        // 2. High site engagement
+                        // 3. PWA is installed
+                        // 4. User grants permission
+                        const result = await navigator.storage.persist();
+                        
+                        if (result) {
+                            console.log('✅ Persistent storage granted - your data is protected!');
+                        } else {
+                            console.log('⚠️ Persistent storage denied - install as PWA for better data protection');
+                            // Still works, just less protected from cleanup
+                        }
+                    } else {
+                        console.log('✅ Storage already persisted');
+                    }
+                } catch (error) {
+                    console.log('Persistent storage not available:', error);
+                    // Continue anyway - storage still works
+                }
+            }
+
             // Check if we have an existing key
             const existingKey = localStorage.getItem(this.ENCRYPTION_KEY);
             const existingSalt = localStorage.getItem(this.ENCRYPTION_SALT);
@@ -377,7 +405,19 @@ export class SecureStorage {
             initialized: this.initialized,
             hasKey: localStorage.getItem(this.ENCRYPTION_KEY) !== null,
             isSupported: this.isSupported(),
-            itemCount: this.length
+            itemCount: this.length,
+            isPersisted: navigator.storage && navigator.storage.persisted ? 
+                navigator.storage.persisted() : Promise.resolve(false)
         };
+    }
+
+    /**
+     * Check if storage is persisted (async)
+     */
+    static async checkPersistence() {
+        if (navigator.storage && navigator.storage.persisted) {
+            return await navigator.storage.persisted();
+        }
+        return false;
     }
 }

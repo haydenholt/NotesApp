@@ -5,11 +5,12 @@ import { PlatformUtils } from '../../core/utils/PlatformUtils.js';
 
 // Add Note class wrapper for note creation logic
 export class Note {
-    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote, markEditing}, themeManager) {
+    constructor(number, date, displayIndex, { enableEditing, completeEditing, deleteNote, markEditing}, themeManager, toast = null) {
         // Minimal context for this Note
         this.number = number;
         this.date = date;
         this.themeManager = themeManager;
+        this.toast = toast;
         this._enableNoteEditing = enableEditing;
         this._completeNoteEditing = completeEditing;
         this._deleteNote = deleteNote;
@@ -375,6 +376,10 @@ export class Note {
                 }
                 // Use the new copyFormattedIDs method
                 this.copyFormattedIDs();
+                // Show toast notification
+                if (this.toast) {
+                    this.toast.show('Operation cancellation message copied!', 'success');
+                }
                 // Show inline cancel confirmation on this note
                 this.showCancelConfirmation();
             }
@@ -387,8 +392,12 @@ export class Note {
                 }
                 // Use the new copyFormattedText method
                 this.copyFormattedText();
+                // Show toast notification
+                if (this.toast) {
+                    this.toast.show('Feedback copied to clipboard!', 'success');
+                }
             }
-            if (PlatformUtils.isModifierPressed(e) && e.shiftKey && e.key === 'V') {
+            if (PlatformUtils.isModifierPressed(e) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
                 e.preventDefault();
                 this.pasteAsFormattedBullet();
             }
@@ -774,7 +783,7 @@ export class Note {
 
         const message = document.createElement('p');
         message.className = `${this.themeManager.getColor('text', 'secondary')} mb-4 text-center`;
-        message.textContent = 'Are you sure you want to cancel this note? This will stop the timer and mark the note as canceled.';
+        message.textContent = 'Confirm note cancellation once the operation has been canceled.';
         confirmationDiv.appendChild(message);
 
         const buttonContainer = document.createElement('div');
@@ -882,6 +891,10 @@ export class Note {
             
             this.addMenuOption('Copy Feedback', () => {
                 this.copyFormattedText();
+                // Show toast notification
+                if (this.toast) {
+                    this.toast.show('Feedback copied to clipboard!', 'success');
+                }
                 this.closeDropdown();
             });
             
@@ -902,17 +915,26 @@ export class Note {
                 this.closeDropdown();
             }, this.themeManager.getStatusClasses('success') || 'text-green-600 hover:text-green-700');
             
-            this.addMenuOption('Cancel Operation', () => {
-                // Copy formatted IDs like F1 does
-                this.copyFormattedIDs();
-                this.showCancelConfirmation();
-                this.closeDropdown();
-            }, this.themeManager.getStatusClasses('warning') || 'text-yellow-600 hover:text-yellow-700');
             
             this.addMenuOption('Copy Feedback', () => {
                 this.copyFormattedText();
+                // Show toast notification
+                if (this.toast) {
+                    this.toast.show('Feedback copied to clipboard!', 'success');
+                }
                 this.closeDropdown();
             });
+            
+            this.addMenuOption('Cancel Operation', () => {
+                // Copy formatted IDs like F1 does
+                this.copyFormattedIDs();
+                // Show toast notification
+                if (this.toast) {
+                    this.toast.show('Operation cancellation message copied!', 'success');
+                }
+                this.showCancelConfirmation();
+                this.closeDropdown();
+            }, this.themeManager.getStatusClasses('warning') || 'text-yellow-600 hover:text-yellow-700');
             
             this.addMenuOption('Delete Note', () => {
                 this.showDeleteConfirmation();

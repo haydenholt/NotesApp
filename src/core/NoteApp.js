@@ -9,6 +9,7 @@ import { StatisticsView } from '../ui/views/StatisticsView.js';
 import { DateNavigationView } from '../ui/views/DateNavigationView.js';
 import { OffPlatformView } from '../ui/views/OffPlatformView.js';
 import { ModalView } from '../ui/views/ModalView.js';
+import { Toast } from '../ui/components/Toast.js';
 import { ExportService } from './data/ExportService.js';
 import { DOMHelpers } from './utils/DOMHelpers.js';
 import { TimeFormatter } from './utils/TimeFormatter.js';
@@ -19,11 +20,14 @@ export class NoteApp {
     constructor(themeManager) {
         this.themeManager = themeManager;
         
+        // Initialize toast
+        this.toast = new Toast(this.themeManager);
+        
         // Initialize state
         this.appState = new AppState();
         
         // Initialize controllers
-        this.noteController = new NoteController(this.appState, this.themeManager);
+        this.noteController = new NoteController(this.appState, this.themeManager, this.toast);
         this.timerController = new TimerController(this.appState, this.themeManager);
         this.searchController = new SearchController(this.appState, this.themeManager);
         this.statisticsController = new StatisticsController(this.appState, this.themeManager);
