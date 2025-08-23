@@ -15,12 +15,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
         // Cache files one by one to handle failures gracefully
         return Promise.all(
           urlsToCache.map(url => {
-            return cache.add(url).catch(err => {
-              console.warn(`Failed to cache ${url}:`, err);
+            return cache.add(url).catch(() => {
+              // Cache failure - continue silently
             });
           })
         );
@@ -36,7 +35,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -77,7 +75,6 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request)
           .then((response) => {
             if (response) {
-              console.log('Serving from cache (offline):', event.request.url);
               return response;
             }
             // Fallback to index.html for navigation requests
