@@ -45,7 +45,7 @@ export class NoteListView {
         
         const noteElement = this.container.querySelector(`[data-note-id="${noteId}"]`);
         if (noteElement) {
-            DOMHelpers.scrollToElement(noteElement, 'smooth', 'center');
+            DOMHelpers.scrollToElement(noteElement, 'instant', 'center');
             DOMHelpers.addHighlight(noteElement, 'ring-2 ring-blue-300', duration);
             
             this.notifyListeners('noteHighlighted', { noteId, element: noteElement });

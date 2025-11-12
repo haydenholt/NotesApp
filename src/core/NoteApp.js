@@ -79,9 +79,10 @@ export class NoteApp {
             this.updateStatistics();
         });
 
-        this.noteController.addEventListener('noteDeleted', () => {
+        this.noteController.addEventListener('noteDeleted', ({ note }) => {
+            // Remove only the deleted note from the DOM
+            this.noteListView.removeNote(note);
             this.updateStatistics();
-            // Don't change scroll position when deleting notes
         });
 
         this.noteController.addEventListener('notesClearing', () => {
@@ -121,20 +122,17 @@ export class NoteApp {
             this.updateSearchStatistics(results);
         });
 
-        this.searchController.addEventListener('searchCleared', () => {
+        this.searchController.addEventListener('searchCleared', async () => {
             // Don't load notes if we're in the middle of navigating to a specific note
             if (!this.isNavigatingToNote) {
                 this.showNormalMode();
                 this.noteListView.clear();
-                this.noteController.loadNotesForDate(this.appState.getCurrentDate());
+                await this.noteController.loadNotesForDate(this.appState.getCurrentDate());
                 
-                // Restore scroll position after notes are loaded
+                // Restore scroll position immediately after notes are loaded
                 if (this.searchScrollPosition) {
-                    // Wait for notes to be rendered
-                    setTimeout(() => {
-                        DOMHelpers.restoreScrollPosition(this.searchScrollPosition);
-                        this.searchScrollPosition = null;
-                    }, 200);
+                    DOMHelpers.restoreScrollPosition(this.searchScrollPosition, 'instant');
+                    this.searchScrollPosition = null;
                 }
             }
         });
@@ -416,10 +414,8 @@ export class NoteApp {
         // Reset flag
         this.isNavigatingToNote = false;
         
-        // Highlight the note after a short delay for DOM to update
-        setTimeout(() => {
-            this.noteListView.highlightNote(noteId);
-        }, 50);
+        // Highlight and scroll to the note immediately
+        this.noteListView.highlightNote(noteId);
     }
 
     refreshAllViews() {

@@ -144,13 +144,11 @@ export class DOMHelpers {
             return;
         }
         
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-            window.scrollTo({
-                left: position.x,
-                top: position.y,
-                behavior: behavior
-            });
+        // Scroll immediately without delay
+        window.scrollTo({
+            left: position.x,
+            top: position.y,
+            behavior: behavior
         });
     }
 
