@@ -11,13 +11,13 @@ export class Toast {
         // Create toast container
         this.toastElement = document.createElement('div');
         this.toastElement.id = 'toast-notification';
-        this.toastElement.className = 'fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white text-sm transition-all duration-300 ease-in-out opacity-0 transform translate-y-2 z-50';
-        
+        this.toastElement.className = 'fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white text-sm transition-all duration-300 ease-in-out opacity-0 transform translate-y-2 z-50 pointer-events-none';
+
         // Create message element
         this.messageElement = document.createElement('span');
         this.messageElement.id = 'toast-message';
         this.toastElement.appendChild(this.messageElement);
-        
+
         // Add to body
         document.body.appendChild(this.toastElement);
     }
@@ -52,8 +52,8 @@ export class Toast {
         }
 
         // Show toast with animation
-        this.toastElement.classList.remove('opacity-0', 'translate-y-2');
-        this.toastElement.classList.add('opacity-100', 'translate-y-0');
+        this.toastElement.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+        this.toastElement.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
 
         // Auto-hide after 3 seconds
         this.timeoutId = setTimeout(() => {
@@ -63,8 +63,8 @@ export class Toast {
 
     hide() {
         if (this.toastElement) {
-            this.toastElement.classList.remove('opacity-100', 'translate-y-0');
-            this.toastElement.classList.add('opacity-0', 'translate-y-2');
+            this.toastElement.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+            this.toastElement.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
         }
     }
 

@@ -304,6 +304,12 @@ export class Note {
             
 
             textarea.addEventListener('input', () => {
+                // Store the current scroll position and whether user was at bottom
+                const wasAtBottom = (window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 10;
+
+                // Capture the current CLIENT height (the actual rendered height in pixels)
+                const oldHeight = textarea.clientHeight;
+
                 // Add this function to adjust the height of the textarea
                 const adjustHeight = () => {
                     // Reset height to auto first to get accurate scrollHeight
@@ -311,10 +317,22 @@ export class Note {
                     // Set height to scrollHeight to accommodate all content
                     textarea.style.height = textarea.scrollHeight + 'px';
                 };
-                
+
                 // Call the adjustment function
                 adjustHeight();
-                
+
+                // Auto-scroll to compensate for the height change
+                // Use requestAnimationFrame to ensure the DOM has updated
+                requestAnimationFrame(() => {
+                    const newHeight = textarea.clientHeight;
+                    const heightDiff = newHeight - oldHeight;
+
+                    // If user was at the bottom, scroll down by the height increase
+                    if (wasAtBottom && heightDiff > 0) {
+                        window.scrollBy({ top: heightDiff, behavior: 'instant' });
+                    }
+                });
+
                 if (!timer.hasStarted && !completed) {
                     timer.hasStarted = true;
                     timer.start();

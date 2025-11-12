@@ -243,35 +243,44 @@ export class NoteController {
         const note = this.notesState.getNote(date, number);
         if (!note) return false;
 
-        // Store current scroll position
-        const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-
         try {
             // Remove from storage and renumber (await these operations)
             await NotesRepository.deleteNote(date, number);
             await NotesRepository.renumberNotes(date);
             
-            // Clear all notes from memory state
-            this.notesState.clearNotesForDate(date);
+            // Remove the note from memory state
+            this.notesState.removeNote(date, number);
             
-            // Notify that notes are clearing (this will clear the DOM)
-            this.notifyListeners('notesClearing', { date });
+            // Get all remaining notes and update their numbers in-place
+            const remainingNotes = this.notesState.getNotesForDate(date);
+            remainingNotes.forEach((note, index) => {
+                const newNumber = index + 1;
+                if (note.number !== newNumber) {
+                    const oldNumber = note.number;
+                    note.number = newNumber;
+                    note.displayIndex = this.calculateDisplayIndex(date, newNumber);
+                    
+                    // Update the DOM element directly
+                    if (note.elements && note.elements.noteNumber) {
+                        note.elements.noteNumber.textContent = String(note.displayIndex);
+                    }
+                    // Update the data attribute for the container
+                    if (note.container) {
+                        note.container.dataset.noteId = newNumber;
+                    }
+                }
+            });
             
-            // Reload notes with the new numbering
-            await this.loadNotesForDate(date);
+            // Refresh display indices to handle canceled notes correctly
+            this.refreshDisplayIndices(date);
+            
+            // Notify listeners that the note was deleted (DOM element will be removed)
+            this.notifyListeners('noteDeleted', { note, date, number });
             
         } catch (error) {
             console.error('Error deleting note:', error);
             return false;
         }
-        
-        // Notify listeners with the note being deleted
-        this.notifyListeners('noteDeleted', { note, date, number });
-        
-        // Restore scroll position after a brief delay to allow DOM updates
-        setTimeout(() => {
-            window.scrollTo(0, scrollPosition);
-        }, 50);
         
         return true;
     }
